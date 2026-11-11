@@ -24,8 +24,16 @@ final class TileView: FlippedView {
     var isInteractive = false {
         didSet {
             content.interactivityDidChange(isInteractive)
+            // Enter/exit events stop while the overlay is hidden, so work out
+            // afresh whether the pointer is over this tile.
+            isHovering = isInteractive && containsPointer
             updateChrome()
         }
+    }
+
+    private var containsPointer: Bool {
+        guard let window else { return false }
+        return bounds.contains(convert(window.mouseLocationOutsideOfEventStream, from: nil))
     }
 
     init(tile: Tile, settings: AppSettings, context: TileContext) {
@@ -49,7 +57,7 @@ final class TileView: FlippedView {
             self.editCover.title = self.content.title
         }
 
-        chrome.alphaValue = 0
+        chrome.isHidden = true
         chrome.onBack = { [weak self] in (self?.content as? WebTileContentView)?.goBack() }
         chrome.onForward = { [weak self] in (self?.content as? WebTileContentView)?.goForward() }
         chrome.onReload = { [weak self] in (self?.content as? WebTileContentView)?.reload() }
@@ -124,10 +132,9 @@ final class TileView: FlippedView {
         if visible, let web = content as? WebTileContentView {
             chrome.setNavigation(canGoBack: web.canGoBack, canGoForward: web.canGoForward)
         }
-        NSAnimationContext.runAnimationGroup { context in
-            context.duration = 0.12
-            chrome.animator().alphaValue = visible ? 1 : 0
-        }
+        // Hidden rather than faded out: an invisible button would still take
+        // clicks meant for the page underneath.
+        chrome.isHidden = !visible
     }
 
     // MARK: - Menu
@@ -297,6 +304,14 @@ final class TileEditCover: FlippedView {
         path.lineJoinStyle = .round
         NSColor(white: 1, alpha: 0.85).setStroke()
         path.stroke()
+    }
+
+    /// Everything on the tile belongs to the cover while arranging, apart
+    /// from the remove button.
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        guard !isHidden, let superview, frame.contains(point) else { return nil }
+        let local = convert(point, from: superview)
+        return removeButton.frame.contains(local) ? removeButton : self
     }
 
     /// Which edge or corner a point grabs, or nil for the middle (a move).

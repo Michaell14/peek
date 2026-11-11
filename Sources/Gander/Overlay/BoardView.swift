@@ -79,6 +79,9 @@ final class BoardView: FlippedView {
         super.init(frame: .zero)
         addSubview(emptyView)
         addSubview(guideView)
+        // Guides stay visible above a tile that is lifted while dragging.
+        guideView.wantsLayer = true
+        guideView.layer?.zPosition = 2
         apply(board: board, settings: settings)
     }
 
@@ -323,7 +326,9 @@ final class BoardView: FlippedView {
             currentFrame: start,
             flowItems: savedFlowItems
         )
-        addSubview(tileView, positioned: .below, relativeTo: guideView)
+        // Lift the tile above its neighbours without moving it in the view
+        // hierarchy, which would interrupt the drag in progress.
+        tileView.layer?.zPosition = 1
     }
 
     func continueDrag(with event: NSEvent) {
@@ -391,6 +396,7 @@ final class BoardView: FlippedView {
         guard let session = drag else { return }
         drag = nil
         guideView.lines = []
+        tileViews[session.tileID]?.layer?.zPosition = 0
         let size = LayoutSize(canvasFrame.size)
         let id = session.tileID
 
@@ -417,9 +423,10 @@ final class BoardView: FlippedView {
     }
 
     private func cancelDrag() {
-        guard drag != nil else { return }
+        guard let session = drag else { return }
         drag = nil
         guideView.lines = []
+        tileViews[session.tileID]?.layer?.zPosition = 0
         restack()
         layoutTiles(animated: true)
     }

@@ -65,11 +65,11 @@ jobs:
       - name: Bundle the app
         run: Scripts/build-app.sh
 
-      # Launches the real app and drives the overlay through show, arrange,
-      # add, hold and tap. See Sources/Gander/App/SmokeTest.swift.
+      # Launches the real app and drives it through show, hold, tap, arrange
+      # and add, and checks blocking and element hiding inside a real page.
+      # See Sources/Gander/App/SmokeTest.swift.
       - name: Self-check
-        run: |
-          build/Gander.app/Contents/MacOS/Gander --smoke-test "$RUNNER_TEMP/smoke"
+        run: Scripts/self-check.sh "$RUNNER_TEMP/smoke"
 
       - name: Self-check report
         if: always()

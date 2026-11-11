@@ -75,7 +75,15 @@ final class WidgetTileContentView: TileContentView {
 
     /// Saves to the model, which comes back through `apply` and re-renders.
     private func save(_ updated: WidgetContent) {
-        updateTile { $0.content = .widget(updated) }
+        let previous = TileContent.widget(widget)
+        updateTile { tile in
+            // A tile still at its natural height follows its content (a
+            // clock gaining a city); one the user resized is left alone.
+            if tile.flowHeight == Tile.defaultSizing(for: previous).height {
+                tile.flowHeight = Tile.defaultSizing(for: .widget(updated)).height
+            }
+            tile.content = .widget(updated)
+        }
     }
 
     /// For changes the widget is already showing. Rebuilding the view under a

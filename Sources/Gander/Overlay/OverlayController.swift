@@ -369,7 +369,7 @@ final class OverlayController: NSObject {
         var actions = OverlayActions()
         actions.add = { [weak self] in self?.presentLauncher() }
         actions.toggleEditing = { [weak self] in self?.toggleEditing() }
-        actions.setMode = { [weak self] mode in self?.activeBoardView?.setMode(mode) }
+        actions.setMode = { [weak self] mode in self?.setLayoutMode(mode) }
         actions.stopPicking = { [weak self] in self?.activeBoardView?.stopPicking() }
         actions.openSettings = { [weak self] in self?.onOpenSettings?() }
         actions.close = { [weak self] in self?.dismiss() }
@@ -381,6 +381,16 @@ final class OverlayController: NSObject {
     }
 
     // MARK: - Self-check support
+
+    var ruleListCount: Int { web.ruleLists.count }
+
+    var firstWebTile: WebTileContentView? {
+        activeBoardView?.contentViews.lazy.compactMap { $0 as? WebTileContentView }.first
+    }
+
+    func setLayoutMode(_ mode: LayoutMode) {
+        activeBoardView?.setMode(mode)
+    }
 
     /// A description of what is on screen, for the automated self-check.
     func snapshot() -> [String: Any] {

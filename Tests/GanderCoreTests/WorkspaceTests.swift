@@ -146,6 +146,15 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertEqual(workspace.board(workspace.sharedBoardID)?.tiles.count, shared.tiles.count)
     }
 
+    func testClockTilesAreSizedToTheirCities() {
+        let one = Tile(content: .widget(.clock(ClockConfig(zones: ["local"]))))
+        let three = Tile(content: .widget(.clock(ClockConfig(zones: ["local", "Europe/London", "Asia/Tokyo"]))))
+        XCTAssertEqual(one.flowHeight, 100)
+        XCTAssertEqual(three.flowHeight, 220)
+        let many = Tile(content: .widget(.clock(ClockConfig(zones: Array(repeating: "UTC", count: 30)))))
+        XCTAssertEqual(many.flowHeight, 520, "a long list scrolls instead of growing without limit")
+    }
+
     func testFileContentKinds() {
         XCTAssertEqual(FileContent(path: "/a/b/Report.PDF")?.kind, .pdf)
         XCTAssertEqual(FileContent(path: "/a/index.htm")?.kind, .html)

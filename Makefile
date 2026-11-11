@@ -1,4 +1,4 @@
-.PHONY: app run test test-browser install icon clean
+.PHONY: app run test test-browser check install icon clean
 
 # Build build/Gander.app (release).
 app:
@@ -15,6 +15,11 @@ test:
 # The JavaScript injected into pages, run in a real browser (needs Playwright).
 test-browser:
 	Tests/Browser/run.sh
+
+# Launch the built app and have it check itself end to end. Opens the
+# overlay on your screen for about half a minute.
+check: app
+	Scripts/self-check.sh
 
 # Copy the app into /Applications.
 install: app

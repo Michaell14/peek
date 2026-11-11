@@ -123,11 +123,14 @@ make test-browser
 ```
 
 ```bash
-build/Gander.app/Contents/MacOS/Gander --smoke-test /tmp/gander-check
+make check
 ```
 
-The last one launches the real app with a throwaway layout, drives the overlay through show,
-arrange, add, hold and tap, and writes a report. CI runs all three on every push.
+`make test` runs the core's unit tests. `make test-browser` runs the JavaScript that Gander
+injects into pages in a real browser (needs Node and Playwright). `make check` launches the built
+app with a throwaway layout and has it check itself: show, hold, tap, arrange, add, and content
+blocking and element hiding inside a real page. It writes a report and screenshots to
+`build/self-check`. CI runs all three on every push.
 
 Other switches: `--show` opens the overlay at launch; `--data-dir <path>` (or `GANDER_DATA_DIR`)
 keeps layouts somewhere other than `~/Library/Application Support/Gander`.

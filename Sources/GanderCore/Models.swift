@@ -301,7 +301,10 @@ public struct Tile: Codable, Hashable, Identifiable, Sendable {
         switch content {
         case .web: return (460, nil)
         case .file: return (520, nil)
-        case .widget(.clock): return (280, 150)
+        case .widget(.clock(let config)):
+            // One row per city, plus the "add city" row.
+            let rows = Double(min(max(config.zones.count, 1), 8))
+            return (280, rows * 60 + 40)
         case .widget(.calendar): return (300, nil)
         case .widget(.reminders): return (300, 360)
         case .widget(.notes): return (300, 240)

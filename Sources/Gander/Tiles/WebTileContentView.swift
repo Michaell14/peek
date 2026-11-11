@@ -426,6 +426,19 @@ final class WebTileContentView: TileContentView {
         }
     }
 
+    /// Runs a script next to Gander's own and returns its result as text.
+    /// Used by the self-check to look inside the page.
+    func evaluate(_ script: String) async -> String {
+        await withCheckedContinuation { continuation in
+            webView.evaluateJavaScript(script, in: nil, in: scriptWorld) { result in
+                switch result {
+                case .success(let value): continuation.resume(returning: String(describing: value))
+                case .failure(let error): continuation.resume(returning: "error: \(error.localizedDescription)")
+                }
+            }
+        }
+    }
+
     /// Page dialogs are only worth showing to someone who is looking.
     private var dialogWindow: NSWindow? {
         isOverlayVisible && isInteractive ? window : nil
