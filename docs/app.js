@@ -89,12 +89,18 @@
   // ---------------------------------------------------------------------
 
   const overlay = $('#overlay');
-  const heroKey = $('#hero-key');
+  const hint = $('#hint');
+  const keys = $$('[data-blink-key]'); // the keys drawn on the page
   const peek = { state: 'hidden', since: 0, uses: 0 };
+
+  function setKeysDown(down) {
+    keys.forEach((key) => key.classList.toggle('is-down', down));
+  }
 
   function shortcutDown() {
     const now = performance.now();
-    heroKey.classList.add('is-down');
+    setKeysDown(true);
+    retireAttract();
     meterStart(now);
     if (peek.state === 'hidden' || peek.state === 'releasing') {
       peek.state = 'holding';
@@ -108,7 +114,7 @@
 
   function shortcutUp() {
     const now = performance.now();
-    heroKey.classList.remove('is-down');
+    setKeysDown(false);
     if (peek.state === 'holding') {
       const held = now - peek.since;
       meterStop(held);
@@ -142,7 +148,7 @@
     board.layout(false);
     overlay.classList.add('is-open');
     overlay.setAttribute('aria-hidden', 'false');
-    $('#hint').classList.remove('is-on');
+    hint.classList.remove('is-on');
   }
 
   function hideOverlay() {
@@ -157,7 +163,7 @@
     overlay.classList.toggle('is-pinned', pinned);
     // While Blink is open the page behind it is out of reach, as your
     // desktop would be.
-    $$('main, .nav, .footer').forEach((element) => { element.inert = pinned; });
+    $$('main, .top, .footer').forEach((element) => { element.inert = pinned; });
     if (pinned) {
       restoreFocus = document.activeElement;
       overlay.focus({ preventScroll: true });
@@ -188,7 +194,7 @@
       } else if (shortcutHeld && peek.state === 'holding') {
         // The modifier turned out to be the start of some other shortcut.
         shortcutHeld = false;
-        heroKey.classList.remove('is-down');
+        setKeysDown(false);
         meterStop(null);
         peek.state = 'hidden';
         hideOverlay();
@@ -218,20 +224,26 @@
     shortcutUp();
   });
 
-  // The key in the hero works with a mouse or a finger too.
-  heroKey.addEventListener('pointerdown', (event) => {
-    if (event.button !== 0) return;
-    heroKey.setPointerCapture(event.pointerId);
-    shortcutDown();
+  // The keys on the page work with a mouse or a finger too.
+  let pressedKey = null;
+  keys.forEach((key) => {
+    key.addEventListener('pointerdown', (event) => {
+      if (event.button !== 0 || pressedKey) return;
+      key.setPointerCapture(event.pointerId);
+      pressedKey = key;
+      shortcutDown();
+    });
+    ['pointerup', 'pointercancel'].forEach((type) => key.addEventListener(type, () => {
+      if (pressedKey !== key) return;
+      pressedKey = null;
+      shortcutUp();
+    }));
+    key.addEventListener('keydown', (event) => {
+      if (event.key === 'Enter') { event.preventDefault(); shortcutDown(); shortcutUp(); }
+    });
+    key.addEventListener('click', (event) => event.preventDefault());
+    key.addEventListener('contextmenu', (event) => event.preventDefault());
   });
-  ['pointerup', 'pointercancel'].forEach((type) => heroKey.addEventListener(type, () => {
-    if (heroKey.classList.contains('is-down')) shortcutUp();
-  }));
-  heroKey.addEventListener('keydown', (event) => {
-    if (event.key === 'Enter') { event.preventDefault(); shortcutDown(); shortcutUp(); }
-  });
-  heroKey.addEventListener('click', (event) => event.preventDefault());
-  heroKey.addEventListener('contextmenu', (event) => event.preventDefault());
 
   overlay.addEventListener('pointerdown', (event) => {
     if (event.target === overlay || event.target === $('#board')) {
@@ -242,7 +254,7 @@
   $('#board-close').addEventListener('click', dismiss);
 
   // ---------------------------------------------------------------------
-  // The meter in "How it works".
+  // The ruler under "Two gestures".
   // ---------------------------------------------------------------------
 
   const meterFill = $('#meter-fill');
@@ -644,6 +656,8 @@
     const now = new Date();
     const time = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
     $$('[data-live-time]').forEach((element) => { element.textContent = time.replace(/\s?[AP]M/i, ''); });
+    const date = now.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).replace(',', '');
+    $$('[data-live-date]').forEach((element) => { element.textContent = date; });
 
     $$('[data-zone-row]').forEach((row) => {
       const entry = ZONES[Number(row.dataset.zoneRow)];
@@ -870,35 +884,8 @@
   });
 
   // ---------------------------------------------------------------------
-  // Page furniture: reveals, glows, copy buttons, the hint.
+  // Copy buttons.
   // ---------------------------------------------------------------------
-
-  if ('IntersectionObserver' in window) {
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (!entry.isIntersecting) return;
-        entry.target.classList.add('is-in');
-        observer.unobserve(entry.target);
-      });
-    }, { rootMargin: '0px 0px -8% 0px' });
-    $$('.reveal').forEach((element) => observer.observe(element));
-  } else {
-    $$('.reveal').forEach((element) => element.classList.add('is-in'));
-  }
-
-  const hero = $('.hero');
-  hero.addEventListener('pointermove', (event) => {
-    const bounds = hero.getBoundingClientRect();
-    hero.style.setProperty('--mx', `${event.clientX - bounds.left}px`);
-    hero.style.setProperty('--my', `${event.clientY - bounds.top}px`);
-  });
-  $$('.card').forEach((card) => {
-    card.addEventListener('pointermove', (event) => {
-      const bounds = card.getBoundingClientRect();
-      card.style.setProperty('--px', `${event.clientX - bounds.left}px`);
-      card.style.setProperty('--py', `${event.clientY - bounds.top}px`);
-    });
-  });
 
   $$('[data-copy]').forEach((button) => {
     button.addEventListener('click', () => {
@@ -923,25 +910,139 @@
     });
   });
 
-  // Further down the page, remind people it is live until they have tried it.
-  const hint = $('#hint');
-  window.addEventListener('scroll', () => {
-    const past = window.scrollY > window.innerHeight * 0.7;
-    hint.classList.toggle('is-on', past && peek.uses < 2 && peek.state === 'hidden');
-  }, { passive: true });
+  // ---------------------------------------------------------------------
+  // The story at the top. The section is several screens tall and its
+  // contents stay pinned; how far the page has scrolled picks the step.
+  // ---------------------------------------------------------------------
+
+  const story = $('#story');
+  const screen = $('#screen');
+  const steps = $$('.step', story);
+  const heroKey = $('#hero-key');
+  const topBar = $('#top-bar');
+  const running = $('#running');
+  const sections = $$('[data-title]');
+  const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const tale = { step: 0, attract: true, attractTimer: 0, pressTimer: 0 };
+
+  // The key pressing itself, to show what the picture is showing.
+  function setGhost(down) {
+    heroKey.classList.toggle('is-ghost', down);
+  }
+
+  // Until someone tries it, the picture on the cover holds and lets go by
+  // itself every few seconds.
+  function startAttract() {
+    clearTimeout(tale.attractTimer);
+    if (!tale.attract || calm) {
+      screen.dataset.attract = 'on';
+      return;
+    }
+    let on = true;
+    const turn = () => {
+      screen.dataset.attract = on ? 'on' : 'off';
+      setGhost(on);
+      tale.attractTimer = setTimeout(() => { on = !on; turn(); }, on ? 3600 : 1700);
+    };
+    turn();
+  }
+
+  // Once they have, it stays put.
+  function retireAttract() {
+    if (!tale.attract) return;
+    tale.attract = false;
+    clearTimeout(tale.attractTimer);
+    screen.dataset.attract = 'on';
+    if (tale.step === 0) setGhost(false);
+  }
+
+  function setStep(step) {
+    if (step === tale.step) return;
+    tale.step = step;
+    screen.dataset.step = step;
+    steps.forEach((element) => {
+      const on = Number(element.dataset.step) === step;
+      element.classList.toggle('is-on', on);
+      if (element.classList.contains('step--intro')) element.inert = !on; // its link should not take focus unseen
+    });
+    clearTimeout(tale.attractTimer);
+    clearTimeout(tale.pressTimer);
+    setGhost(false);
+    if (step === 0) startAttract();
+    // "Or hold one key": the windows clear, then the key goes down.
+    if (step === 4) tale.pressTimer = setTimeout(() => setGhost(true), calm ? 0 : 500);
+  }
+
+  function readScroll() {
+    const bounds = story.getBoundingClientRect();
+    const span = Math.max(story.offsetHeight - window.innerHeight, 1);
+    const scrolled = Math.min(Math.max(-bounds.top, 0), span);
+    const unit = span / (steps.length - 0.4); // the last step gets a full unit to itself
+    setStep(Math.min(steps.length - 1, Math.floor(scrolled / unit + 0.4)));
+
+    const past = bounds.bottom < 90;
+    topBar.classList.toggle('is-past', past);
+    // The running head: the last section to have come up past the middle.
+    const line = window.innerHeight * 0.4;
+    let current = 0;
+    sections.forEach((section, index) => { if (section.getBoundingClientRect().top <= line) current = index; });
+    const head = `${String(current + 1).padStart(2, '0')} — ${sections[current].dataset.title}`;
+    if (running.textContent !== head) running.textContent = head;
+    // Further down, remind people the page is live until they have tried it.
+    const page = document.documentElement;
+    const atEnd = window.scrollY + window.innerHeight > page.scrollHeight - 240; // leave the footer alone
+    hint.classList.toggle('is-on', past && !atEnd && peek.uses < 2 && peek.state === 'hidden');
+  }
+
+  let scrollFrame = 0;
+  const onScroll = () => {
+    if (scrollFrame) return;
+    scrollFrame = requestAnimationFrame(() => { scrollFrame = 0; readScroll(); });
+  };
+  window.addEventListener('scroll', onScroll, { passive: true });
+  window.addEventListener('resize', onScroll);
+
+  // The picture is drawn at one size and scaled to fit its place.
+  const displayWrap = $('#display-wrap');
+  const display = $('.display', displayWrap);
+  const fitDisplay = () => display.style.setProperty('--s', (displayWrap.clientWidth / 1304).toFixed(4));
+  if ('ResizeObserver' in window) new ResizeObserver(fitDisplay).observe(displayWrap);
+  window.addEventListener('resize', fitDisplay);
+
+  // Inside it, one of the windows shows the same dashboard as the web tile,
+  // and Blink shows the same four tiles as the real demo, laid out the same way.
+  function buildScreen() {
+    $('#screen-web').append(renderers.web());
+    const canvas = $('#screen-board');
+    const widths = { clock: 320, reminders: 320, web: 524, calendar: 352 }; // sized to fill this canvas
+    const items = Object.keys(widths).map((kind) => ({ id: kind, w: widths[kind], h: CATALOG[kind].h }));
+    const frames = flowLayout(items, 1280 - 56, 800 - 78);
+    for (const item of items) {
+      const f = frames.get(item.id);
+      const element = document.createElement('div');
+      element.className = 'tile';
+      element.append(renderers[item.id]());
+      Object.assign(element.style, { left: `${f.x}px`, top: `${f.y}px`, width: `${f.w}px`, height: `${f.h}px` });
+      canvas.append(element);
+    }
+  }
 
   // ---------------------------------------------------------------------
   // Start.
   // ---------------------------------------------------------------------
 
   ['clock', 'reminders', 'web', 'calendar'].forEach((kind) => board.add(kind));
+  buildScreen();
+  fitDisplay();
   applyShortcutLabels();
   updateClocks();
   updateCalendar();
   board.layout(false);
+  startAttract();
+  readScroll();
   setInterval(updateClocks, 1000);
   setInterval(updateCalendar, 60000);
 
   // For the tests.
-  window.__blink = { peek, board, shortcutDown, shortcutUp, getShortcut: () => shortcut };
+  window.__blink = { peek, board, tale, shortcutDown, shortcutUp, getShortcut: () => shortcut };
 })();
