@@ -107,6 +107,9 @@ A few decisions worth knowing about:
   the app, space and text field you were in stay exactly as they were.
 - **Tiles stay loaded while hidden.** That is what makes a peek instant, and why auto-refresh can
   keep pages current in the background. Audio never starts without a click.
+- **Hover is sampled, not event-driven.** Because Gander is never frontmost, the system does not
+  reliably tell its window when the pointer moves, so the overlay checks where the pointer is a
+  few times a second while it is open.
 - **Ordinary shortcuts use the system hot-key service**, which needs no permission. Only shortcuts
   it cannot express fall back to watching keyboard events.
 - **Blocking is third-party only.** A tracker is blocked on other sites, but its own dashboard
@@ -129,10 +132,15 @@ make check
 ```
 
 `make test` runs the core's unit tests. `make test-browser` runs the JavaScript that Gander
-injects into pages in a real browser (needs Node and Playwright). `make check` launches the built
-app with a throwaway layout and has it check itself: show, hold, tap, arrange, add, and content
-blocking and element hiding inside a real page. It writes a report and screenshots to
-`build/self-check`. CI runs all three on every push.
+injects into pages in a real browser (needs Node and Playwright).
+
+`make check` launches the built app with a throwaway layout and has it check itself, using
+simulated clicks, drags and key presses: showing and hiding, hold and tap, moving, resizing and
+reordering tiles, typing into a page, content blocking and element hiding inside a real page, file
+tiles, widgets and per-display layouts. It takes over the screen and the pointer for about a
+minute, and writes a report and screenshots to `build/self-check`.
+
+CI runs all three on every push.
 
 Other switches: `--show` opens the overlay at launch; `--data-dir <path>` (or `GANDER_DATA_DIR`)
 keeps layouts somewhere other than `~/Library/Application Support/Gander`.

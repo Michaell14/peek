@@ -16,8 +16,8 @@ test:
 test-browser:
 	Tests/Browser/run.sh
 
-# Launch the built app and have it check itself end to end. Opens the
-# overlay on your screen for about half a minute.
+# Launch the built app and have it check itself end to end. Takes over the
+# screen and the pointer for about a minute.
 check: app
 	Scripts/self-check.sh
 
