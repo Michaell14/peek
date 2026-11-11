@@ -105,7 +105,7 @@ struct SectionLabel: View {
         Text(text.uppercased())
             .font(.system(size: 10, weight: .semibold))
             .tracking(0.7)
-            .foregroundStyle(.tertiary)
+            .foregroundStyle(Color.white.opacity(0.45))
             .lineLimit(1)
     }
 }

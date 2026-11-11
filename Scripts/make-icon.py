@@ -56,6 +56,10 @@ def main():
     out.mkdir(exist_ok=True)
     icon.save(out / "AppIcon.icns", format="ICNS",
               sizes=[(s, s) for s in (16, 32, 64, 128, 256, 512, 1024)])
+    # The website uses the same picture as its icon.
+    site = out.parent / "docs"
+    if site.is_dir():
+        icon.resize((256, 256), Image.LANCZOS).save(site / "icon.png")
     print("wrote", out / "AppIcon.icns")
 
 

@@ -53,14 +53,14 @@ xattr -dr com.apple.quarantine /Applications/Blink.app
 
 ## Using it
 
-Blink lives in the menu bar (the eye icon) and has no Dock icon. On first launch it opens with a
-starter layout.
+Blink lives in the menu bar (the three-tile icon) and has no Dock icon. On first launch it opens
+with a starter layout.
 
 With the overlay open (tap the shortcut), the controls are in the top-right corner:
 
 | | |
 |---|---|
-| `+` or `⌘N` | Add a website, file or widget |
+| `+` or `⌘N` | Open the palette: type an address or filter the list, `↑` `↓` to choose, `↩` to add |
 | **Edit** or `⌘E` | Move, resize and remove tiles |
 | **Flow / Freeform** | Switch layout mode; tiles stay where they are |
 | Hover a tile | Back, forward, reload and a `…` menu with everything else |
@@ -98,7 +98,8 @@ Sources/
   blink-scripts/  Dev tool that prints the JavaScript injected into pages.
 Tests/
   BlinkCoreTests/  Unit tests for the core.
-  Browser/          Runs the injected JavaScript in a real browser.
+  Browser/          Runs the injected JavaScript, and the website, in a real browser.
+docs/               The website. Plain HTML, CSS and JavaScript; no build step.
 ```
 
 A few decisions worth knowing about:
@@ -132,7 +133,8 @@ make check
 ```
 
 `make test` runs the core's unit tests. `make test-browser` runs the JavaScript that Blink
-injects into pages in a real browser (needs Node and Playwright).
+injects into pages, and the website's own interactions, in a real browser (needs Node and
+Playwright).
 
 `make check` launches the built app with a throwaway layout and has it check itself, using
 simulated clicks, drags and key presses: showing and hiding, hold and tap, moving, resizing and
@@ -144,6 +146,20 @@ CI runs all three on every push.
 
 Other switches: `--show` opens the overlay at launch; `--data-dir <path>` (or `BLINK_DATA_DIR`)
 keeps layouts somewhere other than `~/Library/Application Support/Blink`.
+
+## The website
+
+`docs/` holds Blink's website. The page is its own demo: hold Space anywhere on it and the overlay
+appears over the page, with a live clock, calendar and reminders, tiles you can rearrange, and a
+recorder that lets visitors try their own shortcut. It is plain HTML, CSS and JavaScript, loads
+nothing from anywhere else, and needs no build step.
+
+```bash
+make site
+```
+
+serves it at `http://localhost:8000`. To publish it with GitHub Pages, choose *Deploy from a
+branch* in the repository's Pages settings and pick the `/docs` folder.
 
 ## Not there yet
 

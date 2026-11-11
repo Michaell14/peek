@@ -1,0 +1,341 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Blink — everything you check, in a blink</title>
+  <meta name="description" content="Blink is a free, open-source Mac app. Hold a key to see the websites, files and widgets you check all day. Let go and you are back where you were.">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#0a0a0d">
+  <meta property="og:title" content="Blink — everything you check, in a blink">
+  <meta property="og:description" content="Hold a key to glance at what you check all day. Let go and you are back. Free and open source for macOS.">
+  <meta property="og:image" content="screenshot.png">
+  <link rel="icon" href="icon.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="nav" id="nav">
+    <a class="brand" href="#top" aria-label="Blink, back to top">
+      <span class="mark" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span>Blink</span>
+    </a>
+    <nav aria-label="Sections">
+      <a href="#how">How it works</a>
+      <a href="#inside">What goes in</a>
+      <a href="#quiet">Less noise</a>
+      <a href="#faq">Questions</a>
+    </nav>
+    <a class="button button--small" href="#get">Get Blink</a>
+  </header>
+
+  <main id="main">
+    <!-- Hero ---------------------------------------------------------- -->
+    <section class="hero" id="top">
+      <div class="hero__glow" aria-hidden="true"></div>
+      <p class="eyebrow">A free, open-source app for macOS</p>
+      <h1>Everything you check,<br>in a <em>blink</em>.</h1>
+      <p class="lede">
+        Hold a key and the things you look at all day appear over whatever you are doing:
+        dashboards, pull requests, your calendar. Let go and you are back where you were.
+      </p>
+
+      <div class="try">
+        <button class="keycap" id="hero-key" type="button" aria-describedby="try-note">
+          <span class="keycap__top"><span data-shortcut-label>space</span></span>
+        </button>
+        <p class="try__note" id="try-note">
+          <strong>Go on — hold it.</strong>
+          <span class="try__keys">Hold <kbd data-shortcut-label>Space</kbd> on your keyboard, or press and hold the key above.</span>
+          This page is the demo.
+        </p>
+      </div>
+
+      <div class="hero__actions">
+        <a class="button" href="#get">Get Blink for Mac</a>
+        <a class="link" href="https://github.com/Michaell14/peek" rel="noopener">Read the source <span aria-hidden="true">↗</span></a>
+      </div>
+    </section>
+
+    <!-- Hold or tap --------------------------------------------------- -->
+    <section class="section" id="how">
+      <div class="section__head reveal">
+        <p class="eyebrow">How it works</p>
+        <h2>Two gestures.<br>That is the whole manual.</h2>
+      </div>
+
+      <div class="gestures">
+        <article class="gesture reveal">
+          <h3><span class="num">1</span> Hold to look</h3>
+          <p>Blink is there for exactly as long as the key is down. Nothing to close, nothing to switch back from.</p>
+        </article>
+        <article class="gesture reveal">
+          <h3><span class="num">2</span> Tap to stay</h3>
+          <p>A quick tap keeps it open so you can scroll, click and type. Tap again or press <kbd>esc</kbd> when you are done.</p>
+        </article>
+      </div>
+
+      <div class="meter reveal" id="meter" aria-live="polite">
+        <div class="meter__track">
+          <div class="meter__zone meter__zone--tap">tap</div>
+          <div class="meter__zone meter__zone--hold">hold</div>
+          <div class="meter__fill" id="meter-fill"></div>
+          <div class="meter__mark" aria-hidden="true"></div>
+        </div>
+        <p class="meter__readout" id="meter-readout">
+          Try both. Blink tells them apart by how long the key was down.
+        </p>
+      </div>
+    </section>
+
+    <!-- What goes in -------------------------------------------------- -->
+    <section class="section" id="inside">
+      <div class="section__head reveal">
+        <p class="eyebrow">What goes in</p>
+        <h2>The things you would<br>otherwise go and find.</h2>
+      </div>
+
+      <div class="cards">
+        <article class="card reveal">
+          <div class="card__art art-web" aria-hidden="true">
+            <div class="art-web__bar"><i></i><i></i><i></i><span>status.example.com</span></div>
+            <div class="art-web__rows"><b></b><b></b><b></b><b></b></div>
+          </div>
+          <h3>Websites</h3>
+          <p>Any site, signed in and already loaded. Set one to refresh itself every few minutes and it is current whenever you look.</p>
+        </article>
+
+        <article class="card reveal">
+          <div class="card__art art-widgets" aria-hidden="true">
+            <div class="mini-clock"><span data-live-time>9:41</span><small>Local</small></div>
+            <ul class="mini-list"><li>Reply to Sam</li><li>Book the room</li><li class="done">Send invoice</li></ul>
+          </div>
+          <h3>Widgets</h3>
+          <p>World clocks, today's calendar, reminders you can tick off, and a scratchpad. Native, quick, and yours.</p>
+        </article>
+
+        <article class="card reveal">
+          <div class="card__art art-file" aria-hidden="true">
+            <div class="sheet"><b></b><i></i><i></i><i class="short"></i><i></i><i class="short"></i></div>
+            <div class="sheet sheet--back"></div>
+          </div>
+          <h3>Files</h3>
+          <p>Keep a PDF or a local HTML report within reach. Edit the file and Blink shows the new version next time.</p>
+        </article>
+      </div>
+
+      <div class="layouts reveal">
+        <div class="layouts__text">
+          <h3>Arrange it once</h3>
+          <p>
+            <strong>Flow</strong> packs tiles into tidy columns for you. <strong>Freeform</strong> lets you
+            put anything anywhere. Switch between them and nothing jumps.
+          </p>
+          <div class="segmented" role="group" aria-label="Layout">
+            <button type="button" class="is-on" data-layout="flow">Flow</button>
+            <button type="button" data-layout="freeform">Freeform</button>
+          </div>
+        </div>
+        <div class="layouts__stage" id="layout-stage" data-mode="flow" aria-hidden="true">
+          <div class="chip chip--a"></div>
+          <div class="chip chip--b"></div>
+          <div class="chip chip--c"></div>
+          <div class="chip chip--d"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Less noise ---------------------------------------------------- -->
+    <section class="section" id="quiet">
+      <div class="section__head reveal">
+        <p class="eyebrow">Less noise</p>
+        <h2>See the number,<br>not the page around it.</h2>
+        <p class="section__sub">
+          A glance should not have to get past a cookie banner. Flip the switches, or click anything in the page to make it go away.
+        </p>
+      </div>
+
+      <div class="quiet reveal">
+        <div class="quiet__controls">
+          <label class="switch"><input type="checkbox" id="q-ads"><span></span>Block ads and trackers</label>
+          <label class="switch"><input type="checkbox" id="q-cookies"><span></span>Hide cookie banners</label>
+          <label class="switch"><input type="checkbox" id="q-pick"><span></span>Click to hide anything</label>
+          <button class="link" type="button" id="q-reset">Put it all back</button>
+          <p class="quiet__count" id="q-count" aria-live="polite"></p>
+        </div>
+
+        <div class="browser" id="q-page">
+          <div class="browser__bar" aria-hidden="true"><i></i><i></i><i></i><span>dailyplanet.example/markets</span></div>
+          <div class="browser__body">
+            <div class="junk junk--ad" data-junk="ad">Advertisement · Up to 70% off everything, today only</div>
+            <div class="page-nav" data-pick><b>The Daily Example</b><span>World</span><span>Markets</span><span>Tech</span><span>Sport</span></div>
+            <div class="page-grid">
+              <div class="page-main">
+                <h4 data-pick>Markets close higher for a third day</h4>
+                <p class="page-figure" data-pick><strong>4,812.6</strong><em>▲ 0.84%</em></p>
+                <p data-pick>Shares rose again on Thursday as investors looked past a mixed set of results and towards next week's figures.</p>
+                <div class="junk junk--newsletter" data-pick>Get our newsletter. <u>Sign up</u></div>
+                <p data-pick>Analysts said the move was broad, with nine of eleven sectors ending the day in positive territory.</p>
+              </div>
+              <aside class="page-side">
+                <div class="junk junk--ad junk--tall" data-junk="ad">Sponsored<br>Your ad here</div>
+                <div class="page-box" data-pick><b>Most read</b><i></i><i></i><i></i></div>
+              </aside>
+            </div>
+            <div class="junk junk--tracker" data-junk="ad" aria-hidden="true">3 trackers loading…</div>
+            <div class="junk junk--cookie" data-junk="cookie">
+              <span>We value your privacy. We and our 842 partners use cookies.</span>
+              <b>Accept all</b>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Shortcut ------------------------------------------------------ -->
+    <section class="section" id="shortcut">
+      <div class="section__head reveal">
+        <p class="eyebrow">Your shortcut</p>
+        <h2>Pick the key<br>your hand already rests on.</h2>
+        <p class="section__sub">
+          Any combination works, and so does a single modifier: Blink can tell the right <kbd>⌘</kbd> from the left one.
+          Record one here and this page will use it.
+        </p>
+      </div>
+
+      <div class="recorder reveal">
+        <button class="recorder__field" id="recorder" type="button" aria-live="polite">
+          <span class="recorder__keys" id="recorder-keys"><kbd>Space</kbd></span>
+          <span class="recorder__hint" id="recorder-hint">Click, then press a key or a combination</span>
+        </button>
+        <div class="recorder__presets" role="group" aria-label="Suggestions">
+          <span>Or try</span>
+          <button type="button" data-preset="Space">Space</button>
+          <button type="button" data-preset="AltRight">Right ⌥</button>
+          <button type="button" data-preset="MetaRight">Right ⌘</button>
+          <button type="button" data-preset="Alt+Backquote">⌥ `</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- Principles ---------------------------------------------------- -->
+    <section class="section" id="yours">
+      <div class="section__head reveal">
+        <p class="eyebrow">Yours</p>
+        <h2>Free, open,<br>and it stays on your Mac.</h2>
+      </div>
+      <ul class="principles">
+        <li class="reveal"><b>No account.</b> Nothing to sign up for, nothing to sign in to.</li>
+        <li class="reveal"><b>No analytics.</b> Blink has no server. Your layouts and browsing data never leave your Mac.</li>
+        <li class="reveal"><b>No price.</b> MIT licensed. Use it, change it, ship your own.</li>
+        <li class="reveal"><b>No surprises.</b> It asks for a permission only when a feature needs it, and says why.</li>
+      </ul>
+    </section>
+
+    <!-- Get it -------------------------------------------------------- -->
+    <section class="section section--get" id="get">
+      <div class="section__head reveal">
+        <p class="eyebrow">Get Blink</p>
+        <h2>Two commands<br>and it is in your menu bar.</h2>
+        <p class="section__sub">Needs macOS 14 or later and Xcode's command line tools.</p>
+      </div>
+
+      <div class="terminal reveal">
+        <div class="terminal__bar" aria-hidden="true"><i></i><i></i><i></i></div>
+        <div class="terminal__line">
+          <code>git clone https://github.com/Michaell14/peek.git blink</code>
+          <button type="button" class="copy" data-copy="git clone https://github.com/Michaell14/peek.git blink">Copy</button>
+        </div>
+        <div class="terminal__line">
+          <code>cd blink &amp;&amp; make install</code>
+          <button type="button" class="copy" data-copy="cd blink &amp;&amp; make install">Copy</button>
+        </div>
+      </div>
+      <p class="get__alt reveal">
+        Prefer not to build it? Every change is built automatically:
+        <a href="https://github.com/Michaell14/peek/actions" rel="noopener">download the latest build</a>
+        (needs a GitHub account).
+      </p>
+    </section>
+
+    <!-- FAQ ----------------------------------------------------------- -->
+    <section class="section" id="faq">
+      <div class="section__head reveal">
+        <p class="eyebrow">Questions</p>
+        <h2>Fair things to ask.</h2>
+      </div>
+
+      <div class="faq">
+        <details class="reveal">
+          <summary>Does it work over full-screen apps?</summary>
+          <p>Yes. Blink appears over whatever is in front, full-screen spaces included, and does not pull you out of the app or the text field you were in.</p>
+        </details>
+        <details class="reveal">
+          <summary>How is this different from keeping tabs open?</summary>
+          <p>Tabs are somewhere you go. Blink comes to you, shows several things side by side, and is gone the moment you let go. The pages stay loaded in the background, so there is nothing to wait for.</p>
+        </details>
+        <details class="reveal">
+          <summary>What permissions does it need?</summary>
+          <p>None to start. The Calendar and Reminders widgets ask for access when you add them. A shortcut made of a single modifier key needs Input Monitoring, because macOS only tells apart left and right keys that way; ordinary shortcuts need nothing. Blink looks for your shortcut and does not record what you type.</p>
+        </details>
+        <details class="reveal">
+          <summary>Which sites work?</summary>
+          <p>Blink uses WebKit, the engine behind Safari, so nearly everything that works there works here. Sign-in flows that depend on a separate pop-up window are the main exception.</p>
+        </details>
+        <details class="reveal">
+          <summary>What is not there yet?</summary>
+          <p>Passkeys in web tiles, browser extensions, a stocks widget, and showing other apps' windows as tiles. Builds are not notarized yet either, so macOS asks you to confirm the first launch.</p>
+        </details>
+        <details class="reveal">
+          <summary>Is it really free?</summary>
+          <p>Yes. The whole thing is on GitHub under the MIT license. There is no paid tier and nothing to unlock.</p>
+        </details>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <a class="brand" href="#top" aria-label="Blink, back to top">
+      <span class="mark" aria-hidden="true"><i></i><i></i><i></i></span>
+      <span>Blink</span>
+    </a>
+    <p>Open source under the MIT license. This page loads nothing from anywhere else and counts no one.</p>
+    <a class="link" href="https://github.com/Michaell14/peek" rel="noopener">GitHub <span aria-hidden="true">↗</span></a>
+  </footer>
+
+  <!-- A reminder that the page is live, shown while scrolling. -->
+  <div class="hint" id="hint" aria-hidden="true">Hold <kbd data-shortcut-label>Space</kbd> to blink</div>
+
+  <!-- The overlay itself ------------------------------------------------ -->
+  <div class="overlay" id="overlay" role="dialog" aria-label="Blink demo" aria-hidden="true" tabindex="-1">
+    <div class="overlay__strip">
+      <div class="overlay__brand">
+        <span class="mark" aria-hidden="true"><i></i><i></i><i></i></span>
+        <b>Blink</b>
+        <span id="overlay-hint">Space or esc to close</span>
+      </div>
+      <div class="toolbar">
+        <div class="segmented segmented--small" role="group" aria-label="Layout">
+          <button type="button" class="is-on" data-board-mode="flow">Flow</button>
+          <button type="button" data-board-mode="freeform">Freeform</button>
+        </div>
+        <button type="button" class="toolbar__icon" id="board-add" aria-label="Add a tile" title="Add a tile">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>
+        </button>
+        <button type="button" class="toolbar__text" id="board-edit">Edit</button>
+        <button type="button" class="toolbar__icon" id="board-close" aria-label="Close" title="Close">
+          <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="board" id="board"></div>
+    <div class="palette" id="palette" hidden>
+      <p>Add a tile</p>
+      <ul id="palette-list"></ul>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

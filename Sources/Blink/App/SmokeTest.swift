@@ -679,6 +679,9 @@ enum SmokeTest {
                 "ok": failures.isEmpty,
                 "failures": failures,
                 "checkedPage": pageURL != nil,
+                // With this on, macOS draws glass as a flat colour, which
+                // explains screenshots that show no blur.
+                "reduceTransparency": NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency,
                 "hotkey": String(describing: hotkeys.status),
                 "shortcut": hotkeys.shortcut.displayString,
                 "snapshots": snapshots,

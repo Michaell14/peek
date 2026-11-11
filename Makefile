@@ -1,4 +1,4 @@
-.PHONY: app run test test-browser check install icon clean
+.PHONY: app run test test-browser check install icon site clean
 
 # Build build/Blink.app (release).
 app:
@@ -12,7 +12,8 @@ run: app
 test:
 	swift test
 
-# The JavaScript injected into pages, run in a real browser (needs Playwright).
+# The JavaScript injected into pages, and the website, in a real browser
+# (needs Playwright).
 test-browser:
 	Tests/Browser/run.sh
 
@@ -25,6 +26,10 @@ check: app
 install: app
 	rm -rf /Applications/Blink.app
 	cp -R build/Blink.app /Applications/Blink.app
+
+# Serve the website in docs/ at http://localhost:8000.
+site:
+	python3 -m http.server 8000 --directory docs
 
 # Regenerate Resources/AppIcon.icns (needs Python with Pillow).
 icon:

@@ -57,7 +57,7 @@ jobs:
       - name: Unit tests
         run: swift test
 
-      - name: Page scripts in WebKit
+      - name: Page scripts and website in WebKit
         run: |
           npm install --no-save playwright
           npx playwright install webkit
