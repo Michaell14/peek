@@ -1,41 +1,41 @@
 // swift-tools-version: 5.9
 import PackageDescription
 
-// GanderCore is plain Foundation and builds anywhere (including Linux, which is
+// BlickCore is plain Foundation and builds anywhere (including Linux, which is
 // where most of its tests run in CI). The app itself needs AppKit and WebKit.
 var products: [Product] = [
-    .library(name: "GanderCore", targets: ["GanderCore"]),
+    .library(name: "BlickCore", targets: ["BlickCore"]),
 ]
 
 var targets: [Target] = [
-    .target(name: "GanderCore", path: "Sources/GanderCore"),
+    .target(name: "BlickCore", path: "Sources/BlickCore"),
     // Dev tool: prints the JavaScript injected into pages so it can be tested
     // in a real browser (see Tests/Browser).
     .executableTarget(
-        name: "gander-scripts",
-        dependencies: ["GanderCore"],
-        path: "Sources/gander-scripts"
+        name: "blick-scripts",
+        dependencies: ["BlickCore"],
+        path: "Sources/blick-scripts"
     ),
     .testTarget(
-        name: "GanderCoreTests",
-        dependencies: ["GanderCore"],
-        path: "Tests/GanderCoreTests"
+        name: "BlickCoreTests",
+        dependencies: ["BlickCore"],
+        path: "Tests/BlickCoreTests"
     ),
 ]
 
 #if os(macOS)
-products.append(.executable(name: "Gander", targets: ["Gander"]))
+products.append(.executable(name: "Blick", targets: ["Blick"]))
 targets.append(
     .executableTarget(
-        name: "Gander",
-        dependencies: ["GanderCore"],
-        path: "Sources/Gander"
+        name: "Blick",
+        dependencies: ["BlickCore"],
+        path: "Sources/Blick"
     )
 )
 #endif
 
 let package = Package(
-    name: "Gander",
+    name: "Blick",
     platforms: [.macOS(.v14)],
     products: products,
     targets: targets

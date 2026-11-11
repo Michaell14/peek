@@ -1,12 +1,12 @@
 .PHONY: app run test test-browser check install icon clean
 
-# Build build/Gander.app (release).
+# Build build/Blick.app (release).
 app:
 	Scripts/build-app.sh
 
 # Build and launch, opening the overlay straight away.
 run: app
-	open build/Gander.app --args --show
+	open build/Blick.app --args --show
 
 # Unit tests for the platform-independent core.
 test:
@@ -23,8 +23,8 @@ check: app
 
 # Copy the app into /Applications.
 install: app
-	rm -rf /Applications/Gander.app
-	cp -R build/Gander.app /Applications/Gander.app
+	rm -rf /Applications/Blick.app
+	cp -R build/Blick.app /Applications/Blick.app
 
 # Regenerate Resources/AppIcon.icns (needs Python with Pillow).
 icon:

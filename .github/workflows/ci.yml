@@ -68,7 +68,7 @@ jobs:
 
       # Launches the real app and drives it through show, hold, tap, arrange
       # and add, and checks blocking and element hiding inside a real page.
-      # See Sources/Gander/App/SmokeTest.swift.
+      # See Sources/Blick/App/SmokeTest.swift.
       - name: Self-check
         run: Scripts/self-check.sh "$RUNNER_TEMP/smoke"
 
@@ -77,13 +77,13 @@ jobs:
         run: cat "$RUNNER_TEMP/smoke/smoke.json" 2>/dev/null || echo "no report was written"
 
       - name: Package
-        run: ditto -c -k --keepParent build/Gander.app "$RUNNER_TEMP/Gander.zip"
+        run: ditto -c -k --keepParent build/Blick.app "$RUNNER_TEMP/Blick.zip"
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: Gander
+          name: Blick
           path: |
-            ${{ runner.temp }}/Gander.zip
+            ${{ runner.temp }}/Blick.zip
             ${{ runner.temp }}/smoke
           if-no-files-found: ignore

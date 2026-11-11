@@ -1,5 +1,5 @@
 #!/bin/bash
-# Builds build/Gander.app from the Swift package.
+# Builds build/Blick.app from the Swift package.
 #
 #   Scripts/build-app.sh                 # release build for this Mac
 #   UNIVERSAL=1 Scripts/build-app.sh     # Apple silicon + Intel
@@ -12,11 +12,11 @@ cd "$(dirname "$0")/.."
 CONFIG="${CONFIG:-release}"
 VERSION="${VERSION:-0.1.0}"
 BUILD="${BUILD:-$(git rev-list --count HEAD 2>/dev/null || echo 1)}"
-BUNDLE_ID="${BUNDLE_ID:-org.gander-app.Gander}"
+BUNDLE_ID="${BUNDLE_ID:-org.blick-app.Blick}"
 SIGN_IDENTITY="${SIGN_IDENTITY:--}"
-APP="build/Gander.app"
+APP="build/Blick.app"
 
-FLAGS=(-c "$CONFIG" --product Gander)
+FLAGS=(-c "$CONFIG" --product Blick)
 if [ "${UNIVERSAL:-0}" = "1" ]; then
     FLAGS+=(--arch arm64 --arch x86_64)
 fi
@@ -26,7 +26,7 @@ BIN_DIR="$(swift build "${FLAGS[@]}" --show-bin-path)"
 
 rm -rf "$APP"
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
-cp "$BIN_DIR/Gander" "$APP/Contents/MacOS/Gander"
+cp "$BIN_DIR/Blick" "$APP/Contents/MacOS/Blick"
 cp Resources/AppIcon.icns "$APP/Contents/Resources/AppIcon.icns"
 sed -e "s/@VERSION@/$VERSION/g" \
     -e "s/@BUILD@/$BUILD/g" \
