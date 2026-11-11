@@ -6,14 +6,14 @@ public struct Workspace: Codable, Hashable, Sendable {
     public static let currentSchemaVersion = 1
 
     public var schemaVersion: Int
-    public var settings: Settings
+    public var settings: AppSettings
     public var boards: [Board]
     /// The board used on every display while layouts are synced.
     public var sharedBoardID: UUID
     /// Display identifier -> board, used when each display has its own layout.
     public var displayBoards: [String: UUID]
 
-    public init(settings: Settings = Settings(), board: Board) {
+    public init(settings: AppSettings = AppSettings(), board: Board) {
         schemaVersion = Workspace.currentSchemaVersion
         self.settings = settings
         boards = [board]
@@ -24,7 +24,7 @@ public struct Workspace: Codable, Hashable, Sendable {
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         schemaVersion = c.value(.schemaVersion, default: Workspace.currentSchemaVersion)
-        settings = c.value(.settings, default: Settings())
+        settings = c.value(.settings, default: AppSettings())
         boards = c.value(.boards, default: [])
         displayBoards = c.value(.displayBoards, default: [:])
         sharedBoardID = c.value(.sharedBoardID, default: boards.first?.id ?? UUID())

@@ -22,7 +22,7 @@ final class WorkspaceTests: XCTestCase {
         web.zoom = 0.8
         web.prefersMobileSite = true
         web.hiddenElements = [HiddenElement(host: "example.com", selector: "div > .ad")]
-        var tile = Tile(content: .web(web), frame: Rect(x: 0.1, y: 0.2, width: 0.3, height: 0.4))
+        var tile = Tile(content: .web(web), frame: LayoutRect(x: 0.1, y: 0.2, width: 0.3, height: 0.4))
         tile.flowWidth = 512
         tile.flowHeight = 300
         workspace.addTile(tile, to: boardID)
@@ -44,7 +44,7 @@ final class WorkspaceTests: XCTestCase {
         {"boards":[{"tiles":[{"content":{"type":"web","web":{"url":"https://example.com"}}}]}]}
         """
         let workspace = try JSONDecoder().decode(Workspace.self, from: Data(json.utf8))
-        XCTAssertEqual(workspace.settings, Settings())
+        XCTAssertEqual(workspace.settings, AppSettings())
         XCTAssertEqual(workspace.boards.count, 1)
         XCTAssertEqual(workspace.sharedBoardID, workspace.boards[0].id)
         let tile = try XCTUnwrap(workspace.boards[0].tiles.first)

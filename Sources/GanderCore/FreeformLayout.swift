@@ -11,7 +11,7 @@ public enum ResizeHandle: CaseIterable, Sendable {
 }
 
 /// An alignment line to draw while a tile snaps to it.
-public struct Guide: Hashable, Sendable {
+public struct SnapGuide: Hashable, Sendable {
     public enum Axis: Sendable {
         /// A vertical line at x = position.
         case vertical
@@ -46,19 +46,19 @@ public struct SnapOptions: Hashable, Sendable {
 /// here works in points relative to the canvas origin.
 public enum FreeformLayout {
     public struct Result: Hashable, Sendable {
-        public var rect: Rect
-        public var guides: [Guide]
+        public var rect: LayoutRect
+        public var guides: [SnapGuide]
     }
 
     public static func move(
-        _ original: Rect,
-        by delta: Point,
-        in canvas: Size,
-        others: [Rect],
+        _ original: LayoutRect,
+        by delta: LayoutPoint,
+        in canvas: LayoutSize,
+        others: [LayoutRect],
         snap: SnapOptions = SnapOptions()
     ) -> Result {
         var rect = original.offsetBy(dx: delta.x, dy: delta.y)
-        var guides: [Guide] = []
+        var guides: [SnapGuide] = []
 
         if snap.isEnabled {
             let x = snapLines(.vertical, canvas: canvas, others: others, gap: snap.gap)
@@ -67,7 +67,7 @@ public enum FreeformLayout {
                 threshold: snap.threshold
             ) {
                 rect.x += hit.adjustment
-                guides.append(Guide(axis: .vertical, position: hit.line))
+                guides.append(SnapGuide(axis: .vertical, position: hit.line))
             }
             let y = snapLines(.horizontal, canvas: canvas, others: others, gap: snap.gap)
             if let hit = nearest(
@@ -75,7 +75,7 @@ public enum FreeformLayout {
                 threshold: snap.threshold
             ) {
                 rect.y += hit.adjustment
-                guides.append(Guide(axis: .horizontal, position: hit.line))
+                guides.append(SnapGuide(axis: .horizontal, position: hit.line))
             }
         }
 
@@ -83,26 +83,26 @@ public enum FreeformLayout {
     }
 
     public static func resize(
-        _ original: Rect,
+        _ original: LayoutRect,
         handle: ResizeHandle,
-        by delta: Point,
-        in canvas: Size,
-        others: [Rect],
+        by delta: LayoutPoint,
+        in canvas: LayoutSize,
+        others: [LayoutRect],
         snap: SnapOptions = SnapOptions(),
-        minSize: Size = Size(width: 160, height: 100)
+        minSize: LayoutSize = LayoutSize(width: 160, height: 100)
     ) -> Result {
         var left = original.minX
         var right = original.maxX
         var top = original.minY
         var bottom = original.maxY
-        var guides: [Guide] = []
+        var guides: [SnapGuide] = []
 
         let xLines = snap.isEnabled ? snapLines(.vertical, canvas: canvas, others: others, gap: snap.gap).edges : []
         let yLines = snap.isEnabled ? snapLines(.horizontal, canvas: canvas, others: others, gap: snap.gap).edges : []
 
-        func snapped(_ value: Double, _ lines: [Double], _ axis: Guide.Axis) -> Double {
+        func snapped(_ value: Double, _ lines: [Double], _ axis: SnapGuide.Axis) -> Double {
             guard let hit = nearest([(value, lines)], threshold: snap.threshold) else { return value }
-            guides.append(Guide(axis: axis, position: hit.line))
+            guides.append(SnapGuide(axis: axis, position: hit.line))
             return value + hit.adjustment
         }
 
@@ -124,13 +124,13 @@ public enum FreeformLayout {
         }
 
         return Result(
-            rect: Rect(x: left, y: top, width: right - left, height: bottom - top),
+            rect: LayoutRect(x: left, y: top, width: right - left, height: bottom - top),
             guides: guides
         )
     }
 
     /// Keeps a rect inside the canvas, shrinking it only if it cannot fit.
-    public static func clamp(_ rect: Rect, to canvas: Size) -> Rect {
+    public static func clamp(_ rect: LayoutRect, to canvas: LayoutSize) -> LayoutRect {
         var result = rect
         result.width = min(result.width, canvas.width)
         result.height = min(result.height, canvas.height)
@@ -142,27 +142,27 @@ public enum FreeformLayout {
     /// Finds room for a new tile: the first spot (reading left to right, top to
     /// bottom) that touches nothing, or failing that the least crowded one.
     public static func placeNew(
-        size: Size,
-        in canvas: Size,
-        existing: [Rect],
+        size: LayoutSize,
+        in canvas: LayoutSize,
+        existing: [LayoutRect],
         gap: Double = 12,
         step: Double = 24
-    ) -> Rect {
+    ) -> LayoutRect {
         let width = min(size.width, canvas.width)
         let height = min(size.height, canvas.height)
         guard !existing.isEmpty else {
-            return Rect(x: 0, y: 0, width: width, height: height)
+            return LayoutRect(x: 0, y: 0, width: width, height: height)
         }
 
         let padded = existing.map { $0.insetBy(dx: -gap, dy: -gap) }
-        var best = Rect(x: 0, y: 0, width: width, height: height)
+        var best = LayoutRect(x: 0, y: 0, width: width, height: height)
         var bestOverlap = Double.infinity
 
         var y = 0.0
         while y <= canvas.height - height + 0.5 {
             var x = 0.0
             while x <= canvas.width - width + 0.5 {
-                let candidate = Rect(x: x, y: y, width: width, height: height)
+                let candidate = LayoutRect(x: x, y: y, width: width, height: height)
                 let overlap = padded.reduce(0) { $0 + candidate.overlapArea(with: $1) }
                 if overlap == 0 { return candidate }
                 if overlap < bestOverlap {
@@ -179,9 +179,9 @@ public enum FreeformLayout {
     // MARK: - Snapping
 
     private static func snapLines(
-        _ axis: Guide.Axis,
-        canvas: Size,
-        others: [Rect],
+        _ axis: SnapGuide.Axis,
+        canvas: LayoutSize,
+        others: [LayoutRect],
         gap: Double
     ) -> (edges: [Double], centers: [Double]) {
         let extent = axis == .vertical ? canvas.width : canvas.height

@@ -56,7 +56,7 @@ public enum FlowLayout {
     }
 
     /// Frames in points, relative to the canvas origin.
-    public static func layout(_ items: [Item], in canvas: Size, options: Options = Options()) -> [UUID: Rect] {
+    public static func layout(_ items: [Item], in canvas: LayoutSize, options: Options = Options()) -> [UUID: LayoutRect] {
         guard !items.isEmpty, canvas.width > 0, canvas.height > 0 else { return [:] }
 
         let columns = columns(for: items, availableHeight: canvas.height, options: options)
@@ -74,7 +74,7 @@ public enum FlowLayout {
 
         let total = widths.reduce(0, +) + gaps
         var x = max(0, (canvas.width - total) / 2)
-        var frames: [UUID: Rect] = [:]
+        var frames: [UUID: LayoutRect] = [:]
 
         for (column, width) in zip(columns, widths) {
             var y = 0.0
@@ -88,7 +88,7 @@ public enum FlowLayout {
                 } else {
                     height = min(max(item.height ?? canvas.height, options.minHeight), canvas.height)
                 }
-                frames[item.id] = Rect(x: x, y: y, width: width, height: height).integral
+                frames[item.id] = LayoutRect(x: x, y: y, width: width, height: height).integral
                 y += height + options.gap
             }
             x += width + options.gap
@@ -99,10 +99,10 @@ public enum FlowLayout {
     /// Where a dragged tile would land if dropped at `point`: an index into the
     /// item list with the dragged tile removed.
     public static func insertionIndex(
-        at point: Point,
+        at point: LayoutPoint,
         moving: UUID,
         items: [Item],
-        in canvas: Size,
+        in canvas: LayoutSize,
         options: Options = Options()
     ) -> Int {
         let others = items.filter { $0.id != moving }

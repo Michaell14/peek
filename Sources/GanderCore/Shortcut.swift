@@ -1,6 +1,6 @@
 import Foundation
 
-public enum Modifier: String, Codable, CaseIterable, Sendable {
+public enum KeyModifier: String, Codable, CaseIterable, Sendable {
     case control
     case option
     case shift
@@ -25,10 +25,10 @@ public enum ModifierSide: String, Codable, Sendable {
 }
 
 public struct ModifierKey: Codable, Hashable, Sendable {
-    public var modifier: Modifier
+    public var modifier: KeyModifier
     public var side: ModifierSide
 
-    public init(_ modifier: Modifier, side: ModifierSide = .any) {
+    public init(_ modifier: KeyModifier, side: ModifierSide = .any) {
         self.modifier = modifier
         // The fn/Globe key exists once per keyboard.
         self.side = modifier == .function ? .any : side
@@ -90,7 +90,7 @@ public struct ModifierState: Hashable, Sendable {
         function = rawFlags & Self.functionMask != 0
     }
 
-    public subscript(modifier: Modifier) -> Sides {
+    public subscript(modifier: KeyModifier) -> Sides {
         switch modifier {
         case .control: return control
         case .option: return option
@@ -114,8 +114,8 @@ public struct Shortcut: Codable, Hashable, Sendable {
     public init(keyCode: UInt16?, modifiers: [ModifierKey]) {
         self.keyCode = keyCode
         // One entry per modifier, in a stable order.
-        var seen = Set<Modifier>()
-        self.modifiers = Modifier.allCases.compactMap { modifier in
+        var seen = Set<KeyModifier>()
+        self.modifiers = KeyModifier.allCases.compactMap { modifier in
             guard let key = modifiers.first(where: { $0.modifier == modifier }),
                   seen.insert(modifier).inserted else { return nil }
             return key
@@ -161,7 +161,7 @@ public struct Shortcut: Codable, Hashable, Sendable {
     /// True when exactly the shortcut's modifiers are held: nothing missing
     /// and nothing extra.
     public func matchesModifiers(_ state: ModifierState) -> Bool {
-        for modifier in Modifier.allCases {
+        for modifier in KeyModifier.allCases {
             let required = modifiers.first { $0.modifier == modifier }
             let actual = state[modifier]
             if modifier == .function {

@@ -270,17 +270,17 @@ public struct Tile: Codable, Hashable, Identifiable, Sendable {
     public var content: TileContent
     /// Freeform placement as fractions of the canvas (0...1), so a layout
     /// survives a change of display or resolution.
-    public var frame: Rect
+    public var frame: LayoutRect
     /// Preferred width in points when the board is in flow mode.
     public var flowWidth: Double
     /// Preferred height in points in flow mode; nil fills the column.
     public var flowHeight: Double?
 
-    public init(id: UUID = UUID(), content: TileContent, frame: Rect? = nil) {
+    public init(id: UUID = UUID(), content: TileContent, frame: LayoutRect? = nil) {
         self.id = id
         self.content = content
         let defaults = Tile.defaultSizing(for: content)
-        self.frame = frame ?? Rect(x: 0.05, y: 0.05, width: 0.3, height: 0.6)
+        self.frame = frame ?? LayoutRect(x: 0.05, y: 0.05, width: 0.3, height: 0.6)
         self.flowWidth = defaults.width
         self.flowHeight = defaults.height
     }
@@ -290,7 +290,7 @@ public struct Tile: Codable, Hashable, Identifiable, Sendable {
         id = c.value(.id, default: UUID())
         content = try c.decode(TileContent.self, forKey: .content)
         let defaults = Tile.defaultSizing(for: content)
-        frame = c.value(.frame, default: Rect(x: 0.05, y: 0.05, width: 0.3, height: 0.6))
+        frame = c.value(.frame, default: LayoutRect(x: 0.05, y: 0.05, width: 0.3, height: 0.6))
         flowWidth = c.value(.flowWidth, default: defaults.width)
         flowHeight = (try? c.decodeIfPresent(Double.self, forKey: .flowHeight)) ?? nil
     }

@@ -1,15 +1,13 @@
 // Runs the scripts Gander injects into web pages in a real browser.
-//
-//   swift run gander-scripts > /tmp/gander-scripts.json
-//   node Tests/Browser/picker.test.mjs /tmp/gander-scripts.json
-//
-// Needs Playwright with a Chromium build (`npm i playwright`).
+// Use Tests/Browser/run.sh, which produces the scripts file this reads.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 
 // `require` also finds a globally installed Playwright (via NODE_PATH).
-const { chromium } = createRequire(import.meta.url)('playwright');
+const playwright = createRequire(import.meta.url)('playwright');
+// BROWSER=webkit runs the engine the app itself uses.
+const engine = playwright[process.env.BROWSER || 'chromium'];
 
 const scripts = JSON.parse(readFileSync(process.argv[2], 'utf8'));
 
@@ -36,7 +34,7 @@ const PAGE = `<!doctype html>
   </main>
 </body></html>`;
 
-const browser = await chromium.launch();
+const browser = await engine.launch();
 const context = await browser.newContext({ viewport: { width: 900, height: 600 } });
 await context.route('**/*', (route) => route.fulfill({ contentType: 'text/html', body: PAGE }));
 

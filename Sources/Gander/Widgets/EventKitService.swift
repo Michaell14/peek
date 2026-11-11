@@ -1,0 +1,193 @@
+import AppKit
+import EventKit
+import SwiftUI
+
+struct EventItem: Identifiable, Hashable {
+    let id: String
+    let title: String
+    let start: Date
+    let end: Date
+    let isAllDay: Bool
+    let color: Color
+    let location: String?
+}
+
+struct ReminderItem: Identifiable, Hashable {
+    let id: String
+    let title: String
+    let due: Date?
+    /// False when the reminder is due on a day rather than at a time.
+    let hasTime: Bool
+    let listName: String
+    let color: Color
+}
+
+/// The app's one connection to Calendar and Reminders.
+@MainActor
+final class EventKitService: ObservableObject {
+    static let shared = EventKitService()
+
+    /// Bumped whenever calendar or reminder data may have changed.
+    @Published private(set) var revision = 0
+    @Published private(set) var canReadEvents = false
+    @Published private(set) var canReadReminders = false
+
+    private let store = EKEventStore()
+    private var observer: NSObjectProtocol?
+
+    private init() {
+        refreshAuthorization()
+        observer = NotificationCenter.default.addObserver(
+            forName: .EKEventStoreChanged, object: store, queue: .main
+        ) { [weak self] _ in
+            onMainActor { self?.revision += 1 }
+        }
+    }
+
+    /// True once the user has answered the system prompt with "no".
+    func isDenied(_ type: EKEntityType) -> Bool {
+        switch EKEventStore.authorizationStatus(for: type) {
+        case .denied, .restricted, .writeOnly: return true
+        default: return false
+        }
+    }
+
+    /// Shows the system permission prompt. The overlay is dismissed first
+    /// because the prompt would open underneath it.
+    func requestAccess(to type: EKEntityType) {
+        NotificationCenter.default.post(name: .ganderDismissOverlay, object: nil)
+        let completion: EKEventStoreRequestAccessCompletionHandler = { @Sendable [weak self] _, _ in
+            DispatchQueue.main.async {
+                onMainActor {
+                    guard let self else { return }
+                    self.store.reset()
+                    self.refreshAuthorization()
+                    self.revision += 1
+                }
+            }
+        }
+        if type == .reminder {
+            store.requestFullAccessToReminders(completion: completion)
+        } else {
+            store.requestFullAccessToEvents(completion: completion)
+        }
+    }
+
+    func refreshAuthorization() {
+        canReadEvents = EKEventStore.authorizationStatus(for: .event) == .fullAccess
+        canReadReminders = EKEventStore.authorizationStatus(for: .reminder) == .fullAccess
+    }
+
+    // MARK: - Calendar
+
+    func events(from start: Date, to end: Date) -> [EventItem] {
+        guard canReadEvents else { return [] }
+        let predicate = store.predicateForEvents(withStart: start, end: end, calendars: nil)
+        return store.events(matching: predicate)
+            .map { event in
+                let start: Date = event.startDate ?? Date()
+                let end: Date = event.endDate ?? start
+                let identifier: String = event.eventIdentifier ?? UUID().uuidString
+                let title: String = event.title ?? ""
+                return EventItem(
+                    // Repeating events share an identifier, so add the start.
+                    id: "\(identifier)-\(start.timeIntervalSince1970)",
+                    title: title.isEmpty ? "Untitled" : title,
+                    start: start,
+                    end: end,
+                    isAllDay: event.isAllDay,
+                    color: Color(nsColor: event.calendar?.color ?? .systemBlue),
+                    location: event.location
+                )
+            }
+            .sorted { ($0.start, $0.title) < ($1.start, $1.title) }
+    }
+
+    // MARK: - Reminders
+
+    func fetchReminders(completion: @escaping @MainActor @Sendable ([ReminderItem]) -> Void) {
+        guard canReadReminders else {
+            completion([])
+            return
+        }
+        let predicate = store.predicateForIncompleteReminders(
+            withDueDateStarting: nil, ending: nil, calendars: nil
+        )
+        _ = store.fetchReminders(matching: predicate) { @Sendable reminders in
+            // Runs on a background queue: reduce to plain values here.
+            let calendar = Calendar.current
+            let items = (reminders ?? []).map { reminder -> ReminderItem in
+                let components = reminder.dueDateComponents
+                let title: String = reminder.title ?? ""
+                return ReminderItem(
+                    id: reminder.calendarItemIdentifier,
+                    title: title.isEmpty ? "Untitled" : title,
+                    due: components.flatMap { calendar.date(from: $0) },
+                    hasTime: components?.hour != nil,
+                    listName: reminder.calendar?.title ?? "",
+                    color: Color(nsColor: reminder.calendar?.color ?? .systemBlue)
+                )
+            }
+            DispatchQueue.main.async {
+                onMainActor { completion(items) }
+            }
+        }
+    }
+
+    func complete(_ id: String) {
+        guard let reminder = store.calendarItem(withIdentifier: id) as? EKReminder else { return }
+        reminder.isCompleted = true
+        save(reminder)
+    }
+
+    func addReminder(title: String, dueToday: Bool) {
+        let reminder = EKReminder(eventStore: store)
+        reminder.title = title
+        reminder.calendar = store.defaultCalendarForNewReminders()
+        if dueToday {
+            reminder.dueDateComponents = Calendar.current.dateComponents([.year, .month, .day], from: Date())
+        }
+        save(reminder)
+    }
+
+    private func save(_ reminder: EKReminder) {
+        do {
+            try store.save(reminder, commit: true)
+        } catch {
+            NSLog("Gander: could not save reminder: \(error.localizedDescription)")
+        }
+        revision += 1
+    }
+}
+
+/// Shown in place of a widget until the user lets it read its data.
+struct AccessPrompt: View {
+    let symbol: String
+    let name: String
+    let isDenied: Bool
+    let request: () -> Void
+    let openSettings: () -> Void
+
+    var body: some View {
+        VStack(spacing: 10) {
+            Image(systemName: symbol)
+                .font(.system(size: 26))
+                .foregroundStyle(.secondary)
+            if isDenied {
+                Text("Gander is not allowed to read \(name). You can change that in System Settings → Privacy & Security.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                Button("Open System Settings", action: openSettings)
+            } else {
+                Text("Show your \(name.lowercased()) here.")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                Button("Allow Access…", action: request)
+            }
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+}

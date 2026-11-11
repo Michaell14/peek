@@ -33,7 +33,7 @@ public struct DisplayTarget: Codable, Hashable, Sendable {
     }
 }
 
-public struct Settings: Codable, Hashable, Sendable {
+public struct AppSettings: Codable, Hashable, Sendable {
     public var shortcut: Shortcut
     /// A press shorter than this (seconds) keeps the overlay open.
     public var tapThreshold: Double
@@ -79,7 +79,7 @@ public struct Settings: Codable, Hashable, Sendable {
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        let d = Settings()
+        let d = AppSettings()
         shortcut = c.value(.shortcut, default: d.shortcut)
         if !shortcut.isValid { shortcut = d.shortcut }
         tapThreshold = min(max(c.value(.tapThreshold, default: d.tapThreshold), 0.1), 1)

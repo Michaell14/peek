@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  core:
+    name: Core (Linux)
+    # Pushes cover branches in this repository; pull_request covers forks.
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ubuntu-latest
+    container: swift:6.0
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unit tests
+        run: swift test
+
+  app:
+    name: App (macOS)
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain
+        run: |
+          swift --version
+          xcodebuild -version
+
+      - name: Build
+        run: |
+          set -o pipefail
+          swift build -Xswiftc -continue-building-after-errors 2>&1 | tee "$RUNNER_TEMP/build.log"
+
+      - name: Compiler errors
+        if: failure()
+        run: grep -E "error:" "$RUNNER_TEMP/build.log" | sort -u | head -300 || true
+
+      - name: Unit tests
+        run: swift test
+
+      - name: Page scripts in WebKit
+        run: |
+          npm install --no-save playwright
+          npx playwright install webkit
+          BROWSER=webkit Tests/Browser/run.sh
+
+      - name: Bundle the app
+        run: Scripts/build-app.sh
+
+      # Launches the real app and drives the overlay through show, arrange,
+      # add, hold and tap. See Sources/Gander/App/SmokeTest.swift.
+      - name: Self-check
+        run: |
+          build/Gander.app/Contents/MacOS/Gander --smoke-test "$RUNNER_TEMP/smoke"
+
+      - name: Self-check report
+        if: always()
+        run: cat "$RUNNER_TEMP/smoke/smoke.json" 2>/dev/null || echo "no report was written"
+
+      - name: Package
+        run: ditto -c -k --keepParent build/Gander.app "$RUNNER_TEMP/Gander.zip"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Gander
+          path: |
+            ${{ runner.temp }}/Gander.zip
+            ${{ runner.temp }}/smoke
+          if-no-files-found: ignore

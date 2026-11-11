@@ -2,7 +2,7 @@ import XCTest
 @testable import GanderCore
 
 final class FlowLayoutTests: XCTestCase {
-    private let canvas = Size(width: 1400, height: 800)
+    private let canvas = LayoutSize(width: 1400, height: 800)
     private let options = FlowLayout.Options(gap: 10, minWidth: 100, minHeight: 50)
 
     private func item(_ width: Double, _ height: Double?) -> FlowLayout.Item {
@@ -18,8 +18,8 @@ final class FlowLayoutTests: XCTestCase {
         let a = item(400, nil), b = item(300, nil)
         let frames = FlowLayout.layout([a, b], in: canvas, options: options)
         // 400 + 10 + 300 = 710 wide, centred in 1400.
-        XCTAssertEqual(frames[a.id], Rect(x: 345, y: 0, width: 400, height: 800))
-        XCTAssertEqual(frames[b.id], Rect(x: 755, y: 0, width: 300, height: 800))
+        XCTAssertEqual(frames[a.id], LayoutRect(x: 345, y: 0, width: 400, height: 800))
+        XCTAssertEqual(frames[b.id], LayoutRect(x: 755, y: 0, width: 300, height: 800))
     }
 
     func testShortTilesStackAndTheLastOneFillsTheColumn() {
@@ -89,19 +89,19 @@ final class FlowLayoutTests: XCTestCase {
         let a = item(300, nil), b = item(300, nil), moving = item(300, nil)
         let items = [a, b, moving]
         // With the moving tile removed: a = 395...695, b = 705...1005.
-        XCTAssertEqual(FlowLayout.insertionIndex(at: Point(x: 400, y: 400), moving: moving.id, items: items, in: canvas, options: options), 0)
-        XCTAssertEqual(FlowLayout.insertionIndex(at: Point(x: 690, y: 400), moving: moving.id, items: items, in: canvas, options: options), 1)
-        XCTAssertEqual(FlowLayout.insertionIndex(at: Point(x: 1300, y: 400), moving: moving.id, items: items, in: canvas, options: options), 2)
-        XCTAssertEqual(FlowLayout.insertionIndex(at: Point(x: 10, y: 10), moving: moving.id, items: items, in: canvas, options: options), 0)
+        XCTAssertEqual(FlowLayout.insertionIndex(at: LayoutPoint(x: 400, y: 400), moving: moving.id, items: items, in: canvas, options: options), 0)
+        XCTAssertEqual(FlowLayout.insertionIndex(at: LayoutPoint(x: 690, y: 400), moving: moving.id, items: items, in: canvas, options: options), 1)
+        XCTAssertEqual(FlowLayout.insertionIndex(at: LayoutPoint(x: 1300, y: 400), moving: moving.id, items: items, in: canvas, options: options), 2)
+        XCTAssertEqual(FlowLayout.insertionIndex(at: LayoutPoint(x: 10, y: 10), moving: moving.id, items: items, in: canvas, options: options), 0)
     }
 
     func testInsertionIndexWithinAStack() {
         let top = item(300, 200), bottom = item(300, 200), moving = item(300, nil)
         let items = [top, bottom, moving]
         // The stack is centred: x 550...850, top 0...200, bottom 210...800.
-        XCTAssertEqual(FlowLayout.insertionIndex(at: Point(x: 700, y: 50), moving: moving.id, items: items, in: canvas, options: options), 0)
-        XCTAssertEqual(FlowLayout.insertionIndex(at: Point(x: 700, y: 150), moving: moving.id, items: items, in: canvas, options: options), 1)
-        XCTAssertEqual(FlowLayout.insertionIndex(at: Point(x: 700, y: 700), moving: moving.id, items: items, in: canvas, options: options), 2)
+        XCTAssertEqual(FlowLayout.insertionIndex(at: LayoutPoint(x: 700, y: 50), moving: moving.id, items: items, in: canvas, options: options), 0)
+        XCTAssertEqual(FlowLayout.insertionIndex(at: LayoutPoint(x: 700, y: 150), moving: moving.id, items: items, in: canvas, options: options), 1)
+        XCTAssertEqual(FlowLayout.insertionIndex(at: LayoutPoint(x: 700, y: 700), moving: moving.id, items: items, in: canvas, options: options), 2)
     }
 
     func testInsertionIndexWithNothingElseOnTheBoard() {
