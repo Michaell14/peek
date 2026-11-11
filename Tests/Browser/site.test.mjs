@@ -93,7 +93,6 @@ await test('holding the key shows the overlay only while it is down', async (pag
   await page.waitForTimeout(300);
   assert.equal(await isOpen(page), false);
   assert.equal(await state(page), 'hidden');
-  assert.match(await page.textContent('#meter-readout'), /a hold/);
 });
 
 await test('holding does not scroll the page or repeat', async (page) => {
@@ -108,7 +107,6 @@ await test('holding does not scroll the page or repeat', async (page) => {
 await test('a tap keeps it open; a second tap or esc closes it', async (page) => {
   await tap(page);
   assert.equal(await state(page), 'pinned');
-  assert.match(await page.textContent('#meter-readout'), /a tap/);
   assert.equal(await page.evaluate(() => document.querySelector('main').inert), true, 'the page behind is out of reach');
   await tap(page);
   assert.equal(await state(page), 'hidden');
@@ -420,27 +418,27 @@ await test('with reduced motion the cover stays still', async (page) => {
   assert.equal(await state(page), 'pinned');
 }, { width: 1280, height: 800 }, { reducedMotion: 'reduce' });
 
-await test('past the story: the bar names the section, and the second key works', async (page) => {
+await test('past the story: the bar names the section, and the key still works', async (page) => {
   assert.equal(await page.locator('#top-bar').evaluate((el) => el.classList.contains('is-past')), false);
-  await page.locator('#try-key').scrollIntoViewIfNeeded();
-  await scrollTo(page, await page.evaluate(() => document.getElementById('how').offsetTop));
+  await scrollTo(page, await page.evaluate(() => document.getElementById('inside').offsetTop));
   assert.equal(await page.locator('#top-bar').evaluate((el) => el.classList.contains('is-past')), true);
-  assert.equal(await page.textContent('#running'), '02 — Two gestures');
+  assert.equal(await page.textContent('#running'), '02 — What goes in');
   assert.equal(await page.locator('#hint').evaluate((el) => el.classList.contains('is-on')), true);
 
-  const [x, y] = await centre(page, '#try-key');
-  await page.mouse.move(x, y);
-  await page.mouse.down();
+  const before = await page.evaluate(() => window.scrollY);
+  await page.keyboard.down('Space');
   await page.waitForTimeout(500);
   assert.equal(await isOpen(page), true);
-  assert.equal(await page.locator('#hero-key').evaluate((el) => el.classList.contains('is-down')), true, 'both keys go down together');
-  await page.mouse.up();
+  assert.equal(await page.locator('#hint').evaluate((el) => el.classList.contains('is-on')), false, 'the reminder gets out of the way');
+  await page.keyboard.up('Space');
   await page.waitForTimeout(300);
   assert.equal(await isOpen(page), false);
-  assert.match(await page.textContent('#meter-readout'), /a hold/);
+  assert.equal(await page.evaluate(() => window.scrollY), before, 'holding Space scrolled the page');
 
+  assert.deepEqual(await page.locator('.sec__label').allInnerTexts(),
+    ['02 What goes in', '03 Arrange', '04 Less noise', '05 Yours', '06 Get Blink', '07 Questions']);
   await scrollTo(page, await page.evaluate(() => document.getElementById('faq').offsetTop));
-  assert.equal(await page.textContent('#running'), '08 — Questions');
+  assert.equal(await page.textContent('#running'), '07 — Questions');
 });
 
 await test('the page loads nothing from anywhere else, and its typefaces arrive', async (page) => {

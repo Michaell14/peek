@@ -41,7 +41,6 @@
     const now = performance.now();
     setKeysDown(true);
     retireAttract();
-    meterStart(now);
     if (peek.state === 'hidden' || peek.state === 'releasing') {
       peek.state = 'holding';
       peek.since = now;
@@ -57,7 +56,6 @@
     setKeysDown(false);
     if (peek.state === 'holding') {
       const held = now - peek.since;
-      meterStop(held);
       if (held <= TAP_THRESHOLD) {
         peek.state = 'pinned';
         setPinned(true);
@@ -67,9 +65,6 @@
       }
     } else if (peek.state === 'releasing') {
       peek.state = 'hidden';
-      meterStop(null);
-    } else {
-      meterStop(null);
     }
   }
 
@@ -175,35 +170,6 @@
     }
   });
   $('#board-close').addEventListener('click', dismiss);
-
-  // ---------------------------------------------------------------------
-  // The ruler under "Two gestures".
-  // ---------------------------------------------------------------------
-
-  const meterFill = $('#meter-fill');
-  const meterReadout = $('#meter-readout');
-  const METER_SPAN = TAP_THRESHOLD * 4; // the tap zone is the first quarter
-  let meterFrame = 0;
-
-  function meterStart(start) {
-    cancelAnimationFrame(meterFrame);
-    const tick = () => {
-      const elapsed = performance.now() - start;
-      meterFill.style.width = `${Math.min(elapsed / METER_SPAN, 1) * 100}%`;
-      meterFrame = requestAnimationFrame(tick);
-    };
-    tick();
-  }
-
-  function meterStop(held) {
-    cancelAnimationFrame(meterFrame);
-    if (held === null || !Number.isFinite(held)) return;
-    meterFill.style.width = `${Math.min(held / METER_SPAN, 1) * 100}%`;
-    const seconds = (held / 1000).toFixed(2);
-    meterReadout.innerHTML = held <= TAP_THRESHOLD
-      ? `<b>${seconds}s — a tap.</b> Blink stays open until you tap again or press esc.`
-      : `<b>${seconds}s — a hold.</b> Blink was there for exactly that long, then got out of the way.`;
-  }
 
   // ---------------------------------------------------------------------
   // The board: tiles, the two layout modes, and arranging.
