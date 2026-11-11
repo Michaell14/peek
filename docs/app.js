@@ -670,53 +670,6 @@
   $('#board-add').addEventListener('click', () => (palette.hidden ? openPalette() : closePalette()));
 
   // ---------------------------------------------------------------------
-  // "Less noise": three switches over a mock page, and click-to-hide.
-  // ---------------------------------------------------------------------
-
-  const quietPage = $('#q-page');
-  const quietCount = $('#q-count');
-  const quietSwitches = { ads: $('#q-ads'), cookies: $('#q-cookies'), pick: $('#q-pick') };
-  const quietCaption = quietCount.textContent;
-  const isOn = (button) => button.getAttribute('aria-checked') === 'true';
-
-  // Brings the mock page, and the line under it, in step with the switches.
-  function applyQuiet() {
-    const ads = isOn(quietSwitches.ads);
-    const cookies = isOn(quietSwitches.cookies);
-    const picking = isOn(quietSwitches.pick);
-    quietPage.classList.toggle('block-ads', ads);
-    quietPage.classList.toggle('block-cookies', cookies);
-    quietPage.classList.toggle('is-picking', picking);
-
-    const gone = $$('.is-hidden', quietPage).length
-      + (ads ? $$('[data-junk="noise"]:not(.is-hidden)', quietPage).length : 0)
-      + (cookies ? $$('[data-junk="notice"]:not(.is-hidden)', quietPage).length : 0);
-    const lines = [];
-    if (gone) lines.push(`${gone} ${gone === 1 ? 'thing' : 'things'} gone. The number is still there.`);
-    if (picking) lines.push('Click anything in the page to take it out.');
-    quietCount.textContent = lines.join(' ') || quietCaption;
-  }
-
-  Object.values(quietSwitches).forEach((button) => {
-    button.addEventListener('click', () => {
-      button.setAttribute('aria-checked', String(!isOn(button)));
-      applyQuiet();
-    });
-  });
-  quietPage.addEventListener('click', (event) => {
-    if (!isOn(quietSwitches.pick)) return;
-    const target = event.target.closest('[data-pick], [data-junk]');
-    if (!target || !quietPage.contains(target)) return;
-    target.classList.add('is-hidden');
-    applyQuiet();
-  });
-  $('#q-reset').addEventListener('click', () => {
-    $$('.is-hidden', quietPage).forEach((element) => element.classList.remove('is-hidden'));
-    Object.values(quietSwitches).forEach((button) => button.setAttribute('aria-checked', 'false'));
-    applyQuiet();
-  });
-
-  // ---------------------------------------------------------------------
   // Layout modes illustration.
   // ---------------------------------------------------------------------
 
@@ -724,33 +677,6 @@
     button.addEventListener('click', () => {
       $('#layout-stage').dataset.mode = button.dataset.layout;
       $$('[data-layout]').forEach((other) => other.classList.toggle('is-on', other === button));
-    });
-  });
-
-  // ---------------------------------------------------------------------
-  // Copy buttons.
-  // ---------------------------------------------------------------------
-
-  $$('[data-copy]').forEach((button) => {
-    button.addEventListener('click', () => {
-      const text = button.dataset.copy;
-      const fallback = () => {
-        const area = document.createElement('textarea');
-        area.value = text;
-        document.body.append(area);
-        area.select();
-        document.execCommand('copy');
-        area.remove();
-      };
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(text).catch(fallback);
-      } else {
-        fallback();
-      }
-      // Say so straight away rather than after the clipboard answers.
-      button.textContent = 'Copied';
-      button.classList.add('is-done');
-      setTimeout(() => { button.textContent = 'Copy'; button.classList.remove('is-done'); }, 1600);
     });
   });
 

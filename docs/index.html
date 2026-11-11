@@ -26,7 +26,7 @@
     <span class="top__where" id="running" aria-hidden="true"></span>
     <nav class="top__links" aria-label="Site">
       <a href="https://github.com/Michaell14/peek" rel="noopener">Source</a>
-      <a href="#get">Get Blink</a>
+      <a href="https://github.com/Michaell14/peek/releases/latest/download/Blink.dmg">Download</a>
     </nav>
   </header>
 
@@ -47,7 +47,7 @@
                 you were doing. Let go and they are gone.
               </p>
               <p class="step__actions">
-                <a class="action" href="#get">Get Blink for Mac</a>
+                <a class="action" href="https://github.com/Michaell14/peek/releases/latest/download/Blink.dmg">Download for Mac</a>
                 <span>Free and open source</span>
               </p>
             </div>
@@ -213,55 +213,8 @@
     </section>
 
     <!-- 04 ------------------------------------------------------------- -->
-    <section class="sec" id="quiet" data-title="Less noise">
-      <p class="sec__label"><span>04</span> Less noise</p>
-      <div class="sec__body">
-        <h2>See the number, not the page around it.</h2>
-        <p class="lede">
-          A glance should not have to get past a cookie banner. Flip the switches, or click anything
-          in the page to make it go away.
-        </p>
-
-        <figure class="fig quiet">
-          <div class="quiet__controls" role="group" aria-label="What to take out of the page">
-            <button type="button" class="switch" id="q-ads" role="switch" aria-checked="false"><span class="switch__track" aria-hidden="true"></span>Block ads and trackers</button>
-            <button type="button" class="switch" id="q-cookies" role="switch" aria-checked="false"><span class="switch__track" aria-hidden="true"></span>Hide cookie banners</button>
-            <button type="button" class="switch" id="q-pick" role="switch" aria-checked="false"><span class="switch__track" aria-hidden="true"></span>Click to hide anything</button>
-            <button type="button" class="textlink" id="q-reset">Put it all back</button>
-          </div>
-          <div class="browser" id="q-page">
-            <div class="browser__bar" aria-hidden="true"><span class="lights"><i></i><i></i><i></i></span><span>dailyexample.example/markets</span></div>
-            <div class="browser__body">
-              <div class="junk junk--strip" data-junk="noise">Advertisement · Up to 70% off everything, today only</div>
-              <div class="page-nav" data-pick><b>The Daily Example</b><span>World</span><span>Markets</span><span>Tech</span><span>Sport</span></div>
-              <div class="page-grid">
-                <div class="page-main">
-                  <h4 data-pick>Markets close higher for a third day</h4>
-                  <p class="page-figure" data-pick><strong>4,812.6</strong><em>▲ 0.84%</em></p>
-                  <p data-pick>Shares rose again on Thursday as investors looked past a mixed set of results and towards next week's figures.</p>
-                  <div class="junk junk--letter" data-pick>Get our newsletter. <u>Sign up</u></div>
-                  <p data-pick>Analysts said the move was broad, with nine of eleven sectors ending the day in positive territory.</p>
-                </div>
-                <aside class="page-side">
-                  <div class="junk junk--strip junk--tall" data-junk="noise">Sponsored<br>Your ad here</div>
-                  <div class="page-box" data-pick><b>Most read</b><i></i><i></i><i></i></div>
-                </aside>
-              </div>
-              <div class="junk junk--pill" data-junk="noise" aria-hidden="true">3 trackers loading…</div>
-              <div class="junk junk--bar" data-junk="notice">
-                <span>We value your privacy. We and our 842 partners use cookies.</span>
-                <b>Accept all</b>
-              </div>
-            </div>
-          </div>
-          <figcaption><span>Fig. 2</span> <span id="q-count" aria-live="polite">The page as it arrives.</span></figcaption>
-        </figure>
-      </div>
-    </section>
-
-    <!-- 05 ------------------------------------------------------------- -->
     <section class="sec" id="yours" data-title="Yours">
-      <p class="sec__label"><span>05</span> Yours</p>
+      <p class="sec__label"><span>04</span> Yours</p>
       <div class="sec__body">
         <h2>Free, open, and it stays on your Mac.</h2>
         <ul class="nos">
@@ -273,37 +226,28 @@
       </div>
     </section>
 
-    <!-- 06 ------------------------------------------------------------- -->
-    <section class="sec" id="get" data-title="Get Blink">
-      <p class="sec__label"><span>06</span> Get Blink</p>
-      <div class="sec__body">
-        <h2>Two commands and it is in your menu bar.</h2>
-        <p class="lede">Needs macOS 14 or later and Xcode's command line tools.</p>
-
-        <div class="commands">
-          <div class="commands__line">
-            <code>git clone https://github.com/Michaell14/peek.git blink</code>
-            <button type="button" class="copy" data-copy="git clone https://github.com/Michaell14/peek.git blink">Copy</button>
-          </div>
-          <div class="commands__line">
-            <code>cd blink &amp;&amp; make install</code>
-            <button type="button" class="copy" data-copy="cd blink &amp;&amp; make install">Copy</button>
-          </div>
-        </div>
-        <p class="note">
-          Prefer not to build it? Every change is built automatically:
-          <a href="https://github.com/Michaell14/peek/actions" rel="noopener">download the latest build</a>
-          (needs a GitHub account).
-        </p>
-      </div>
-    </section>
-
-    <!-- 07 ------------------------------------------------------------- -->
+    <!-- 05 ------------------------------------------------------------- -->
     <section class="sec" id="faq" data-title="Questions">
-      <p class="sec__label"><span>07</span> Questions</p>
+      <p class="sec__label"><span>05</span> Questions</p>
       <div class="sec__body">
         <h2>Fair things to ask.</h2>
         <div class="faq">
+          <details>
+            <summary>How do I install it?</summary>
+            <p>Download the disk image, open it, and drag Blink into Applications. Blink is not notarized by Apple yet, so the first time you open it macOS will stop you: open System Settings, go to Privacy &amp; Security, and choose Open Anyway. You only do that once.</p>
+          </details>
+          <details>
+            <summary>What is the shortcut?</summary>
+            <p>The <kbd>fn</kbd> key, at the bottom left of a Mac keyboard. Hold it to look and let go to return; tap it to keep Blink open. You can change it in Settings to any key or combination, and Blink can tell the left <kbd>⌘</kbd> from the right. On this page the key is Space, because a web page cannot see <kbd>fn</kbd>.</p>
+          </details>
+          <details>
+            <summary>What permissions does it need?</summary>
+            <p>One, for <kbd>fn</kbd>. macOS only shows that key to apps you have allowed under Input Monitoring, so Blink asks when it first opens. It looks for the shortcut and nothing else, and does not record what you type. Choose an ordinary combination instead and it needs no permission at all. The Calendar and Reminders widgets ask for access when you add them.</p>
+          </details>
+          <details>
+            <summary>How do updates arrive?</summary>
+            <p>Once a day Blink asks GitHub whether there is a newer version, and offers to install it and start again. The question carries nothing about you or your Mac, and you can turn it off in Settings. After an update, macOS may ask you to allow Input Monitoring again.</p>
+          </details>
           <details>
             <summary>Does it work over full-screen apps?</summary>
             <p>Yes. Blink appears over whatever is in front, full-screen spaces included, and does not pull you out of the app or the text field you were in.</p>
@@ -313,20 +257,16 @@
             <p>Tabs are somewhere you go. Blink comes to you, shows several things side by side, and is gone the moment you let go. The pages stay loaded in the background, so there is nothing to wait for.</p>
           </details>
           <details>
-            <summary>What permissions does it need?</summary>
-            <p>None to start. The Calendar and Reminders widgets ask for access when you add them. A shortcut made of a single modifier key needs Input Monitoring, because macOS only tells apart left and right keys that way; ordinary shortcuts need nothing. Blink looks for your shortcut and does not record what you type.</p>
-          </details>
-          <details>
             <summary>Which sites work?</summary>
             <p>Blink uses WebKit, the engine behind Safari, so nearly everything that works there works here. Sign-in flows that depend on a separate pop-up window are the main exception.</p>
           </details>
           <details>
             <summary>What is not there yet?</summary>
-            <p>Passkeys in web tiles, browser extensions, a stocks widget, and showing other apps' windows as tiles. Builds are not notarized yet either, so macOS asks you to confirm the first launch.</p>
+            <p>Passkeys in web tiles, browser extensions, a stocks widget, and showing other apps' windows as tiles. Builds are not signed with an Apple developer certificate yet either, which is why macOS asks you to confirm the first launch.</p>
           </details>
           <details>
             <summary>Is it really free?</summary>
-            <p>Yes. The whole thing is on GitHub under the MIT license. There is no paid tier and nothing to unlock.</p>
+            <p>Yes. The whole thing is on GitHub under the MIT license. There is no paid tier and nothing to unlock, and you can build it yourself from the source.</p>
           </details>
         </div>
       </div>
@@ -334,6 +274,10 @@
   </main>
 
   <footer class="footer">
+    <p class="footer__get">
+      <a href="https://github.com/Michaell14/peek/releases/latest/download/Blink.dmg">Download Blink for Mac</a>
+      <span>Free. Needs macOS 14 or later.</span>
+    </p>
     <div class="footer__notes">
       <p>Open source under the MIT license. This page loads nothing from anywhere else and counts no one.</p>
       <p>Set in Fraunces and Archivo. The sea is drawn, not photographed.</p>

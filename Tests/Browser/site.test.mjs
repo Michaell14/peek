@@ -244,74 +244,6 @@ await test('typing a space in a field does not close the overlay', async (page) 
   assert.equal(await state(page), 'pinned');
 });
 
-await test('less noise: switches remove the junk, clicking removes anything, reset restores', async (page) => {
-  await page.locator('#q-page').scrollIntoViewIfNeeded();
-  const height = () => page.evaluate(() => document.querySelector('.browser__body').getBoundingClientRect().height);
-  const checked = () => page.locator('.switch').evaluateAll((els) => els.map((el) => el.getAttribute('aria-checked')));
-  const original = await height();
-  assert.match(await page.textContent('#q-count'), /as it arrives/);
-
-  await page.click('#q-ads');
-  await page.click('#q-cookies');
-  await page.waitForTimeout(700);
-  assert.deepEqual(await checked(), ['true', 'true', 'false']);
-  assert.ok(await height() < original - 80, 'the page got shorter');
-  assert.equal(await opacity(page, '.junk--bar'), '0');
-  assert.match(await page.textContent('#q-count'), /4 things gone/);
-
-  await page.click('#q-pick');
-  assert.match(await page.textContent('#q-count'), /Click anything in the page/);
-  await page.click('.junk--letter');
-  await page.waitForTimeout(700);
-  assert.equal(await page.locator('.junk--letter').evaluate((el) => el.classList.contains('is-hidden')), true);
-  assert.equal(await opacity(page, '.page-figure'), '1', 'the number is untouched');
-  assert.match(await page.textContent('#q-count'), /5 things gone/);
-
-  // A switch turned off puts its things back; what was picked out by hand stays out.
-  await page.click('#q-ads');
-  await page.waitForTimeout(700);
-  assert.equal(await opacity(page, '.junk--strip >> nth=0'), '1');
-  assert.match(await page.textContent('#q-count'), /2 things gone/);
-
-  await page.click('#q-reset');
-  await page.waitForTimeout(700);
-  assert.ok(Math.abs(await height() - original) < 2, 'everything is back');
-  assert.deepEqual(await checked(), ['false', 'false', 'false']);
-  assert.match(await page.textContent('#q-count'), /as it arrives/);
-});
-
-await test('the switches work from the keyboard, and stay put while the page under them changes', async (page) => {
-  await page.locator('#q-page').scrollIntoViewIfNeeded();
-  const top = () => page.locator('#q-ads').evaluate((el) => Math.round(el.getBoundingClientRect().top));
-  const before = await top();
-  await page.focus('#q-ads');
-  await page.keyboard.press('Enter');
-  await page.waitForTimeout(700);
-  assert.equal(await page.getAttribute('#q-ads', 'aria-checked'), 'true');
-  assert.equal(await opacity(page, '.junk--strip >> nth=0'), '0');
-  assert.equal(await top(), before, 'the switch moved from under the pointer');
-  await page.keyboard.press('Enter');
-  assert.equal(await page.getAttribute('#q-ads', 'aria-checked'), 'false');
-  assert.equal(await state(page), 'hidden');
-});
-
-await test('the switches work with a finger', async (page) => {
-  await page.locator('#q-page').scrollIntoViewIfNeeded();
-  await page.tap('#q-cookies');
-  await page.tap('#q-pick');
-  await page.tap('.page-nav');
-  await page.waitForTimeout(700);
-  assert.equal(await opacity(page, '.junk--bar'), '0');
-  assert.equal(await page.locator('.page-nav').evaluate((el) => el.classList.contains('is-hidden')), true);
-  assert.match(await page.textContent('#q-count'), /2 things gone/);
-}, { width: 390, height: 780 }, { hasTouch: true, isMobile: true });
-
-await test('clicking the mock page does nothing unless click-to-hide is on', async (page) => {
-  await page.locator('#quiet').scrollIntoViewIfNeeded();
-  await page.click('.page-figure');
-  assert.equal(await page.locator('.browser .is-hidden').count(), 0);
-});
-
 await test('space with another key held is some other shortcut', async (page) => {
   for (const modifier of ['Shift', 'Alt', 'Control', 'Meta']) {
     await page.keyboard.down(modifier);
@@ -325,18 +257,19 @@ await test('space with another key held is some other shortcut', async (page) =>
   assert.equal(await page.locator('#recorder').count(), 0);
 });
 
-await test('copy buttons, layout switch and questions respond', async (page) => {
+await test('the layout switch and the questions respond', async (page) => {
   await page.locator('#layout-stage').scrollIntoViewIfNeeded();
   await page.click('[data-layout="freeform"]');
   assert.equal(await page.getAttribute('#layout-stage', 'data-mode'), 'freeform');
 
-  await page.locator('#get').scrollIntoViewIfNeeded();
-  await page.click('.copy >> nth=0');
-  assert.equal(await page.textContent('.copy >> nth=0'), 'Copied');
-
   await page.locator('#faq').scrollIntoViewIfNeeded();
   await page.click('.faq summary >> nth=0');
   assert.equal(await page.locator('.faq details >> nth=0').getAttribute('open'), '');
+  // The page should say what the app actually does by default.
+  const answers = await page.locator('.faq').textContent(); // closed answers included
+  assert.match(answers, /fn/);
+  assert.match(answers, /Input Monitoring/);
+  assert.match(answers, /Open Anyway/);
 });
 
 await test('the story: scrolling steps through it, and the picture follows', async (page) => {
@@ -436,9 +369,9 @@ await test('past the story: the bar names the section, and the key still works',
   assert.equal(await page.evaluate(() => window.scrollY), before, 'holding Space scrolled the page');
 
   assert.deepEqual(await page.locator('.sec__label').allInnerTexts(),
-    ['02 What goes in', '03 Arrange', '04 Less noise', '05 Yours', '06 Get Blink', '07 Questions']);
+    ['02 What goes in', '03 Arrange', '04 Yours', '05 Questions']);
   await scrollTo(page, await page.evaluate(() => document.getElementById('faq').offsetTop));
-  assert.equal(await page.textContent('#running'), '07 — Questions');
+  assert.equal(await page.textContent('#running'), '05 — Questions');
 });
 
 await test('the page loads nothing from anywhere else, and its typefaces arrive', async (page) => {
@@ -455,6 +388,18 @@ await test('the page loads nothing from anywhere else, and its typefaces arrive'
     image.src = 'desk.jpg';
   }));
   assert.ok(picture > 1000, 'the desktop picture is missing');
+});
+
+await test('the download links ask for the file the release workflow publishes', async (page) => {
+  const links = await page.locator('a', { hasText: /Download/ }).evaluateAll((anchors) => anchors.map((a) => a.href));
+  assert.equal(links.length, 3, 'top bar, cover and footer');
+  for (const href of links) {
+    assert.equal(href, 'https://github.com/Michaell14/peek/releases/latest/download/Blink.dmg');
+  }
+  const workflow = await readFile(join(root, '..', '.github', 'workflows', 'release.yml'), 'utf8');
+  const packaging = await readFile(join(root, '..', 'Scripts', 'package.sh'), 'utf8');
+  assert.match(packaging, /Blink\.dmg/, 'the packaging script no longer makes Blink.dmg');
+  assert.match(workflow, /Scripts\/package\.sh/, 'the release workflow no longer packages the app');
 });
 
 await test('every link on the page goes somewhere real', async (page) => {
