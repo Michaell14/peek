@@ -9,6 +9,8 @@ full-screen ones — and disappears when you release it.
 - **Hold** the shortcut (default `⌥` + `` ` ``) to peek. Release to return.
 - **Tap** the shortcut to keep the overlay open and use it. Tap again or press `esc` to close.
 
+![The Gander overlay showing a clock, reminders, a web dashboard and a calendar](docs/screenshot.png)
+
 ## What it does
 
 | | |

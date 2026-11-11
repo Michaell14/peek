@@ -24,6 +24,7 @@ final class OverlayController: NSObject {
     private var toolbarHost: NSView?
     private var cancellables: Set<AnyCancellable> = []
     private var keyMonitor: Any?
+    private var pointerMonitor: Any?
     /// Bumped on every show and hide so a finishing fade-out can tell whether
     /// the overlay has been reopened in the meantime.
     private var visibilityGeneration = 0
@@ -64,6 +65,14 @@ final class OverlayController: NSObject {
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self else { return event }
             return self.handleKeyDown(event) ? nil : event
+        }
+        // Pointer movement can be delivered to whichever view has focus (a
+        // web page, say) rather than to the board, so watch for it here too.
+        pointerMonitor = NSEvent.addLocalMonitorForEvents(matching: .mouseMoved) { [weak self] event in
+            if let self, event.window === self.panel {
+                self.activeBoardView?.updateHover(at: event.locationInWindow)
+            }
+            return event
         }
     }
 

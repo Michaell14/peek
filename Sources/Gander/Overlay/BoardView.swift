@@ -49,6 +49,7 @@ final class BoardView: FlippedView {
             guard isEditing != oldValue else { return }
             tileViews.values.forEach { $0.isEditing = isEditing }
             if !isEditing { cancelDrag() }
+            updateHover()
         }
     }
 
@@ -56,6 +57,7 @@ final class BoardView: FlippedView {
         didSet {
             guard isInteractive != oldValue else { return }
             tileViews.values.forEach { $0.isInteractive = isInteractive }
+            updateHover()
         }
     }
 
@@ -179,6 +181,52 @@ final class BoardView: FlippedView {
             }
         }
         return nil
+    }
+
+    // MARK: - Hover
+
+    /// Works out which tile the pointer is over. Hover is derived from the
+    /// pointer's position each time it moves, rather than from enter and exit
+    /// events, which are easy to miss when the overlay appears underneath a
+    /// pointer that is not moving.
+    ///
+    /// - Parameter windowPoint: where the pointer is, or nil to ask the window.
+    func updateHover(at windowPoint: CGPoint? = nil) {
+        var hovered: UUID?
+        if isInteractive, !isEditing, let location = windowPoint ?? window?.mouseLocationOutsideOfEventStream {
+            let point = convert(location, from: nil)
+            // Topmost first.
+            hovered = board.tiles.reversed().first { tileViews[$0.id]?.frame.contains(point) == true }?.id
+        }
+        for (id, view) in tileViews {
+            view.isHovering = id == hovered
+        }
+    }
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        for area in trackingAreas {
+            removeTrackingArea(area)
+        }
+        // .activeAlways: the overlay belongs to an app that is never
+        // frontmost, and would not be sent pointer movement otherwise.
+        addTrackingArea(NSTrackingArea(
+            rect: .zero,
+            options: [.mouseMoved, .mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+            owner: self
+        ))
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        updateHover(at: event.locationInWindow)
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        updateHover(at: event.locationInWindow)
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        updateHover(at: event.locationInWindow)
     }
 
     // MARK: - Layout

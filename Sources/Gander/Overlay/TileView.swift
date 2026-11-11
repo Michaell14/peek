@@ -11,7 +11,13 @@ final class TileView: FlippedView {
     private(set) var tile: Tile
     private let chrome: TileChromeView
     private let editCover = TileEditCover()
-    private var isHovering = false
+
+    /// Set by the board, which knows where the pointer is.
+    var isHovering = false {
+        didSet {
+            if isHovering != oldValue { updateChrome() }
+        }
+    }
 
     var isEditing = false {
         didSet {
@@ -24,9 +30,6 @@ final class TileView: FlippedView {
     var isInteractive = false {
         didSet {
             content.interactivityDidChange(isInteractive)
-            // Enter/exit events stop while the overlay is hidden, so work out
-            // afresh whether the pointer is over this tile.
-            isHovering = isInteractive && containsPointer
             updateChrome()
         }
     }
@@ -37,10 +40,6 @@ final class TileView: FlippedView {
     /// Where the hover controls sit, in this view's coordinates.
     var controlsFrame: CGRect { chrome.frame }
 
-    private var containsPointer: Bool {
-        guard let window else { return false }
-        return bounds.contains(convert(window.mouseLocationOutsideOfEventStream, from: nil))
-    }
 
     init(tile: Tile, settings: AppSettings, context: TileContext) {
         tileID = tile.id
@@ -108,29 +107,6 @@ final class TileView: FlippedView {
         super.layout()
         let size = chrome.preferredSize
         chrome.frame = CGRect(x: bounds.width - size.width - 8, y: 8, width: size.width, height: size.height)
-    }
-
-    override func updateTrackingAreas() {
-        super.updateTrackingAreas()
-        for area in trackingAreas {
-            removeTrackingArea(area)
-        }
-        // .activeAlways: the overlay belongs to an app that is never frontmost.
-        addTrackingArea(NSTrackingArea(
-            rect: .zero,
-            options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
-            owner: self
-        ))
-    }
-
-    override func mouseEntered(with event: NSEvent) {
-        isHovering = true
-        updateChrome()
-    }
-
-    override func mouseExited(with event: NSEvent) {
-        isHovering = false
-        updateChrome()
     }
 
     private func updateChrome() {
