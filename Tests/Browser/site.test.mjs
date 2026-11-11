@@ -247,29 +247,66 @@ await test('typing a space in a field does not close the overlay', async (page) 
 });
 
 await test('less noise: switches remove the junk, clicking removes anything, reset restores', async (page) => {
-  await page.locator('#quiet').scrollIntoViewIfNeeded();
+  await page.locator('#q-page').scrollIntoViewIfNeeded();
   const height = () => page.evaluate(() => document.querySelector('.browser__body').getBoundingClientRect().height);
+  const checked = () => page.locator('.switch').evaluateAll((els) => els.map((el) => el.getAttribute('aria-checked')));
   const original = await height();
+  assert.match(await page.textContent('#q-count'), /as it arrives/);
 
-  await page.click('label:has(#q-ads)');
-  await page.click('label:has(#q-cookies)');
+  await page.click('#q-ads');
+  await page.click('#q-cookies');
   await page.waitForTimeout(700);
+  assert.deepEqual(await checked(), ['true', 'true', 'false']);
   assert.ok(await height() < original - 80, 'the page got shorter');
-  assert.equal(await page.locator('.junk--cookie').evaluate((el) => getComputedStyle(el).opacity), '0');
+  assert.equal(await opacity(page, '.junk--bar'), '0');
   assert.match(await page.textContent('#q-count'), /4 things gone/);
 
-  await page.click('label:has(#q-pick)');
-  await page.click('.junk--newsletter');
+  await page.click('#q-pick');
+  assert.match(await page.textContent('#q-count'), /Click anything in the page/);
+  await page.click('.junk--letter');
   await page.waitForTimeout(700);
-  assert.equal(await page.locator('.junk--newsletter').evaluate((el) => el.classList.contains('is-hidden')), true);
-  assert.equal(await page.locator('.page-figure').evaluate((el) => getComputedStyle(el).opacity), '1', 'the number is untouched');
+  assert.equal(await page.locator('.junk--letter').evaluate((el) => el.classList.contains('is-hidden')), true);
+  assert.equal(await opacity(page, '.page-figure'), '1', 'the number is untouched');
   assert.match(await page.textContent('#q-count'), /5 things gone/);
+
+  // A switch turned off puts its things back; what was picked out by hand stays out.
+  await page.click('#q-ads');
+  await page.waitForTimeout(700);
+  assert.equal(await opacity(page, '.junk--strip >> nth=0'), '1');
+  assert.match(await page.textContent('#q-count'), /2 things gone/);
 
   await page.click('#q-reset');
   await page.waitForTimeout(700);
   assert.ok(Math.abs(await height() - original) < 2, 'everything is back');
-  assert.equal(await page.textContent('#q-count'), '');
+  assert.deepEqual(await checked(), ['false', 'false', 'false']);
+  assert.match(await page.textContent('#q-count'), /as it arrives/);
 });
+
+await test('the switches work from the keyboard, and stay put while the page under them changes', async (page) => {
+  await page.locator('#q-page').scrollIntoViewIfNeeded();
+  const top = () => page.locator('#q-ads').evaluate((el) => Math.round(el.getBoundingClientRect().top));
+  const before = await top();
+  await page.focus('#q-ads');
+  await page.keyboard.press('Enter');
+  await page.waitForTimeout(700);
+  assert.equal(await page.getAttribute('#q-ads', 'aria-checked'), 'true');
+  assert.equal(await opacity(page, '.junk--strip >> nth=0'), '0');
+  assert.equal(await top(), before, 'the switch moved from under the pointer');
+  await page.keyboard.press('Enter');
+  assert.equal(await page.getAttribute('#q-ads', 'aria-checked'), 'false');
+  assert.equal(await state(page), 'hidden');
+});
+
+await test('the switches work with a finger', async (page) => {
+  await page.locator('#q-page').scrollIntoViewIfNeeded();
+  await page.tap('#q-cookies');
+  await page.tap('#q-pick');
+  await page.tap('.page-nav');
+  await page.waitForTimeout(700);
+  assert.equal(await opacity(page, '.junk--bar'), '0');
+  assert.equal(await page.locator('.page-nav').evaluate((el) => el.classList.contains('is-hidden')), true);
+  assert.match(await page.textContent('#q-count'), /2 things gone/);
+}, { width: 390, height: 780 }, { hasTouch: true, isMobile: true });
 
 await test('clicking the mock page does nothing unless click-to-hide is on', async (page) => {
   await page.locator('#quiet').scrollIntoViewIfNeeded();
@@ -277,65 +314,17 @@ await test('clicking the mock page does nothing unless click-to-hide is on', asy
   assert.equal(await page.locator('.browser .is-hidden').count(), 0);
 });
 
-await test('recording a combination changes what the page listens for', async (page) => {
-  await page.locator('#shortcut').scrollIntoViewIfNeeded();
-  await page.click('#recorder');
-  await page.keyboard.down('Alt');
-  await page.keyboard.down('Backquote');
-  await page.keyboard.up('Backquote');
-  await page.keyboard.up('Alt');
-  const shortcut = await page.evaluate(() => window.__blink.getShortcut());
-  assert.equal(shortcut.code, 'Backquote');
-  assert.equal(shortcut.alt, true);
-  assert.equal(await state(page), 'hidden', 'recording does not trigger the overlay');
-  assert.equal(await page.locator('#recorder-keys kbd').count(), 2);
-
-  await tap(page, 'Space');
-  assert.equal(await state(page), 'hidden', 'the old shortcut no longer works');
-  await page.keyboard.down('Alt');
-  await tap(page, 'Backquote');
-  await page.keyboard.up('Alt');
-  assert.equal(await state(page), 'pinned', 'the new one does');
-  assert.match(await page.textContent('#overlay-hint'), /`/);
-});
-
-await test('a single modifier works as a shortcut, and another key cancels it', async (page) => {
-  await page.locator('#shortcut').scrollIntoViewIfNeeded();
-  await page.click('[data-preset="AltRight"]');
-  assert.deepEqual(await page.evaluate(() => window.__blink.getShortcut()), { modifier: 'AltRight' });
-
-  await page.keyboard.down('AltRight');
-  await page.waitForTimeout(450);
-  assert.equal(await state(page), 'holding');
-  await page.keyboard.up('AltRight');
-  await page.waitForTimeout(250);
+await test('space with another key held is some other shortcut', async (page) => {
+  for (const modifier of ['Shift', 'Alt', 'Control', 'Meta']) {
+    await page.keyboard.down(modifier);
+    await page.keyboard.down('Space');
+    await page.waitForTimeout(150);
+    assert.equal(await isOpen(page), false, `${modifier} + Space opened it`);
+    await page.keyboard.up('Space');
+    await page.keyboard.up(modifier);
+  }
   assert.equal(await state(page), 'hidden');
-
-  await page.keyboard.down('AltLeft');
-  await page.waitForTimeout(200);
-  assert.equal(await state(page), 'hidden', 'the left key is a different key');
-  await page.keyboard.up('AltLeft');
-
-  // Right ⌥ then a letter is some other shortcut, not a blink.
-  await page.keyboard.down('AltRight');
-  await page.keyboard.down('KeyC');
-  await page.waitForTimeout(200);
-  assert.equal(await isOpen(page), false);
-  await page.keyboard.up('KeyC');
-  await page.keyboard.up('AltRight');
-  assert.equal(await state(page), 'hidden');
-});
-
-await test('recording a lone modifier, and cancelling with esc', async (page) => {
-  await page.locator('#shortcut').scrollIntoViewIfNeeded();
-  await page.click('#recorder');
-  await page.keyboard.press('Escape');
-  assert.deepEqual(await page.evaluate(() => window.__blink.getShortcut().code), 'Space', 'esc keeps the old shortcut');
-
-  await page.click('#recorder');
-  await page.keyboard.down('MetaRight');
-  await page.keyboard.up('MetaRight');
-  assert.deepEqual(await page.evaluate(() => window.__blink.getShortcut()), { modifier: 'MetaRight' });
+  assert.equal(await page.locator('#recorder').count(), 0);
 });
 
 await test('copy buttons, layout switch and questions respond', async (page) => {
@@ -451,7 +440,7 @@ await test('past the story: the bar names the section, and the second key works'
   assert.match(await page.textContent('#meter-readout'), /a hold/);
 
   await scrollTo(page, await page.evaluate(() => document.getElementById('faq').offsetTop));
-  assert.equal(await page.textContent('#running'), '09 — Questions');
+  assert.equal(await page.textContent('#running'), '08 — Questions');
 });
 
 await test('the page loads nothing from anywhere else, and its typefaces arrive', async (page) => {

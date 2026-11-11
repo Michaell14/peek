@@ -152,7 +152,7 @@ keeps layouts somewhere other than `~/Library/Application Support/Blink`.
 `docs/` holds Blink's website. It opens with a short story told by scrolling: a desktop, drawn in
 HTML, fills up with windows and is then cleared with one key. The page is also its own demo: hold
 Space anywhere on it and the overlay appears over the page, with a live clock, calendar and
-reminders, tiles you can rearrange, and a recorder that lets visitors try their own shortcut.
+reminders, and tiles you can rearrange.
 
 It is plain HTML, CSS and JavaScript, loads nothing from anywhere else, and needs no build step.
 The two typefaces, Fraunces and Archivo, are served from `docs/fonts` under the SIL Open Font

@@ -5,83 +5,23 @@
 
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
-  const isMac = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
   const TAP_THRESHOLD = 300; // ms: shorter than this is a tap, longer is a hold
 
   // ---------------------------------------------------------------------
-  // Shortcut: either a key with optional modifiers, or one modifier key on
-  // its own (Blink can tell the right ⌘ from the left).
+  // The shortcut. In the app it is yours to choose; on this page it is Space.
   // ---------------------------------------------------------------------
 
-  const MODIFIER_CODES = ['ShiftLeft', 'ShiftRight', 'ControlLeft', 'ControlRight', 'AltLeft', 'AltRight', 'MetaLeft', 'MetaRight'];
-  const SYMBOLS = isMac
-    ? { Control: '⌃', Alt: '⌥', Shift: '⇧', Meta: '⌘' }
-    : { Control: 'Ctrl', Alt: 'Alt', Shift: 'Shift', Meta: 'Win' };
-
-  function parseShortcut(text) {
-    const parts = text.split('+');
-    const last = parts.pop();
-    if (MODIFIER_CODES.includes(last) && parts.length === 0) return { modifier: last };
-    return {
-      code: last,
-      ctrl: parts.includes('Control'),
-      alt: parts.includes('Alt'),
-      shift: parts.includes('Shift'),
-      meta: parts.includes('Meta'),
-    };
-  }
-
-  function keyName(code) {
-    if (code === 'Space') return 'Space';
-    if (code === 'Backquote') return '`';
-    if (code.startsWith('Key')) return code.slice(3);
-    if (code.startsWith('Digit')) return code.slice(5);
-    if (code.startsWith('Arrow')) return { Up: '↑', Down: '↓', Left: '←', Right: '→' }[code.slice(5)];
-    const names = { Minus: '-', Equal: '=', BracketLeft: '[', BracketRight: ']', Backslash: '\\', Semicolon: ';', Quote: "'", Comma: ',', Period: '.', Slash: '/', Tab: 'Tab', Enter: 'Return' };
-    return names[code] || code;
-  }
-
-  function shortcutLabels(shortcut) {
-    if (shortcut.modifier) {
-      const side = shortcut.modifier.endsWith('Right') ? 'Right' : 'Left';
-      const base = shortcut.modifier.replace(/Left|Right/, '');
-      return [`${side} ${SYMBOLS[base]}`];
-    }
-    const labels = [];
-    if (shortcut.ctrl) labels.push(SYMBOLS.Control);
-    if (shortcut.alt) labels.push(SYMBOLS.Alt);
-    if (shortcut.shift) labels.push(SYMBOLS.Shift);
-    if (shortcut.meta) labels.push(SYMBOLS.Meta);
-    labels.push(keyName(shortcut.code));
-    return labels;
-  }
-
-  let shortcut = parseShortcut('Space');
+  const SHORTCUT = 'Space';
   let shortcutHeld = false;
 
-  function modifiersMatch(event) {
-    return event.ctrlKey === !!shortcut.ctrl && event.altKey === !!shortcut.alt
-      && event.shiftKey === !!shortcut.shift && event.metaKey === !!shortcut.meta;
+  function isShortcut(event) {
+    return event.code === SHORTCUT && !event.ctrlKey && !event.altKey && !event.shiftKey && !event.metaKey;
   }
 
   function isTyping(target) {
     return target instanceof HTMLElement
       && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))
       && target.type !== 'checkbox';
-  }
-
-  function applyShortcutLabels() {
-    const labels = shortcutLabels(shortcut);
-    const text = labels.join(' ');
-    $$('[data-shortcut-label]').forEach((element) => {
-      element.textContent = element.tagName === 'KBD' ? text : text.toLowerCase();
-    });
-    $('#overlay-hint').textContent = `${text} or esc to close`;
-    $('#recorder-keys').innerHTML = labels.map((label) => `<kbd>${escapeHTML(label)}</kbd>`).join('');
-  }
-
-  function escapeHTML(text) {
-    return text.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   }
 
   // ---------------------------------------------------------------------
@@ -176,8 +116,6 @@
   }
 
   window.addEventListener('keydown', (event) => {
-    if (recorder.isRecording) return;
-
     if (event.key === 'Escape' && peek.state !== 'hidden') {
       event.preventDefault();
       if (!$('#palette').hidden) closePalette();
@@ -188,29 +126,14 @@
     if (!$('#palette').hidden && handlePaletteKey(event)) return;
     if (isTyping(event.target)) return;
 
-    if (shortcut.modifier) {
-      if (event.code === shortcut.modifier) {
-        if (!event.repeat && !shortcutHeld) { shortcutHeld = true; shortcutDown(); }
-      } else if (shortcutHeld && peek.state === 'holding') {
-        // The modifier turned out to be the start of some other shortcut.
-        shortcutHeld = false;
-        setKeysDown(false);
-        meterStop(null);
-        peek.state = 'hidden';
-        hideOverlay();
-      }
-      return;
-    }
-    if (event.code === shortcut.code && modifiersMatch(event)) {
+    if (isShortcut(event)) {
       event.preventDefault(); // Space would otherwise scroll the page
       if (!event.repeat && !shortcutHeld) { shortcutHeld = true; shortcutDown(); }
     }
   }, true);
 
   window.addEventListener('keyup', (event) => {
-    if (recorder.isRecording || !shortcutHeld) return;
-    const released = shortcut.modifier ? event.code === shortcut.modifier : event.code === shortcut.code;
-    if (!released) return;
+    if (!shortcutHeld || event.code !== SHORTCUT) return;
     event.preventDefault(); // or a focused button would be "clicked"
     shortcutHeld = false;
     shortcutUp();
@@ -464,8 +387,7 @@
       const button = $('#board-edit');
       button.textContent = editing ? 'Done' : 'Edit';
       button.classList.toggle('is-on', editing);
-      const labels = shortcutLabels(shortcut).join(' ');
-      $('#overlay-hint').textContent = editing ? 'Drag a tile to move it' : `${labels} or esc to close`;
+      $('#overlay-hint').textContent = editing ? 'Drag a tile to move it' : 'Space or esc to close';
     },
 
     beginDrag(tile, event) {
@@ -782,35 +704,50 @@
   $('#board-add').addEventListener('click', () => (palette.hidden ? openPalette() : closePalette()));
 
   // ---------------------------------------------------------------------
-  // "Less noise": switches, and click-to-hide.
+  // "Less noise": three switches over a mock page, and click-to-hide.
   // ---------------------------------------------------------------------
 
   const quietPage = $('#q-page');
   const quietCount = $('#q-count');
-  const pickSwitch = $('#q-pick');
+  const quietSwitches = { ads: $('#q-ads'), cookies: $('#q-cookies'), pick: $('#q-pick') };
+  const quietCaption = quietCount.textContent;
+  const isOn = (button) => button.getAttribute('aria-checked') === 'true';
 
-  function updateQuietCount() {
-    const hidden = $$('.is-hidden', quietPage).length
-      + ($('#q-ads').checked ? $$('[data-junk="ad"]:not(.is-hidden)', quietPage).length : 0)
-      + ($('#q-cookies').checked ? $$('[data-junk="cookie"]:not(.is-hidden)', quietPage).length : 0);
-    quietCount.textContent = hidden === 0 ? '' : `${hidden} ${hidden === 1 ? 'thing' : 'things'} gone. The number is still there.`;
+  // Brings the mock page, and the line under it, in step with the switches.
+  function applyQuiet() {
+    const ads = isOn(quietSwitches.ads);
+    const cookies = isOn(quietSwitches.cookies);
+    const picking = isOn(quietSwitches.pick);
+    quietPage.classList.toggle('block-ads', ads);
+    quietPage.classList.toggle('block-cookies', cookies);
+    quietPage.classList.toggle('is-picking', picking);
+
+    const gone = $$('.is-hidden', quietPage).length
+      + (ads ? $$('[data-junk="noise"]:not(.is-hidden)', quietPage).length : 0)
+      + (cookies ? $$('[data-junk="notice"]:not(.is-hidden)', quietPage).length : 0);
+    const lines = [];
+    if (gone) lines.push(`${gone} ${gone === 1 ? 'thing' : 'things'} gone. The number is still there.`);
+    if (picking) lines.push('Click anything in the page to take it out.');
+    quietCount.textContent = lines.join(' ') || quietCaption;
   }
 
-  $('#q-ads').addEventListener('change', (event) => { quietPage.classList.toggle('block-ads', event.target.checked); updateQuietCount(); });
-  $('#q-cookies').addEventListener('change', (event) => { quietPage.classList.toggle('block-cookies', event.target.checked); updateQuietCount(); });
-  pickSwitch.addEventListener('change', () => quietPage.classList.toggle('is-picking', pickSwitch.checked));
+  Object.values(quietSwitches).forEach((button) => {
+    button.addEventListener('click', () => {
+      button.setAttribute('aria-checked', String(!isOn(button)));
+      applyQuiet();
+    });
+  });
   quietPage.addEventListener('click', (event) => {
-    if (!pickSwitch.checked) return;
+    if (!isOn(quietSwitches.pick)) return;
     const target = event.target.closest('[data-pick], [data-junk]');
     if (!target || !quietPage.contains(target)) return;
     target.classList.add('is-hidden');
-    updateQuietCount();
+    applyQuiet();
   });
   $('#q-reset').addEventListener('click', () => {
     $$('.is-hidden', quietPage).forEach((element) => element.classList.remove('is-hidden'));
-    ['#q-ads', '#q-cookies', '#q-pick'].forEach((id) => { $(id).checked = false; });
-    quietPage.classList.remove('block-ads', 'block-cookies', 'is-picking');
-    updateQuietCount();
+    Object.values(quietSwitches).forEach((button) => button.setAttribute('aria-checked', 'false'));
+    applyQuiet();
   });
 
   // ---------------------------------------------------------------------
@@ -822,65 +759,6 @@
       $('#layout-stage').dataset.mode = button.dataset.layout;
       $$('[data-layout]').forEach((other) => other.classList.toggle('is-on', other === button));
     });
-  });
-
-  // ---------------------------------------------------------------------
-  // Shortcut recorder.
-  // ---------------------------------------------------------------------
-
-  const recorderField = $('#recorder');
-  const recorderHint = $('#recorder-hint');
-  const recorder = { isRecording: false, pendingModifier: null };
-
-  function setRecording(recording) {
-    recorder.isRecording = recording;
-    recorder.pendingModifier = null;
-    recorderField.classList.toggle('is-recording', recording);
-    recorderHint.textContent = recording
-      ? 'Press a key, a combination, or a single modifier. Esc cancels.'
-      : 'Click, then press a key or a combination';
-  }
-
-  function commitShortcut(next, announce = true) {
-    shortcut = next;
-    shortcutHeld = false;
-    setRecording(false);
-    applyShortcutLabels();
-    // Let go of the field, or the next press of Space would start recording
-    // again instead of trying the new shortcut out.
-    recorderField.blur();
-    if (announce) recorderHint.textContent = 'Done. Hold it anywhere on this page.';
-  }
-
-  recorderField.addEventListener('click', () => setRecording(!recorder.isRecording));
-  recorderField.addEventListener('blur', () => { if (recorder.isRecording) setRecording(false); });
-
-  window.addEventListener('keydown', (event) => {
-    if (!recorder.isRecording) return;
-    event.preventDefault();
-    event.stopPropagation();
-    if (event.key === 'Escape') { setRecording(false); return; }
-    if (MODIFIER_CODES.includes(event.code)) {
-      recorder.pendingModifier = event.code;
-      $('#recorder-keys').innerHTML = shortcutLabels({ modifier: event.code }).map((label) => `<kbd>${escapeHTML(label)}</kbd>`).join('');
-      return;
-    }
-    if (['Tab', 'Enter', 'CapsLock'].includes(event.key)) return;
-    commitShortcut({ code: event.code, ctrl: event.ctrlKey, alt: event.altKey, shift: event.shiftKey, meta: event.metaKey });
-  }, true);
-
-  window.addEventListener('keyup', (event) => {
-    if (!recorder.isRecording) return;
-    event.preventDefault();
-    event.stopPropagation();
-    // A modifier pressed and released with nothing in between is the shortcut.
-    if (recorder.pendingModifier && event.code === recorder.pendingModifier) {
-      commitShortcut({ modifier: event.code });
-    }
-  }, true);
-
-  $$('[data-preset]').forEach((button) => {
-    button.addEventListener('click', () => commitShortcut(parseShortcut(button.dataset.preset)));
   });
 
   // ---------------------------------------------------------------------
@@ -1034,7 +912,6 @@
   ['clock', 'reminders', 'web', 'calendar'].forEach((kind) => board.add(kind));
   buildScreen();
   fitDisplay();
-  applyShortcutLabels();
   updateClocks();
   updateCalendar();
   board.layout(false);
@@ -1044,5 +921,5 @@
   setInterval(updateCalendar, 60000);
 
   // For the tests.
-  window.__blink = { peek, board, tale, shortcutDown, shortcutUp, getShortcut: () => shortcut };
+  window.__blink = { peek, board, tale, shortcutDown, shortcutUp };
 })();

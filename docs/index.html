@@ -60,11 +60,11 @@
 
           <div class="try">
             <button class="keycap" id="hero-key" type="button" data-blink-key aria-describedby="try-note">
-              <span class="keycap__legend" data-shortcut-label>space</span>
+              <span class="keycap__legend">space</span>
               <span class="keycap__led" aria-hidden="true"></span>
             </button>
             <p class="try__note" id="try-note">
-              <span class="try__keys">Hold <kbd data-shortcut-label>Space</kbd> yourself.</span>
+              <span class="try__keys">Hold <kbd>Space</kbd> yourself.</span>
               <span class="try__touch">Press and hold the key.</span>
               This page is the demo.
             </p>
@@ -179,7 +179,7 @@
         <figure class="fig fig--meter">
           <div class="meter" id="meter">
             <button class="keycap keycap--small" id="try-key" type="button" data-blink-key aria-label="Hold or tap to try Blink">
-              <span class="keycap__legend" data-shortcut-label>space</span>
+              <span class="keycap__legend">space</span>
               <span class="keycap__led" aria-hidden="true"></span>
             </button>
             <div class="ruler" aria-hidden="true">
@@ -259,75 +259,45 @@
         </p>
 
         <figure class="fig quiet">
+          <div class="quiet__controls" role="group" aria-label="What to take out of the page">
+            <button type="button" class="switch" id="q-ads" role="switch" aria-checked="false"><span class="switch__track" aria-hidden="true"></span>Block ads and trackers</button>
+            <button type="button" class="switch" id="q-cookies" role="switch" aria-checked="false"><span class="switch__track" aria-hidden="true"></span>Hide cookie banners</button>
+            <button type="button" class="switch" id="q-pick" role="switch" aria-checked="false"><span class="switch__track" aria-hidden="true"></span>Click to hide anything</button>
+            <button type="button" class="textlink" id="q-reset">Put it all back</button>
+          </div>
           <div class="browser" id="q-page">
             <div class="browser__bar" aria-hidden="true"><span class="lights"><i></i><i></i><i></i></span><span>dailyexample.example/markets</span></div>
             <div class="browser__body">
-              <div class="junk junk--ad" data-junk="ad">Advertisement · Up to 70% off everything, today only</div>
+              <div class="junk junk--strip" data-junk="noise">Advertisement · Up to 70% off everything, today only</div>
               <div class="page-nav" data-pick><b>The Daily Example</b><span>World</span><span>Markets</span><span>Tech</span><span>Sport</span></div>
               <div class="page-grid">
                 <div class="page-main">
                   <h4 data-pick>Markets close higher for a third day</h4>
                   <p class="page-figure" data-pick><strong>4,812.6</strong><em>▲ 0.84%</em></p>
                   <p data-pick>Shares rose again on Thursday as investors looked past a mixed set of results and towards next week's figures.</p>
-                  <div class="junk junk--newsletter" data-pick>Get our newsletter. <u>Sign up</u></div>
+                  <div class="junk junk--letter" data-pick>Get our newsletter. <u>Sign up</u></div>
                   <p data-pick>Analysts said the move was broad, with nine of eleven sectors ending the day in positive territory.</p>
                 </div>
                 <aside class="page-side">
-                  <div class="junk junk--ad junk--tall" data-junk="ad">Sponsored<br>Your ad here</div>
+                  <div class="junk junk--strip junk--tall" data-junk="noise">Sponsored<br>Your ad here</div>
                   <div class="page-box" data-pick><b>Most read</b><i></i><i></i><i></i></div>
                 </aside>
               </div>
-              <div class="junk junk--tracker" data-junk="ad" aria-hidden="true">3 trackers loading…</div>
-              <div class="junk junk--cookie" data-junk="cookie">
+              <div class="junk junk--pill" data-junk="noise" aria-hidden="true">3 trackers loading…</div>
+              <div class="junk junk--bar" data-junk="notice">
                 <span>We value your privacy. We and our 842 partners use cookies.</span>
                 <b>Accept all</b>
               </div>
             </div>
           </div>
-          <figcaption class="quiet__controls">
-            <span>Fig. 3</span>
-            <label class="switch"><input type="checkbox" id="q-ads"><span></span>Block ads and trackers</label>
-            <label class="switch"><input type="checkbox" id="q-cookies"><span></span>Hide cookie banners</label>
-            <label class="switch"><input type="checkbox" id="q-pick"><span></span>Click to hide anything</label>
-            <button class="textlink" type="button" id="q-reset">Put it all back</button>
-            <p class="quiet__count" id="q-count" aria-live="polite"></p>
-          </figcaption>
+          <figcaption><span>Fig. 3</span> <span id="q-count" aria-live="polite">The page as it arrives.</span></figcaption>
         </figure>
       </div>
     </section>
 
     <!-- 06 ------------------------------------------------------------- -->
-    <section class="sec" id="shortcut" data-title="Your shortcut">
-      <p class="sec__label"><span>06</span> Your shortcut</p>
-      <div class="sec__body">
-        <h2>Pick the key your hand already rests on.</h2>
-        <p class="lede">
-          Any combination works, and so does a single modifier: Blink can tell the right
-          <kbd>⌘</kbd> from the left one. Record one here and this page will use it.
-        </p>
-
-        <figure class="fig recorder">
-          <button class="recorder__field" id="recorder" type="button" aria-live="polite">
-            <span class="recorder__keys" id="recorder-keys"><kbd>Space</kbd></span>
-            <span class="recorder__hint" id="recorder-hint">Click, then press a key or a combination</span>
-          </button>
-          <figcaption>
-            <span>Fig. 4</span>
-            <span class="recorder__presets" role="group" aria-label="Suggestions">
-              Or try
-              <button type="button" data-preset="Space">Space</button>
-              <button type="button" data-preset="AltRight">Right ⌥</button>
-              <button type="button" data-preset="MetaRight">Right ⌘</button>
-              <button type="button" data-preset="Alt+Backquote">⌥ `</button>
-            </span>
-          </figcaption>
-        </figure>
-      </div>
-    </section>
-
-    <!-- 07 ------------------------------------------------------------- -->
     <section class="sec" id="yours" data-title="Yours">
-      <p class="sec__label"><span>07</span> Yours</p>
+      <p class="sec__label"><span>06</span> Yours</p>
       <div class="sec__body">
         <h2>Free, open, and it stays on your Mac.</h2>
         <ul class="nos">
@@ -339,9 +309,9 @@
       </div>
     </section>
 
-    <!-- 08 ------------------------------------------------------------- -->
+    <!-- 07 ------------------------------------------------------------- -->
     <section class="sec" id="get" data-title="Get Blink">
-      <p class="sec__label"><span>08</span> Get Blink</p>
+      <p class="sec__label"><span>07</span> Get Blink</p>
       <div class="sec__body">
         <h2>Two commands and it is in your menu bar.</h2>
         <p class="lede">Needs macOS 14 or later and Xcode's command line tools.</p>
@@ -364,9 +334,9 @@
       </div>
     </section>
 
-    <!-- 09 ------------------------------------------------------------- -->
+    <!-- 08 ------------------------------------------------------------- -->
     <section class="sec" id="faq" data-title="Questions">
-      <p class="sec__label"><span>09</span> Questions</p>
+      <p class="sec__label"><span>08</span> Questions</p>
       <div class="sec__body">
         <h2>Fair things to ask.</h2>
         <div class="faq">
@@ -411,7 +381,7 @@
   </footer>
 
   <!-- A reminder that the page is live, shown while scrolling. -->
-  <div class="hint" id="hint" aria-hidden="true">Hold <kbd data-shortcut-label>Space</kbd> — this page is the demo</div>
+  <div class="hint" id="hint" aria-hidden="true">Hold <kbd>Space</kbd> — this page is the demo</div>
 
   <!-- The overlay itself ------------------------------------------------ -->
   <div class="overlay" id="overlay" role="dialog" aria-label="Blink demo" aria-hidden="true" tabindex="-1">
