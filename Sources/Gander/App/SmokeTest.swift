@@ -335,9 +335,11 @@ enum SmokeTest {
                     }
                     let corner = CGPoint(x: 4, y: panelSize.height - 4)
 
+                    let before = overlay.hoverDiagnostics
                     mouse(.mouseMoved, at: CGPoint(x: webFrame.midX, y: webFrame.midY))
                     await pause(0.4)
                     let shown = controls()
+                    snapshots["hoverDiagnostics"] = ["before": before, "afterMove": overlay.hoverDiagnostics]
                     await capture("hover")
                     var reloadedByButton = false
                     if let bar = shown.first {
@@ -371,11 +373,20 @@ enum SmokeTest {
                             }
                             await pause(0.5)
                         }
+                        let beforeGlide = overlay.hoverDiagnostics
                         await glide(to: CGPoint(x: webFrame.midX, y: webFrame.midY))
                         let pointer = NSEvent.mouseLocation
+                        let afterGlide = overlay.hoverDiagnostics
+                        let shownByEvents = !controls().isEmpty
+                        // Ask the window where the pointer is, events aside.
+                        overlay.refreshHover()
                         snapshots["realPointer"] = [
-                            "controlsShown": !controls().isEmpty,
+                            "controlsShown": shownByEvents,
+                            "controlsShownAfterAsking": !controls().isEmpty,
                             "pointer": [Double(pointer.x), Double(pointer.y)],
+                            "before": beforeGlide,
+                            "afterGlide": afterGlide,
+                            "afterAsking": overlay.hoverDiagnostics,
                         ] as [String: Any]
                         await glide(to: corner)
                     }

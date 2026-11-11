@@ -392,6 +392,12 @@ final class OverlayController: NSObject {
 
     var ruleListCount: Int { web.ruleLists.count }
 
+    var hoverDiagnostics: [String: Any] { activeBoardView?.hoverDiagnostics ?? [:] }
+
+    func refreshHover() {
+        activeBoardView?.updateHover()
+    }
+
     var firstWebTile: WebTileContentView? {
         activeBoardView?.contentViews.lazy.compactMap { $0 as? WebTileContentView }.first
     }

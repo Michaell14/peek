@@ -193,15 +193,25 @@ final class BoardView: FlippedView {
     /// - Parameter windowPoint: where the pointer is, or nil to ask the window.
     func updateHover(at windowPoint: CGPoint? = nil) {
         var hovered: UUID?
+        hoverDiagnostics["updates"] = (hoverDiagnostics["updates"] as? Int ?? 0) + 1
+        hoverDiagnostics["explicitPoint"] = windowPoint != nil
+        hoverDiagnostics["interactive"] = isInteractive
+        hoverDiagnostics["editing"] = isEditing
         if isInteractive, !isEditing, let location = windowPoint ?? window?.mouseLocationOutsideOfEventStream {
             let point = convert(location, from: nil)
+            hoverDiagnostics["point"] = [Double(point.x), Double(point.y)]
             // Topmost first.
             hovered = board.tiles.reversed().first { tileViews[$0.id]?.frame.contains(point) == true }?.id
         }
+        hoverDiagnostics["hovered"] = hovered?.uuidString ?? "none"
         for (id, view) in tileViews {
             view.isHovering = id == hovered
         }
+        hoverDiagnostics["showing"] = tileViews.values.filter(\.isShowingControls).count
     }
+
+    /// What the last hover update saw. Read by the self-check.
+    private(set) var hoverDiagnostics: [String: Any] = [:]
 
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
