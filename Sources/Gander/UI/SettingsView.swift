@@ -28,7 +28,27 @@ struct SettingsView: View {
             AboutSettingsView(model: model)
                 .tabItem { Label("About", systemImage: "info.circle") }
         }
-        .frame(width: 540, height: 500)
+        .frame(width: Self.size.width, height: Self.size.height)
+    }
+
+    static let size = CGSize(width: 540, height: 500)
+}
+
+/// Explanatory text under a group of settings.
+private struct Footnote: View {
+    let text: String
+
+    init(_ text: String) {
+        self.text = text
+    }
+
+    var body: some View {
+        Text(text)
+            .font(.caption)
+            .foregroundStyle(.secondary)
+            .multilineTextAlignment(.leading)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
@@ -76,7 +96,7 @@ private struct GeneralSettingsView: View {
                     .frame(width: 240)
                 }
             } footer: {
-                Text("Hold the shortcut to peek and let go to return. Tap it to keep Gander open. "
+                Footnote("Hold the shortcut to peek and let go to return. Tap it to keep Gander open. "
                     + "Click the field and press modifier keys on their own (for example Right ⌘ or fn) "
                     + "to use them as the shortcut.")
             }
@@ -206,7 +226,7 @@ private struct WebSettingsView: View {
                 Toggle("Block trackers", isOn: model.binding(\.blockTrackers))
                 Toggle("Hide cookie banners", isOn: model.binding(\.hideCookieBanners))
             } footer: {
-                Text("Blocking only applies to requests a page makes to other sites, "
+                Footnote("Blocking only applies to requests a page makes to other sites, "
                     + "so dashboards you open directly keep working.")
             }
 
@@ -238,7 +258,7 @@ private struct WebSettingsView: View {
             } header: {
                 Text("Your own filters")
             } footer: {
-                Text("One rule per line in Adblock Plus syntax, for example ||ads.example.com^ or example.com##.banner")
+                Footnote("One rule per line in Adblock Plus syntax, for example ||ads.example.com^ or example.com##.banner")
             }
 
             Section("Browsing data") {

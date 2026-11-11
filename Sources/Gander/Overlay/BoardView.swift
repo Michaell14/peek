@@ -138,6 +138,13 @@ final class BoardView: FlippedView {
         tileViews[id]?.frame
     }
 
+    /// The frame of a tile's hover controls in this view's coordinates, or
+    /// nil while they are hidden.
+    func controlsFrame(ofTile id: UUID) -> CGRect? {
+        guard let view = tileViews[id], view.isShowingControls else { return nil }
+        return view.controlsFrame.offsetBy(dx: view.frame.minX, dy: view.frame.minY)
+    }
+
     func overlayWillShow() {
         contentViews.forEach { $0.overlayWillShow() }
     }

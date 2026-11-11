@@ -36,6 +36,7 @@ jobs:
           swift --version
           xcodebuild -version
 
+      # Keep going past the first error so one run reports them all.
       - name: Build
         run: |
           set -o pipefail

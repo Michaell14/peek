@@ -60,12 +60,13 @@ struct CalendarWidgetView: View {
 
     private var header: some View {
         HStack(alignment: .firstTextBaseline) {
-            Text(today.formatted(.dateTime.weekday(.wide)))
-                .font(.system(size: 14, weight: .semibold))
-            Text(today.formatted(.dateTime.month(.abbreviated).day()))
-                .font(.system(size: 14))
-                .foregroundStyle(.secondary)
-            Spacer()
+            // A narrow tile gets "Wed 11" rather than a wrapped "Wednesday".
+            ViewThatFits(in: .horizontal) {
+                dateLabel(weekday: .wide, month: true)
+                dateLabel(weekday: .abbreviated, month: true)
+                dateLabel(weekday: .abbreviated, month: false)
+            }
+            Spacer(minLength: 4)
             Picker("View", selection: Binding(get: { config.mode }, set: { onChange(CalendarConfig(mode: $0)) })) {
                 Text("Day").tag(CalendarConfig.Mode.day)
                 Text("7 Days").tag(CalendarConfig.Mode.agenda)
@@ -77,6 +78,18 @@ struct CalendarWidgetView: View {
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)
+    }
+
+    private func dateLabel(weekday: Date.FormatStyle.Symbol.Weekday, month: Bool) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 5) {
+            Text(today.formatted(.dateTime.weekday(weekday)))
+                .font(.system(size: 14, weight: .semibold))
+            Text(month ? today.formatted(.dateTime.month(.abbreviated).day()) : today.formatted(.dateTime.day()))
+                .font(.system(size: 14))
+                .foregroundStyle(.secondary)
+        }
+        .lineLimit(1)
+        .fixedSize()
     }
 
     private func reload() {

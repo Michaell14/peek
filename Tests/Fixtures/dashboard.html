@@ -1,0 +1,54 @@
+<!doctype html>
+<!-- A stand-in for "a dashboard you keep an eye on", used for the README
+     screenshot. Everything on it is made up. -->
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Example dashboard</title>
+  <style>
+    :root { color-scheme: light dark; --card: #f4f5f7; --ink: #1c1d21; --muted: #6b7080; --bar: #4f7cff; }
+    @media (prefers-color-scheme: dark) { :root { --card: #23252c; --ink: #f1f2f5; --muted: #9aa0b0; } body { background: #17181d; } }
+    body { font: 14px -apple-system, system-ui, sans-serif; color: var(--ink); margin: 18px; }
+    h1 { font-size: 18px; margin: 0 0 2px; }
+    .sub { color: var(--muted); margin-bottom: 16px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .card { background: var(--card); border-radius: 10px; padding: 12px; }
+    .label { color: var(--muted); font-size: 12px; }
+    .value { font-size: 24px; font-weight: 600; margin-top: 2px; }
+    .up { color: #2fa866; font-size: 12px; } .down { color: #e5484d; font-size: 12px; }
+    .chart { display: flex; align-items: flex-end; gap: 6px; height: 120px; margin-top: 12px; }
+    .chart div { flex: 1; background: var(--bar); border-radius: 4px 4px 0 0; opacity: .85; }
+    table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+    td { padding: 7px 0; border-top: 1px solid rgba(128, 128, 128, .2); }
+    td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+  </style>
+</head>
+<body>
+  <h1>Example dashboard</h1>
+  <div class="sub">Last 7 days</div>
+  <div class="grid">
+    <div class="card"><div class="label">Visitors</div><div class="value">12,480</div><div class="up">▲ 8.2%</div></div>
+    <div class="card"><div class="label">Sign-ups</div><div class="value">342</div><div class="up">▲ 3.1%</div></div>
+    <div class="card"><div class="label">Bounce rate</div><div class="value">38%</div><div class="down">▼ 1.4%</div></div>
+    <div class="card"><div class="label">Avg. visit</div><div class="value">2m 41s</div><div class="up">▲ 12s</div></div>
+  </div>
+  <div class="card" style="margin-top: 10px">
+    <div class="label">Visitors per day</div>
+    <div class="chart">
+      <div style="height: 46%"></div><div style="height: 58%"></div><div style="height: 52%"></div>
+      <div style="height: 71%"></div><div style="height: 88%"></div><div style="height: 64%"></div>
+      <div style="height: 97%"></div>
+    </div>
+  </div>
+  <div class="card" style="margin-top: 10px">
+    <div class="label">Top pages</div>
+    <table>
+      <tr><td>/</td><td>5,210</td></tr>
+      <tr><td>/pricing</td><td>2,034</td></tr>
+      <tr><td>/docs/getting-started</td><td>1,377</td></tr>
+      <tr><td>/blog/launch</td><td>962</td></tr>
+    </table>
+  </div>
+</body>
+</html>

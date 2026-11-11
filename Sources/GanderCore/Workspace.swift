@@ -36,10 +36,12 @@ public struct Workspace: Codable, Hashable, Sendable {
         let welcome = """
         Welcome to Gander.
 
-        • Hold the shortcut to peek, let go to return to work.
-        • Tap the shortcut to keep this open and interact.
+        • Hold ⌥ and ` (the key above Tab) to peek. Let go to return to work.
+        • Tap them instead to keep this open and use it.
         • Press + to add websites, PDFs and widgets.
         • Press Edit to move and resize tiles.
+
+        You can change the shortcut in Settings (the gear, top right).
         """
         var tiles = [
             Tile(content: .widget(.clock(ClockConfig(zones: [ClockConfig.localZone, "Europe/London", "Asia/Tokyo"])))),

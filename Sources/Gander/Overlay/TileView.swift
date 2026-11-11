@@ -31,6 +31,12 @@ final class TileView: FlippedView {
         }
     }
 
+    /// Whether the hover controls are currently showing.
+    var isShowingControls: Bool { !chrome.isHidden }
+
+    /// Where the hover controls sit, in this view's coordinates.
+    var controlsFrame: CGRect { chrome.frame }
+
     private var containsPointer: Bool {
         guard let window else { return false }
         return bounds.contains(convert(window.mouseLocationOutsideOfEventStream, from: nil))

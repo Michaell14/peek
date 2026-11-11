@@ -179,6 +179,15 @@ enum SmokeTest {
                 await pause(0.4)
             }
 
+            /// Moves the real pointer. Board coordinates and global display
+            /// coordinates agree when the overlay covers the main display.
+            @MainActor func movePointer(to point: CGPoint) async {
+                CGWarpMouseCursorPosition(point)
+                CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: point, mouseButton: .left)?
+                    .post(tap: .cghidEventTap)
+                await pause(0.6)
+            }
+
             @MainActor func near(_ a: CGFloat, _ b: CGFloat, within tolerance: CGFloat = 10) -> Bool {
                 abs(a - b) <= tolerance
             }
@@ -322,6 +331,37 @@ enum SmokeTest {
                 let typed = await js("document.getElementById('field').value")
                 expect("typing", [("keys typed into a page field arrive", typed == "go")])
                 snapshots["typed"] = typed
+
+                // Hovering a tile brings up its controls. This needs the real
+                // pointer, which only some environments let an app move.
+                // (The web tile is the last one on the board at this point.)
+                if CGPreflightPostEventAccess(), let webFrame = tileFrames().last {
+                    @MainActor func controls() -> [CGRect] {
+                        let tiles = overlay.snapshot()["tiles"] as? [[String: Any]] ?? []
+                        return tiles.compactMap { tile in
+                            guard let frame = tile["controls"] as? [Double], frame.count == 4 else { return nil }
+                            return CGRect(x: frame[0], y: frame[1], width: frame[2], height: frame[3])
+                        }
+                    }
+                    await movePointer(to: CGPoint(x: webFrame.midX, y: webFrame.midY))
+                    let shown = controls()
+                    await capture("hover")
+                    var reloadedByButton = false
+                    if let bar = shown.first {
+                        // Back, forward, reload, more: the third button.
+                        await click(at: CGPoint(x: bar.minX + 4 + 2.5 * 24, y: bar.midY))
+                        reloadedByButton = await waitForPage()
+                    }
+                    await movePointer(to: CGPoint(x: 4, y: panelSize.height - 4))
+                    expect("hover", [
+                        ("hovering a web tile shows its controls", shown.count == 1 && webFrame.contains(shown[0])),
+                        ("the reload button reloads the page", reloadedByButton),
+                        ("moving away hides the controls again", controls().isEmpty),
+                    ])
+                    snapshots["hoverChecked"] = true
+                } else {
+                    snapshots["hoverChecked"] = false
+                }
             } else {
                 // No fixture server: just give the default page time to load.
                 await pause(5.0)
@@ -508,6 +548,27 @@ enum SmokeTest {
             await pause(1.5)
             expect("widgets", [("the four widgets are laid out", tileKinds().count == 4 && flag("visible"))])
             await capture("widgets")
+
+            // A typical board, for a picture of what Gander looks like in use.
+            if let pageURL {
+                var dashboard = Tile(content: .web(WebContent(
+                    url: pageURL.deletingLastPathComponent().appendingPathComponent("dashboard.html")
+                )))
+                dashboard.flowWidth = 400
+                model.update { workspace in
+                    workspace.updateBoard(workspace.sharedBoardID) { board in
+                        board.tiles = [
+                            Tile(content: .widget(.clock(ClockConfig(zones: [ClockConfig.localZone, "Europe/London", "Asia/Tokyo"])))),
+                            Tile(content: .widget(.reminders(RemindersConfig(filter: .today)))),
+                            dashboard,
+                            Tile(content: .widget(.calendar(CalendarConfig(mode: .day)))),
+                        ]
+                    }
+                }
+                await pause(3.0)
+                expect("showcase", [("the showcase board is laid out", tileKinds().count == 4 && flag("visible"))])
+                await capture("showcase")
+            }
 
             // 10. A layout per display starts as a copy and then goes its own way.
             let sharedIDs = Set(tileIDs())

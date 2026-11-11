@@ -403,11 +403,15 @@ final class OverlayController: NSObject {
                 case .file: kind = "file"
                 case .widget(let widget): kind = "widget:" + widget.displayName.lowercased()
                 }
-                tiles.append([
+                var entry: [String: Any] = [
                     "id": tile.id.uuidString,
                     "kind": kind,
                     "frame": [frame.minX, frame.minY, frame.width, frame.height].map { Double($0) },
-                ])
+                ]
+                if let controls = boardView.controlsFrame(ofTile: tile.id) {
+                    entry["controls"] = [controls.minX, controls.minY, controls.width, controls.height].map { Double($0) }
+                }
+                tiles.append(entry)
             }
         }
         return [

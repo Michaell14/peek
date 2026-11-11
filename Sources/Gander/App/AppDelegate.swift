@@ -179,6 +179,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             window.title = "Gander Settings"
             window.styleMask = [.titled, .closable, .miniaturizable]
             window.isReleasedWhenClosed = false
+            // Size it before centring: until its first layout the window is
+            // tiny, and centring that leaves the real one off to one side.
+            window.setContentSize(SettingsView.size)
             window.center()
             settingsWindow = window
         }
