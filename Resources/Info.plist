@@ -5,11 +5,11 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>en</string>
 	<key>CFBundleName</key>
-	<string>Blick</string>
+	<string>Blink</string>
 	<key>CFBundleDisplayName</key>
-	<string>Blick</string>
+	<string>Blink</string>
 	<key>CFBundleExecutable</key>
-	<string>Blick</string>
+	<string>Blink</string>
 	<key>CFBundleIdentifier</key>
 	<string>@BUNDLE_ID@</string>
 	<key>CFBundleInfoDictionaryVersion</key>
@@ -36,13 +36,13 @@
 	<key>NSHumanReadableCopyright</key>
 	<string>Free and open source under the MIT license.</string>
 	<key>NSCalendarsFullAccessUsageDescription</key>
-	<string>Blick shows your events in the Calendar widget. They stay on this Mac.</string>
+	<string>Blink shows your events in the Calendar widget. They stay on this Mac.</string>
 	<key>NSCalendarsUsageDescription</key>
-	<string>Blick shows your events in the Calendar widget. They stay on this Mac.</string>
+	<string>Blink shows your events in the Calendar widget. They stay on this Mac.</string>
 	<key>NSRemindersFullAccessUsageDescription</key>
-	<string>Blick shows your reminders in the Reminders widget and lets you tick them off. They stay on this Mac.</string>
+	<string>Blink shows your reminders in the Reminders widget and lets you tick them off. They stay on this Mac.</string>
 	<key>NSRemindersUsageDescription</key>
-	<string>Blick shows your reminders in the Reminders widget and lets you tick them off. They stay on this Mac.</string>
+	<string>Blink shows your reminders in the Reminders widget and lets you tick them off. They stay on this Mac.</string>
 	<!-- Web tiles may point at any site, including plain-http and local ones. -->
 	<key>NSAppTransportSecurity</key>
 	<dict>
@@ -51,7 +51,7 @@
 		<key>NSAllowsLocalNetworking</key>
 		<true/>
 	</dict>
-	<!-- Finder: Open With → Blick for PDF and HTML files. -->
+	<!-- Finder: Open With → Blink for PDF and HTML files. -->
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>

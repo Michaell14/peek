@@ -1,22 +1,22 @@
-# Blick
+# Blink
 
 **Hold a key to glance at the things you check all day. Let go and you are back where you were.**
 
-Blick is a free, open-source macOS menu bar app. It keeps websites, local files and small widgets
+Blink is a free, open-source macOS menu bar app. It keeps websites, local files and small widgets
 loaded in a full-screen overlay that appears while you hold a shortcut — over any app, including
 full-screen ones — and disappears when you release it.
 
 - **Hold** the shortcut (default `⌥` + `` ` ``) to peek. Release to return.
 - **Tap** the shortcut to keep the overlay open and use it. Tap again or press `esc` to close.
 
-![The Blick overlay showing a clock, reminders, a web dashboard and a calendar](docs/screenshot.png)
+![The Blink overlay showing a clock, reminders, a web dashboard and a calendar](docs/screenshot.png)
 
 ## What it does
 
 | | |
 |---|---|
 | **Websites** | Any site, in WebKit. Logins persist. Back/forward/reload, zoom, mobile-site mode, auto-refresh. |
-| **Local files** | PDF and HTML. Add from the launcher or Finder's *Open With → Blick*. Reloads when the file changes. |
+| **Local files** | PDF and HTML. Add from the launcher or Finder's *Open With → Blink*. Reloads when the file changes. |
 | **Widgets** | Clock (multiple time zones), Calendar (day timeline or next 7 days), Reminders (today / scheduled / overdue / all, tick off, add), Notes. |
 | **Less noise** | Blocks third-party ads and trackers, hides cookie banners, and lets you click page elements to hide them for good. Accepts your own Adblock Plus-style filters. |
 | **Layouts** | *Flow* packs tiles into columns for you; *Freeform* lets you drag and resize anywhere with snapping. |
@@ -24,7 +24,7 @@ full-screen ones — and disappears when you release it.
 | **Shortcut** | Any key combination, or modifier keys alone — including a specific left or right one (`Right ⌘`, `fn`). |
 | **Hand off** | Open any tile in your browser or its default app from its `…` menu. |
 
-Your layouts and browsing data stay on your Mac. Blick has no account, analytics or server.
+Your layouts and browsing data stay on your Mac. Blink has no account, analytics or server.
 
 ## Install
 
@@ -33,27 +33,27 @@ Requires macOS 14 or later.
 **Build from source** (needs Xcode 16 or its command line tools):
 
 ```bash
-git clone https://github.com/Michaell14/peek.git blick
+git clone https://github.com/Michaell14/peek.git blink
 ```
 
 ```bash
-cd blick && make install
+cd blink && make install
 ```
 
-That builds `build/Blick.app` and copies it to `/Applications`. Use `make run` to build and launch
+That builds `build/Blink.app` and copies it to `/Applications`. Use `make run` to build and launch
 without installing.
 
-**Download a build:** every push builds the app in CI; download the `Blick` artifact from the
+**Download a build:** every push builds the app in CI; download the `Blink` artifact from the
 latest run under the repository's *Actions* tab. Builds are signed ad hoc, not notarized, so macOS
 will refuse to open a downloaded copy until you clear the quarantine flag:
 
 ```bash
-xattr -dr com.apple.quarantine /Applications/Blick.app
+xattr -dr com.apple.quarantine /Applications/Blink.app
 ```
 
 ## Using it
 
-Blick lives in the menu bar (the eye icon) and has no Dock icon. On first launch it opens with a
+Blink lives in the menu bar (the eye icon) and has no Dock icon. On first launch it opens with a
 starter layout.
 
 With the overlay open (tap the shortcut), the controls are in the top-right corner:
@@ -74,12 +74,12 @@ are remembered per site; **Show Hidden Elements** brings them back.
 
 ### Permissions
 
-Blick asks only for what a feature needs, and only when you use it.
+Blink asks only for what a feature needs, and only when you use it.
 
 | Permission | Needed for |
 |---|---|
 | Calendars / Reminders | Those two widgets |
-| Input Monitoring | Only shortcuts made of modifier keys alone or a specific left/right key. Ordinary shortcuts need nothing. Blick looks for the shortcut and does not record what you type. |
+| Input Monitoring | Only shortcuts made of modifier keys alone or a specific left/right key. Ordinary shortcuts need nothing. Blink looks for the shortcut and does not record what you type. |
 
 When built from source, the app is signed ad hoc. macOS ties permissions to the signature, so it
 will ask again after each rebuild.
@@ -91,23 +91,23 @@ or macOS will also run its own action.
 
 ```
 Sources/
-  BlickCore/   Models, layout, shortcut logic, content-blocking rules. Plain
+  BlinkCore/   Models, layout, shortcut logic, content-blocking rules. Plain
                 Foundation; builds and is tested on Linux as well as macOS.
-  Blick/       The app: AppKit overlay and tiles, WebKit, SwiftUI widgets
+  Blink/       The app: AppKit overlay and tiles, WebKit, SwiftUI widgets
                 and settings.
-  blick-scripts/  Dev tool that prints the JavaScript injected into pages.
+  blink-scripts/  Dev tool that prints the JavaScript injected into pages.
 Tests/
-  BlickCoreTests/  Unit tests for the core.
+  BlinkCoreTests/  Unit tests for the core.
   Browser/          Runs the injected JavaScript in a real browser.
 ```
 
 A few decisions worth knowing about:
 
-- **The overlay is a non-activating panel.** Showing it never makes Blick the frontmost app, so
+- **The overlay is a non-activating panel.** Showing it never makes Blink the frontmost app, so
   the app, space and text field you were in stay exactly as they were.
 - **Tiles stay loaded while hidden.** That is what makes a peek instant, and why auto-refresh can
   keep pages current in the background. Audio never starts without a click.
-- **Hover is sampled, not event-driven.** Because Blick is never frontmost, the system does not
+- **Hover is sampled, not event-driven.** Because Blink is never frontmost, the system does not
   reliably tell its window when the pointer moves, so the overlay checks where the pointer is a
   few times a second while it is open.
 - **Ordinary shortcuts use the system hot-key service**, which needs no permission. Only shortcuts
@@ -131,7 +131,7 @@ make test-browser
 make check
 ```
 
-`make test` runs the core's unit tests. `make test-browser` runs the JavaScript that Blick
+`make test` runs the core's unit tests. `make test-browser` runs the JavaScript that Blink
 injects into pages in a real browser (needs Node and Playwright).
 
 `make check` launches the built app with a throwaway layout and has it check itself, using
@@ -142,8 +142,8 @@ minute, and writes a report and screenshots to `build/self-check`.
 
 CI runs all three on every push.
 
-Other switches: `--show` opens the overlay at launch; `--data-dir <path>` (or `BLICK_DATA_DIR`)
-keeps layouts somewhere other than `~/Library/Application Support/Blick`.
+Other switches: `--show` opens the overlay at launch; `--data-dir <path>` (or `BLINK_DATA_DIR`)
+keeps layouts somewhere other than `~/Library/Application Support/Blink`.
 
 ## Not there yet
 
@@ -158,7 +158,7 @@ keeps layouts somewhere other than `~/Library/Application Support/Blick`.
 
 ## Origin
 
-Blick was written from scratch as an open alternative to [Peek](https://peek.zone), a commercial
+Blink was written from scratch as an open alternative to [Peek](https://peek.zone), a commercial
 app with the same hold-to-glance idea, working only from its public description. It shares no
 code, assets or name with it, and is not affiliated with its makers.
 

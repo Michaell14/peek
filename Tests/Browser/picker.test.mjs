@@ -1,4 +1,4 @@
-// Runs the scripts Blick injects into web pages in a real browser.
+// Runs the scripts Blink injects into web pages in a real browser.
 // Use Tests/Browser/run.sh, which produces the scripts file this reads.
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
@@ -53,7 +53,7 @@ async function test(name, body) {
   }
 }
 
-const log = (page) => page.evaluate(() => window.__blickPickerLog || []);
+const log = (page) => page.evaluate(() => window.__blinkPickerLog || []);
 const displayOf = (page, selector) => page.evaluate((s) => getComputedStyle(document.querySelector(s)).display, selector);
 
 async function centre(page, selector) {
@@ -179,7 +179,7 @@ await test('escape ends picking and restores normal clicks', async (page) => {
   await page.mouse.move(400, 30);
   await page.keyboard.press('Escape');
   assert.deepEqual(await log(page), [{ type: 'done' }]);
-  assert.equal(await page.evaluate(() => window.__blickPicker), undefined);
+  assert.equal(await page.evaluate(() => window.__blinkPicker), undefined);
   await page.click('#btn');
   assert.equal(await page.evaluate(() => window.clicked), true);
   assert.equal(await displayOf(page, '#btn'), 'inline-block');
@@ -233,9 +233,9 @@ await test('re-running the hide script replaces rather than piles up', async (pa
   await page.goto('https://example.com/');
   await page.evaluate(scripts.hide);
   await page.evaluate(scripts.hide);
-  assert.equal(await page.evaluate(() => document.querySelectorAll('#blick-hidden-elements').length), 1);
+  assert.equal(await page.evaluate(() => document.querySelectorAll('#blink-hidden-elements').length), 1);
   await page.evaluate(scripts.hideNothing);
-  assert.equal(await page.evaluate(() => document.querySelectorAll('#blick-hidden-elements').length), 0);
+  assert.equal(await page.evaluate(() => document.querySelectorAll('#blink-hidden-elements').length), 0);
   assert.equal(await displayOf(page, '#sidebar'), 'block', 'clearing the rules brings elements back');
 });
 

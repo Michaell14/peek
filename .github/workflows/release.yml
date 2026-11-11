@@ -24,9 +24,9 @@ jobs:
       - name: Build
         run: |
           UNIVERSAL=1 VERSION="${GITHUB_REF_NAME#v}" Scripts/build-app.sh
-          ditto -c -k --keepParent build/Blick.app "Blick-${GITHUB_REF_NAME#v}.zip"
+          ditto -c -k --keepParent build/Blink.app "Blink-${GITHUB_REF_NAME#v}.zip"
 
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" "Blick-${GITHUB_REF_NAME#v}.zip" --generate-notes
+        run: gh release create "$GITHUB_REF_NAME" "Blink-${GITHUB_REF_NAME#v}.zip" --generate-notes

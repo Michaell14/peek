@@ -4,14 +4,14 @@
 #
 #   Scripts/self-check.sh [output directory]
 #
-# Expects build/Blick.app (run Scripts/build-app.sh first). The report and
+# Expects build/Blink.app (run Scripts/build-app.sh first). The report and
 # screenshots land in the output directory.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 OUT="${1:-build/self-check}"
 PORT="${PORT:-8765}"
-APP="build/Blick.app/Contents/MacOS/Blick"
+APP="build/Blink.app/Contents/MacOS/Blink"
 [ -x "$APP" ] || { echo "Build the app first: Scripts/build-app.sh" >&2; exit 1; }
 
 rm -rf "$OUT"
@@ -31,6 +31,6 @@ done
 curl -sf "http://127.0.0.1:$PORT/page.html" -o /dev/null
 curl -sf "http://localhost:$PORT/pixel.gif" -o /dev/null
 
-BLICK_SMOKE_URL="http://127.0.0.1:$PORT/page.html" \
-BLICK_SMOKE_FIXTURES="$PWD/Tests/Fixtures" \
+BLINK_SMOKE_URL="http://127.0.0.1:$PORT/page.html" \
+BLINK_SMOKE_FIXTURES="$PWD/Tests/Fixtures" \
     "$APP" --smoke-test "$OUT"
