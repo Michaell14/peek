@@ -1,10 +1,21 @@
 name: Release
 
-# Pushing a tag like v0.1.0 builds a universal app and attaches it to a
-# GitHub release.
+# Publishes a version: the file people download from the website, and the one
+# installed copies of Blink update themselves to.
+#
+#   On GitHub: Actions → Release → Run workflow, and type a version (0.2.0).
+#   Or from a terminal: git tag v0.2.0 && git push origin v0.2.0
+#
+# Use a higher number each time. Blink only offers an update when the
+# published version is newer than the one that is running.
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to publish, for example 0.2.0
+        required: true
 
 permissions:
   contents: write
@@ -18,15 +29,30 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Version
+        env:
+          TYPED: ${{ inputs.version }}
+        run: |
+          version="${TYPED:-$GITHUB_REF_NAME}"
+          version="${version#v}"
+          if ! [[ "$version" =~ ^[0-9]+(\.[0-9]+){1,2}$ ]]; then
+            echo "::error::\"$version\" is not a version like 0.2.0"
+            exit 1
+          fi
+          echo "VERSION=$version" >> "$GITHUB_ENV"
+
       - name: Test
         run: swift test
 
       - name: Build
-        run: |
-          UNIVERSAL=1 VERSION="${GITHUB_REF_NAME#v}" Scripts/build-app.sh
-          ditto -c -k --keepParent build/Blink.app "Blink-${GITHUB_REF_NAME#v}.zip"
+        run: UNIVERSAL=1 Scripts/build-app.sh
+
+      - name: Package
+        run: Scripts/package.sh dist
 
       - name: Publish
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" "Blink-${GITHUB_REF_NAME#v}.zip" --generate-notes
+        run: |
+          gh release create "v$VERSION" dist/Blink.dmg dist/Blink.zip dist/checksums.txt \
+            --title "Blink $VERSION" --generate-notes --target "$GITHUB_SHA"

@@ -4,10 +4,45 @@ import XCTest
 final class ShortcutTests: XCTestCase {
     private typealias M = ModifierState
 
-    func testDefaultShortcutUsesTheSystemHotKeyService() {
-        XCTAssertFalse(Shortcut.default.requiresEventTap)
-        XCTAssertEqual(Shortcut.default.carbonModifiers, 0x0800)
-        XCTAssertEqual(Shortcut.default.displayString, "⌥`")
+    func testDefaultShortcutIsTheFnKeyAlone() {
+        XCTAssertEqual(Shortcut.default, Shortcut(keyCode: nil, modifiers: [ModifierKey(.function)]))
+        XCTAssertEqual(Shortcut.default.displayString, "fn")
+        XCTAssertTrue(Shortcut.default.isValid)
+        XCTAssertTrue(Shortcut.default.isFunctionKeyAlone)
+        XCTAssertTrue(Shortcut.default.requiresEventTap, "macOS shows fn only to apps allowed Input Monitoring")
+    }
+
+    func testTheAlternativeNeedsNoPermission() {
+        XCTAssertFalse(Shortcut.withoutPermission.requiresEventTap)
+        XCTAssertEqual(Shortcut.withoutPermission.carbonModifiers, 0x0800)
+        XCTAssertEqual(Shortcut.withoutPermission.displayString, "⌥`")
+        XCTAssertFalse(Shortcut.withoutPermission.isFunctionKeyAlone)
+    }
+
+    func testOnlyFnByItselfCountsAsTheFnKeyAlone() {
+        XCTAssertFalse(Shortcut(keyCode: 49, modifiers: [ModifierKey(.function)]).isFunctionKeyAlone)
+        XCTAssertFalse(Shortcut(keyCode: nil, modifiers: [ModifierKey(.function), ModifierKey(.shift)]).isFunctionKeyAlone)
+        XCTAssertFalse(Shortcut(keyCode: nil, modifiers: [ModifierKey(.command, side: .right)]).isFunctionKeyAlone)
+    }
+
+    func testHoldingAndTappingTheDefaultShortcut() {
+        let fn: UInt64 = 0x80_0000   // the fn flag, as the system reports it
+        var tracker = ShortcutTracker(shortcut: .default)
+        XCTAssertEqual(tracker.handle(.flagsChanged(rawFlags: fn)), .pressed)
+        XCTAssertNil(tracker.handle(.flagsChanged(rawFlags: fn)), "the same flags again change nothing")
+        XCTAssertEqual(tracker.handle(.flagsChanged(rawFlags: 0)), .released)
+
+        // fn then an arrow is Home or End, not a peek.
+        XCTAssertEqual(tracker.handle(.flagsChanged(rawFlags: fn)), .pressed)
+        XCTAssertEqual(tracker.handle(.keyDown(keyCode: 123, rawFlags: fn, isRepeat: false)), .cancelled)
+        XCTAssertNil(tracker.handle(.flagsChanged(rawFlags: 0)), "letting go afterwards is not a release")
+
+        // An arrow key by itself reports the fn flag too, but only on the key.
+        XCTAssertNil(tracker.handle(.keyDown(keyCode: 124, rawFlags: fn, isRepeat: false)))
+        XCTAssertNil(tracker.handle(.keyUp(keyCode: 124, rawFlags: fn)))
+
+        // fn with another modifier is some other shortcut.
+        XCTAssertNil(tracker.handle(.flagsChanged(rawFlags: fn | 0x10_0000)))
     }
 
     func testSpecialShortcutsNeedTheEventTap() {

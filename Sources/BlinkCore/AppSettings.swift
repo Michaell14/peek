@@ -57,6 +57,9 @@ public struct AppSettings: Codable, Hashable, Sendable {
     public var webColorScheme: ColorSchemePreference
     public var searchTemplate: String
 
+    /// Ask GitHub once a day whether there is a newer Blink.
+    public var checksForUpdates: Bool
+
     public init() {
         shortcut = .default
         tapThreshold = 0.3
@@ -75,6 +78,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
         customFilters = ""
         webColorScheme = .system
         searchTemplate = URLInput.defaultSearchTemplate
+        checksForUpdates = true
     }
 
     public init(from decoder: Decoder) throws {
@@ -99,6 +103,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
         webColorScheme = c.value(.webColorScheme, default: d.webColorScheme)
         searchTemplate = c.value(.searchTemplate, default: d.searchTemplate)
         if !searchTemplate.contains("%s") { searchTemplate = d.searchTemplate }
+        checksForUpdates = c.value(.checksForUpdates, default: d.checksForUpdates)
     }
 
     public var contentBlocking: ContentBlocker.Options {

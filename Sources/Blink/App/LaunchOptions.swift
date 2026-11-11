@@ -8,6 +8,8 @@ struct LaunchOptions {
     var smokeTestOutput: URL?
     /// Open the overlay as soon as the app has started.
     var showOnLaunch = false
+    /// Ask this address for the newest release instead of GitHub (the checks).
+    var updateFeed: URL?
 
     static func parse(_ arguments: [String], environment: [String: String]) -> LaunchOptions {
         var options = LaunchOptions()
@@ -31,6 +33,11 @@ struct LaunchOptions {
                 }
             case "--show":
                 options.showOnLaunch = true
+            case "--update-feed":
+                if let value {
+                    options.updateFeed = URL(string: value)
+                    index += 1
+                }
             default:
                 break
             }

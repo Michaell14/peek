@@ -97,7 +97,7 @@ enum SmokeTest {
         )
     }
 
-    static func run(model: AppModel, overlay: OverlayController, hotkeys: HotkeyMonitor, output: URL) {
+    static func run(model: AppModel, overlay: OverlayController, hotkeys: HotkeyMonitor, updater: Updater, output: URL) {
         let pageURL = ProcessInfo.processInfo.environment["BLINK_SMOKE_URL"].flatMap(URL.init(string:))
 
         model.update { workspace in
@@ -675,6 +675,60 @@ enum SmokeTest {
             ])
             await capture("settings")
 
+            // 12. Updating. The script that runs this publishes stand-in
+            // releases on a local server and runs a copy of the app, so that
+            // the copy can replace itself for real.
+            var update: [String: Any] = ["checked": false]
+            if !updater.source.isOfficial {
+                update["checked"] = true
+                update["running"] = updater.currentText
+                let versionOnDisk = {
+                    let plist = Bundle.main.bundleURL.appendingPathComponent("Contents/Info.plist")
+                    return NSDictionary(contentsOf: plist)?["CFBundleShortVersionString"] as? String ?? "unreadable"
+                }
+
+                // Releases that must be turned away, leaving this copy as it was.
+                var refusals: [String: String] = [:]
+                let rejected = (ProcessInfo.processInfo.environment["BLINK_SMOKE_REJECTED_FEEDS"] ?? "")
+                    .split(separator: ",").compactMap { URL(string: String($0)) }
+                for feed in rejected {
+                    let name = feed.deletingPathExtension().lastPathComponent
+                    let other = Updater(feed: feed)
+                    guard case .available(let offer) = await other.check() else {
+                        failures.append("update: the \(name) release was not even offered")
+                        continue
+                    }
+                    do {
+                        try await other.install(offer, relaunch: false)
+                        failures.append("update: the \(name) release was installed")
+                    } catch {
+                        refusals[name] = error.localizedDescription
+                    }
+                    if versionOnDisk() != updater.currentText {
+                        failures.append("update: refusing the \(name) release still changed the app")
+                    }
+                }
+                update["refused"] = refusals
+
+                // And one that should go in.
+                let found = await updater.check()
+                if case .available(let offer) = found {
+                    update["offered"] = offer.versionText
+                    do {
+                        try await updater.install(offer, relaunch: false)
+                        update["installed"] = versionOnDisk()
+                        if versionOnDisk() != offer.versionText {
+                            failures.append("update: the app on disk is \(versionOnDisk()), not \(offer.versionText)")
+                        }
+                    } catch {
+                        update["error"] = error.localizedDescription
+                        failures.append("update: installing failed: \(error.localizedDescription)")
+                    }
+                } else {
+                    failures.append("update: a newer release was published but not offered (\(found))")
+                }
+            }
+
             let report: [String: Any] = [
                 "ok": failures.isEmpty,
                 "failures": failures,
@@ -684,6 +738,7 @@ enum SmokeTest {
                 "reduceTransparency": NSWorkspace.shared.accessibilityDisplayShouldReduceTransparency,
                 "hotkey": String(describing: hotkeys.status),
                 "shortcut": hotkeys.shortcut.displayString,
+                "update": update,
                 "snapshots": snapshots,
             ]
             if let data = try? JSONSerialization.data(withJSONObject: report, options: [.prettyPrinted, .sortedKeys]) {

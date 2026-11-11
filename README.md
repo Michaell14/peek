@@ -6,7 +6,7 @@ Blink is a free, open-source macOS menu bar app. It keeps websites, local files 
 loaded in a full-screen overlay that appears while you hold a shortcut — over any app, including
 full-screen ones — and disappears when you release it.
 
-- **Hold** the shortcut (default `⌥` + `` ` ``) to peek. Release to return.
+- **Hold** the shortcut (`fn` by default) to peek. Release to return.
 - **Tap** the shortcut to keep the overlay open and use it. Tap again or press `esc` to close.
 
 ![The Blink overlay showing a clock, reminders, a web dashboard and a calendar](docs/screenshot.png)
@@ -30,6 +30,11 @@ Your layouts and browsing data stay on your Mac. Blink has no account, analytics
 
 Requires macOS 14 or later.
 
+**Download:** get [Blink.dmg](https://github.com/Michaell14/peek/releases/latest/download/Blink.dmg),
+open it, and drag Blink into Applications. Releases are not notarized by Apple yet, so the first
+time you open it macOS will refuse: go to *System Settings → Privacy & Security* and choose
+**Open Anyway**. That is needed once.
+
 **Build from source** (needs Xcode 16 or its command line tools):
 
 ```bash
@@ -43,13 +48,18 @@ cd blink && make install
 That builds `build/Blink.app` and copies it to `/Applications`. Use `make run` to build and launch
 without installing.
 
-**Download a build:** every push builds the app in CI; download the `Blink` artifact from the
-latest run under the repository's *Actions* tab. Builds are signed ad hoc, not notarized, so macOS
-will refuse to open a downloaded copy until you clear the quarantine flag:
+### Updates
 
-```bash
-xattr -dr com.apple.quarantine /Applications/Blink.app
-```
+Once a day Blink asks GitHub for the newest release and, if it is newer than the running copy,
+offers to install it and start again. *Check for Updates…* in the menu bar menu asks straight
+away, and *Settings → About* turns the daily check off. The request carries nothing about you or
+your Mac.
+
+Before a download replaces the running app, Blink checks that it came over HTTPS from this
+project's releases, that it is this app and the version that was offered, that nothing in it has
+changed since it was signed, and, if the running copy was signed by an identifiable developer,
+that the new one was signed by the same one. Releases are currently signed ad hoc, which names no
+developer, so that last check does not apply yet.
 
 ## Using it
 
@@ -79,13 +89,19 @@ Blink asks only for what a feature needs, and only when you use it.
 | Permission | Needed for |
 |---|---|
 | Calendars / Reminders | Those two widgets |
-| Input Monitoring | Only shortcuts made of modifier keys alone or a specific left/right key. Ordinary shortcuts need nothing. Blink looks for the shortcut and does not record what you type. |
+| Input Monitoring | The default shortcut, `fn`, and any other made of modifier keys alone or a specific left/right key. Blink looks for the shortcut and does not record what you type. |
 
-When built from source, the app is signed ad hoc. macOS ties permissions to the signature, so it
-will ask again after each rebuild.
+macOS only shows `fn` to apps allowed under Input Monitoring, so Blink explains this and asks when
+it first opens. If you would rather not allow it, choose *Use ⌥` Instead* there, or record any
+ordinary combination in Settings: those need no permission.
 
-If you use `fn` as the shortcut, set *System Settings → Keyboard → Press 🌐 key to* **Do Nothing**,
-or macOS will also run its own action.
+With `fn` as the shortcut, set *System Settings → Keyboard → Press 🌐 key to* **Do Nothing**, or
+macOS will also run its own action (the emoji picker, by default) each time. Blink waits a moment
+before it reacts to `fn`, so `fn`-arrow and other combinations that start with it do not flash the
+overlay.
+
+Builds are signed ad hoc. macOS ties permissions to the signature, so it asks again after each
+rebuild, and may ask again after an update.
 
 ## How it is built
 
@@ -166,6 +182,21 @@ make site
 serves it at `http://localhost:8000`. To publish it with GitHub Pages, choose *Deploy from a
 branch* in the repository's Pages settings and pick the `/docs` folder.
 
+## Releasing
+
+A release is what the website's download button serves and what installed copies update to.
+
+On GitHub, open *Actions → Release → Run workflow* and type a version such as `0.2.0`. Or, from a
+terminal:
+
+```bash
+git tag v0.2.0 && git push origin v0.2.0
+```
+
+The workflow tests and builds a universal app, packs it with `Scripts/package.sh`, and publishes
+`Blink.dmg` (for people), `Blink.zip` (for the app's own updates) and their checksums. Use a higher
+version each time: a copy of Blink only offers an update that is newer than itself.
+
 ## Not there yet
 
 - Passkeys in web tiles. macOS only offers them to apps holding a browser entitlement that Apple
@@ -173,7 +204,8 @@ branch* in the repository's Pages settings and pick the `/docs` folder.
 - Browser extensions.
 - Showing other apps' windows as tiles.
 - A stocks widget.
-- Notarized builds and automatic updates.
+- Releases signed with an Apple developer certificate and notarized. Until then macOS asks you to
+  confirm the first launch, and may ask for Input Monitoring again after an update.
 - Sign-in flows that depend on a pop-up window talking back to the page that opened it; links that
   ask for a new window open in the same tile.
 

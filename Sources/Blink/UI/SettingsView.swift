@@ -16,6 +16,7 @@ struct SettingsView: View {
     @ObservedObject var model: AppModel
     @ObservedObject var hotkeys: HotkeyMonitor
     let overlay: OverlayController
+    var checkForUpdates: () -> Void = {}
 
     var body: some View {
         TabView {
@@ -25,7 +26,7 @@ struct SettingsView: View {
                 .tabItem { Label("Appearance", systemImage: "paintbrush") }
             WebSettingsView(model: model, overlay: overlay)
                 .tabItem { Label("Web", systemImage: "globe") }
-            AboutSettingsView(model: model)
+            AboutSettingsView(model: model, checkForUpdates: checkForUpdates)
                 .tabItem { Label("About", systemImage: "info.circle") }
         }
         .frame(width: Self.size.width, height: Self.size.height)
@@ -85,6 +86,7 @@ private struct GeneralSettingsView: View {
                     .frame(width: 190, height: 26)
                 }
                 shortcutStatus
+                globeKeyNote
                 LabeledContent("Tap speed") {
                     Slider(value: model.binding(\.tapThreshold), in: 0.15...0.6) {
                         EmptyView()
@@ -144,8 +146,8 @@ private struct GeneralSettingsView: View {
         case .needsInputMonitoring:
             VStack(alignment: .leading, spacing: 6) {
                 Label(
-                    "This shortcut needs Input Monitoring so Blink can tell left from right modifier keys. "
-                        + "Blink only looks for the shortcut; it does not record what you type.",
+                    "macOS only shows this shortcut to apps allowed under Input Monitoring. "
+                        + "Blink looks for the shortcut and nothing else; it does not record what you type.",
                     systemImage: "exclamationmark.triangle"
                 )
                 .font(.caption)
@@ -159,6 +161,33 @@ private struct GeneralSettingsView: View {
         case .active, .inactive:
             EmptyView()
         }
+    }
+
+    /// macOS has its own plans for a press of fn: the emoji picker, the next
+    /// input source, or dictation. Blink cannot stop that, only say where to.
+    @ViewBuilder
+    private var globeKeyNote: some View {
+        if model.settings.shortcut.isFunctionKeyAlone, GlobeKey.hasSystemAction {
+            VStack(alignment: .leading, spacing: 6) {
+                Label(
+                    "macOS also does something of its own when fn is pressed. To have it open Blink and "
+                        + "nothing else, set “Press 🌐 key to” to “Do Nothing” in Keyboard settings.",
+                    systemImage: "info.circle"
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                Button("Open Keyboard Settings…") { SystemSettings.openKeyboard() }
+            }
+        }
+    }
+}
+
+/// What macOS does when fn (the globe key) is pressed by itself.
+private enum GlobeKey {
+    /// False only when the user has chosen "Do Nothing".
+    static var hasSystemAction: Bool {
+        let setting = UserDefaults(suiteName: "com.apple.HIToolbox")?.object(forKey: "AppleFnUsageType") as? Int
+        return setting != 0
     }
 }
 
@@ -320,6 +349,7 @@ private struct WebSettingsView: View {
 @MainActor
 private struct AboutSettingsView: View {
     @ObservedObject var model: AppModel
+    let checkForUpdates: () -> Void
 
     private var version: String {
         Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "development build"
@@ -342,11 +372,20 @@ private struct AboutSettingsView: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
                 .padding(.horizontal, 40)
+            HStack(spacing: 14) {
+                Toggle("Check for updates every day", isOn: model.binding(\.checksForUpdates))
+                    .toggleStyle(.checkbox)
+                Button("Check Now…", action: checkForUpdates)
+            }
+            .padding(.top, 8)
+            Text("The check asks GitHub for the newest version. It sends nothing about you or this Mac.")
+                .font(.caption)
+                .foregroundStyle(.secondary)
             Button("Show Data Folder in Finder") {
                 try? FileManager.default.createDirectory(at: model.directory, withIntermediateDirectories: true)
                 NSWorkspace.shared.activateFileViewerSelecting([model.directory])
             }
-            .padding(.top, 8)
+            .padding(.top, 4)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding()

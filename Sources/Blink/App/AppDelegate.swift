@@ -9,8 +9,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var model: AppModel?
     private var overlay: OverlayController?
     private var hotkeys: HotkeyMonitor?
+    private var updater: Updater?
     private var statusItem: NSStatusItem?
     private var toggleItem: NSMenuItem?
+    private var permissionItem: NSMenuItem?
+    private var updateItem: NSMenuItem?
+    private var updateTimer: Timer?
     private var settingsWindow: NSWindow?
     private var cancellables: Set<AnyCancellable> = []
     /// Files handed over by Finder before launch had finished.
@@ -29,12 +33,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         )
         let overlay = OverlayController(model: model)
         let hotkeys = HotkeyMonitor(shortcut: model.settings.shortcut)
+        let updater = Updater(feed: options.updateFeed)
         self.model = model
         self.overlay = overlay
         self.hotkeys = hotkeys
+        self.updater = updater
 
         overlay.onOpenSettings = { [weak self] in self?.openSettings() }
-        hotkeys.onDown = { [weak overlay] in overlay?.shortcutDown() }
+        hotkeys.onDown = { [weak overlay] heldFor in overlay?.shortcutDown(heldFor: heldFor) }
         hotkeys.onUp = { [weak overlay] in overlay?.shortcutUp() }
         hotkeys.onCancel = { [weak overlay] in overlay?.shortcutCancelled() }
         hotkeys.start()
@@ -52,14 +58,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         installMainMenu()
         installStatusItem()
 
+        // The menu says so whenever the shortcut is waiting for permission,
+        // and whenever there is a newer version.
+        hotkeys.$status
+            .sink { [weak self] status in
+                self?.permissionItem?.isHidden = status != .needsInputMonitoring
+            }
+            .store(in: &cancellables)
+        updater.$state
+            .sink { [weak self] state in
+                guard let item = self?.updateItem else { return }
+                switch state {
+                case .available(let offer):
+                    item.title = "Update to Blink \(offer.versionText)…"
+                    item.isHidden = false
+                case .installing:
+                    item.title = "Updating Blink…"
+                    item.isHidden = false
+                case .idle, .checking, .upToDate, .failed:
+                    item.isHidden = true
+                }
+            }
+            .store(in: &cancellables)
+
         if let output = options.smokeTestOutput {
-            SmokeTest.run(model: model, overlay: overlay, hotkeys: hotkeys, output: output)
+            SmokeTest.run(model: model, overlay: overlay, hotkeys: hotkeys, updater: updater, output: output)
             return
         }
+
+        // Before anything covers the screen: the default shortcut does
+        // nothing until macOS has been told Blink may see it.
+        let askedForAccess = explainShortcutPermission()
+        scheduleUpdateChecks()
 
         if !pendingFiles.isEmpty {
             overlay.addFiles(pendingFiles)
             pendingFiles = []
+        } else if askedForAccess {
+            // The system's own prompt is on its way; stay out from under it.
+            overlay.warmUp()
         } else if options.showOnLaunch || model.isFirstLaunch {
             // On first run there would otherwise be nothing to see but a
             // menu bar icon.
@@ -112,6 +149,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         let menu = NSMenu()
         let shortcut = model?.settings.shortcut.displayString ?? ""
+        permissionItem = menu.addItem("Let Blink See the Shortcut…") { [weak self] in
+            self?.hotkeys?.requestInputMonitoring()
+        }
+        permissionItem?.isHidden = true
+        updateItem = menu.addItem("Update Blink…") { [weak self] in self?.presentUpdate() }
+        updateItem?.isHidden = true
         toggleItem = menu.addItem("Show Blink (\(shortcut))") { [weak self] in self?.overlay?.toggle() }
         menu.addItem("Add Website, File or Widget…") { [weak self] in self?.overlay?.presentLauncher() }
         menu.addItem("Arrange Tiles") { [weak self] in
@@ -120,6 +163,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         menu.addItem(.separator())
         menu.addItem("Settings…") { [weak self] in self?.openSettings() }
+        menu.addItem("Check for Updates…") { [weak self] in self?.checkForUpdates() }
         menu.addItem(.separator())
         menu.addItem("Quit Blink") { NSApp.terminate(nil) }
         item.menu = menu
@@ -163,6 +207,138 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         NSApp.mainMenu = main
     }
 
+    // MARK: - The shortcut's permission
+
+    /// Says why Blink is about to ask for Input Monitoring, and offers a
+    /// shortcut that needs none. Returns true if the system prompt follows.
+    private func explainShortcutPermission() -> Bool {
+        guard let hotkeys, let model, hotkeys.status == .needsInputMonitoring else { return false }
+        let wanted = hotkeys.shortcut.displayString
+        let plain = Shortcut.withoutPermission.displayString
+
+        let alert = NSAlert()
+        alert.messageText = "Let Blink see \(wanted)"
+        alert.informativeText = "Blink appears while you hold \(wanted). macOS only shows that key to apps "
+            + "you have allowed under Input Monitoring.\n\n"
+            + "Blink looks for the shortcut and nothing else. It does not record what you type. "
+            + "If you would rather not allow it, Blink can use \(plain) instead, which needs no permission."
+        alert.addButton(withTitle: "Allow…")
+        alert.addButton(withTitle: "Use \(plain) Instead")
+        alert.addButton(withTitle: "Not Now")
+        NSApp.activate(ignoringOtherApps: true)
+        switch alert.runModal() {
+        case .alertFirstButtonReturn:
+            hotkeys.requestInputMonitoring()
+            return true
+        case .alertSecondButtonReturn:
+            model.updateSettings { $0.shortcut = .withoutPermission }
+            return false
+        default:
+            return false
+        }
+    }
+
+    // MARK: - Updates
+
+    /// Asks once a day, quietly. A newer version is announced once; after
+    /// that it waits in the menu.
+    private func scheduleUpdateChecks() {
+        guard let updater, updater.current != nil else { return }
+        // Not in the first seconds, when a login is busy enough already.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 8) { [weak self] in
+            onMainActor { self?.checkForUpdatesIfDue() }
+        }
+        updateTimer = Timer.scheduledTimer(withTimeInterval: 60 * 60, repeats: true) { [weak self] _ in
+            onMainActor { self?.checkForUpdatesIfDue() }
+        }
+    }
+
+    private func checkForUpdatesIfDue() {
+        guard let updater, model?.settings.checksForUpdates == true, updater.isDue else { return }
+        Task { @MainActor in
+            if case .available(let offer) = await updater.check(), updater.shouldAnnounce(offer) {
+                self.presentUpdate()
+            }
+        }
+    }
+
+    /// "Check for Updates…": always answers, whatever it finds.
+    private func checkForUpdates() {
+        guard let updater else { return }
+        overlay?.dismiss()
+        Task { @MainActor in
+            switch await updater.check() {
+            case .available:
+                self.presentUpdate()
+            case .upToDate:
+                self.inform("Blink is up to date", "You have \(updater.currentText), the newest version.")
+            case .failed(let reason):
+                self.inform("Blink could not check for updates", reason)
+            case .idle, .checking, .installing:
+                break
+            }
+        }
+    }
+
+    private func presentUpdate() {
+        guard let updater, case .available(let offer) = updater.state else { return }
+        overlay?.dismiss()
+        let installs = offer.archive != nil
+
+        let alert = NSAlert()
+        alert.messageText = "Blink \(offer.versionText) is available"
+        alert.informativeText = installs
+            ? "You have \(updater.currentText). Blink will download the new version, check it, and start again."
+            : "You have \(updater.currentText). This version has to be downloaded and put in place by hand."
+        alert.addButton(withTitle: installs ? "Install and Relaunch" : "Download")
+        alert.addButton(withTitle: "Later")
+        if offer.page != nil { alert.addButton(withTitle: "What’s New") }
+        NSApp.activate(ignoringOtherApps: true)
+        switch alert.runModal() {
+        case .alertFirstButtonReturn:
+            if installs {
+                install(offer)
+            } else {
+                openDownloadPage()
+            }
+        case .alertThirdButtonReturn:
+            if let page = offer.page { NSWorkspace.shared.open(page) }
+        default:
+            break
+        }
+    }
+
+    private func install(_ offer: UpdateOffer) {
+        guard let updater else { return }
+        model?.saveNow()
+        Task { @MainActor in
+            do {
+                try await updater.install(offer)
+            } catch {
+                let alert = NSAlert()
+                alert.messageText = "Blink could not update itself"
+                alert.informativeText = error.localizedDescription
+                    + "\n\nYou can download the new version and replace this one by hand."
+                alert.addButton(withTitle: "Download")
+                alert.addButton(withTitle: "OK")
+                NSApp.activate(ignoringOtherApps: true)
+                if alert.runModal() == .alertFirstButtonReturn { self.openDownloadPage() }
+            }
+        }
+    }
+
+    private func openDownloadPage() {
+        if let page = updater?.source.downloadPage { NSWorkspace.shared.open(page) }
+    }
+
+    private func inform(_ title: String, _ text: String) {
+        let alert = NSAlert()
+        alert.messageText = title
+        alert.informativeText = text
+        NSApp.activate(ignoringOtherApps: true)
+        alert.runModal()
+    }
+
     // MARK: - Settings
 
     private func openSettings() {
@@ -173,7 +349,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         if settingsWindow == nil {
             let controller = NSHostingController(
-                rootView: SettingsView(model: model, hotkeys: hotkeys, overlay: overlay)
+                rootView: SettingsView(
+                    model: model, hotkeys: hotkeys, overlay: overlay,
+                    checkForUpdates: { [weak self] in self?.checkForUpdates() }
+                )
             )
             let window = NSWindow(contentViewController: controller)
             window.title = "Blink Settings"

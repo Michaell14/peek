@@ -36,8 +36,8 @@ public struct Workspace: Codable, Hashable, Sendable {
         let welcome = """
         Welcome to Blink.
 
-        • Hold ⌥ and ` (the key above Tab) to peek. Let go to return to work.
-        • Tap them instead to keep this open and use it.
+        • Hold fn (bottom left of the keyboard) to peek. Let go to return to work.
+        • Tap it instead to keep this open and use it.
         • Press + to add websites, PDFs and widgets.
         • Press Edit to move and resize tiles.
 

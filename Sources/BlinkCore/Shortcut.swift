@@ -130,8 +130,19 @@ public struct Shortcut: Codable, Hashable, Sendable {
         )
     }
 
-    /// ⌥` — easy to hold with one hand and rarely claimed by other apps.
-    public static let `default` = Shortcut(keyCode: 50, modifiers: [ModifierKey(.option)])
+    /// fn on its own: one key, under the left hand, that types nothing.
+    /// macOS only shows it to apps that have been allowed Input Monitoring.
+    public static let `default` = Shortcut(keyCode: nil, modifiers: [ModifierKey(.function)])
+
+    /// ⌥` — for anyone who would rather not grant that. An ordinary
+    /// combination needs no permission, and few other apps claim this one.
+    public static let withoutPermission = Shortcut(keyCode: 50, modifiers: [ModifierKey(.option)])
+
+    /// True for fn by itself, which macOS may also use to show the emoji
+    /// picker, switch input source or start dictation.
+    public var isFunctionKeyAlone: Bool {
+        keyCode == nil && modifiers.count == 1 && modifiers[0].modifier == .function
+    }
 
     public var isValid: Bool {
         keyCode != nil || !modifiers.isEmpty

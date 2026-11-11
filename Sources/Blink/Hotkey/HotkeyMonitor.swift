@@ -25,15 +25,23 @@ final class HotkeyMonitor: ObservableObject {
     @Published private(set) var status: Status = .inactive
     @Published private(set) var shortcut: Shortcut
 
-    var onDown: (() -> Void)?
+    /// The shortcut went down. The argument is how long ago, in seconds: a
+    /// press on modifier keys alone is held back for a moment first.
+    var onDown: ((TimeInterval) -> Void)?
     var onUp: (() -> Void)?
     var onCancel: (() -> Void)?
+
+    /// How long a press on fn, or another modifier by itself, has to last
+    /// before it counts. Long enough for fn-then-arrow to get in first.
+    static let modifierDelay: TimeInterval = 0.15
 
     private var hotKeyRef: EventHotKeyRef?
     private var handlerRef: EventHandlerRef?
     private var eventTap: CFMachPort?
     private var tapSource: CFRunLoopSource?
     private var tracker: ShortcutTracker
+    private var gate = PressGate(delay: 0)
+    private var gateTimer: Timer?
     private var permissionTimer: Timer?
     private var isPaused = false
     private var hasPromptedForAccess = false
@@ -100,6 +108,9 @@ final class HotkeyMonitor: ObservableObject {
     private func uninstall() {
         permissionTimer?.invalidate()
         permissionTimer = nil
+        gateTimer?.invalidate()
+        gateTimer = nil
+        gate.reset()
         if let hotKeyRef {
             UnregisterEventHotKey(hotKeyRef)
             self.hotKeyRef = nil
@@ -160,6 +171,7 @@ final class HotkeyMonitor: ObservableObject {
         eventTap = tap
         tapSource = source
         tracker = ShortcutTracker(shortcut: shortcut)
+        gate = PressGate(delay: shortcut.keyCode == nil ? Self.modifierDelay : 0)
         status = .active
     }
 
@@ -178,10 +190,37 @@ final class HotkeyMonitor: ObservableObject {
 
     fileprivate func hotKeyChanged(pressed: Bool) {
         if pressed {
-            onDown?()
+            onDown?(0)
         } else {
             onUp?()
         }
+    }
+
+    private var uptime: TimeInterval { ProcessInfo.processInfo.systemUptime }
+
+    private func deliver(_ actions: [PressGate.Action]) {
+        for action in actions {
+            switch action {
+            case .down(let heldFor): onDown?(heldFor)
+            case .up: onUp?()
+            case .cancel: onCancel?()
+            }
+        }
+    }
+
+    /// Passes a held-back press on once it has lasted long enough.
+    private func armGate() {
+        gateTimer?.invalidate()
+        let timer = Timer(timeInterval: gate.delay, repeats: false) { [weak self] _ in
+            onMainActor {
+                guard let self else { return }
+                self.gateTimer = nil
+                self.deliver(self.gate.timerFired(at: self.uptime))
+            }
+        }
+        // Common modes, so it still fires while a menu is open.
+        RunLoop.main.add(timer, forMode: .common)
+        gateTimer = timer
     }
 
     fileprivate func tapEvent(type: CGEventType, keyCode: UInt16, flags: UInt64, isRepeat: Bool) {
@@ -201,10 +240,19 @@ final class HotkeyMonitor: ObservableObject {
             return
         }
         switch tracker.handle(input) {
-        case .pressed: onDown?()
-        case .released: onUp?()
-        case .cancelled: onCancel?()
-        case nil: break
+        case .pressed:
+            deliver(gate.pressed(at: uptime))
+            if gate.isPending { armGate() }
+        case .released:
+            gateTimer?.invalidate()
+            gateTimer = nil
+            deliver(gate.released(at: uptime))
+        case .cancelled:
+            gateTimer?.invalidate()
+            gateTimer = nil
+            deliver(gate.cancelled())
+        case nil:
+            break
         }
     }
 }

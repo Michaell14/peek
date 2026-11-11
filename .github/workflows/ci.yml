@@ -76,14 +76,15 @@ jobs:
         if: always()
         run: cat "$RUNNER_TEMP/smoke/smoke.json" 2>/dev/null || echo "no report was written"
 
+      # The same packaging a release uses, so a broken one shows up here first.
       - name: Package
-        run: ditto -c -k --keepParent build/Blink.app "$RUNNER_TEMP/Blink.zip"
+        run: Scripts/package.sh "$RUNNER_TEMP/dist"
 
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: Blink
           path: |
-            ${{ runner.temp }}/Blink.zip
+            ${{ runner.temp }}/dist
             ${{ runner.temp }}/smoke
           if-no-files-found: ignore

@@ -72,7 +72,12 @@ final class OverlayController: NSObject {
 
     // MARK: - Shortcut
 
-    func shortcutDown() { perform(machine.handle(.shortcutDown(at: now))) }
+    /// - Parameter elapsed: how long the shortcut had already been down when
+    ///   this was called, so a tap is still told apart from a hold.
+    func shortcutDown(heldFor elapsed: TimeInterval = 0) {
+        perform(machine.handle(.shortcutDown(at: now - max(elapsed, 0))))
+    }
+
     func shortcutUp() { perform(machine.handle(.shortcutUp(at: now))) }
     func shortcutCancelled() { perform(machine.handle(.shortcutCancelled)) }
 

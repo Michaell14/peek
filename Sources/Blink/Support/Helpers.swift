@@ -110,6 +110,12 @@ enum SystemSettings {
     }
 
     static func openInputMonitoring() { open("Privacy_ListenEvent") }
+
+    static func openKeyboard() {
+        if let url = URL(string: "x-apple.systempreferences:com.apple.Keyboard-Settings.extension") {
+            NSWorkspace.shared.open(url)
+        }
+    }
     static func openCalendars() { open("Privacy_Calendars") }
     static func openReminders() { open("Privacy_Reminders") }
 }
