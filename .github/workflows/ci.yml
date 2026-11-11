@@ -45,6 +45,14 @@ jobs:
         if: failure()
         run: grep -E "error:" "$RUNNER_TEMP/build.log" | sort -u | head -300 || true
 
+      # A delegate method whose signature is slightly off still compiles but
+      # is never called, so treat these warnings as failures.
+      - name: Check delegate methods are wired up
+        run: |
+          if grep -E "nearly matches|will not be used to satisfy" "$RUNNER_TEMP/build.log"; then
+            exit 1
+          fi
+
       - name: Unit tests
         run: swift test
 

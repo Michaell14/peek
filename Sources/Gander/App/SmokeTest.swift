@@ -15,22 +15,22 @@ enum SmokeTest {
             var failures: [String] = []
             var snapshots: [String: Any] = [:]
 
-            func pause(_ seconds: Double) async {
+            @MainActor func pause(_ seconds: Double) async {
                 try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
             }
 
-            func expect(_ step: String, _ checks: [(String, Bool)]) {
+            @MainActor func expect(_ step: String, _ checks: [(String, Bool)]) {
                 snapshots[step] = overlay.snapshot()
                 for (name, passed) in checks where !passed {
                     failures.append("\(step): \(name)")
                 }
             }
 
-            func flag(_ key: String) -> Bool {
+            @MainActor func flag(_ key: String) -> Bool {
                 overlay.snapshot()[key] as? Bool ?? false
             }
 
-            func tileFrames() -> [CGRect] {
+            @MainActor func tileFrames() -> [CGRect] {
                 let tiles = overlay.snapshot()["tiles"] as? [[String: Any]] ?? []
                 return tiles.compactMap { tile in
                     guard let frame = tile["frame"] as? [Double], frame.count == 4 else { return nil }
