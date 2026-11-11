@@ -323,7 +323,8 @@ enum SmokeTest {
                 expect("typing", [("keys typed into a page field arrive", typed == "go")])
                 snapshots["typed"] = typed
 
-                // Hovering a tile brings up its controls.
+                // Hovering a tile brings up its controls. Gander samples where
+                // the pointer is, so put the real pointer there.
                 // (The web tile is the last one on the board at this point.)
                 if let webFrame = tileFrames().last {
                     @MainActor func controls() -> [CGRect] {
@@ -333,13 +334,15 @@ enum SmokeTest {
                             return CGRect(x: frame[0], y: frame[1], width: frame[2], height: frame[3])
                         }
                     }
-                    let corner = CGPoint(x: 4, y: panelSize.height - 4)
+                    // Board coordinates and global display coordinates agree
+                    // when the overlay covers the main display.
+                    @MainActor func movePointer(to point: CGPoint) async {
+                        CGWarpMouseCursorPosition(point)
+                        await pause(0.5)
+                    }
 
-                    let before = overlay.hoverDiagnostics
-                    mouse(.mouseMoved, at: CGPoint(x: webFrame.midX, y: webFrame.midY))
-                    await pause(0.4)
+                    await movePointer(to: CGPoint(x: webFrame.midX, y: webFrame.midY))
                     let shown = controls()
-                    snapshots["hoverDiagnostics"] = ["before": before, "afterMove": overlay.hoverDiagnostics]
                     await capture("hover")
                     var reloadedByButton = false
                     if let bar = shown.first {
@@ -347,49 +350,28 @@ enum SmokeTest {
                         await click(at: CGPoint(x: bar.minX + 4 + 2.5 * 24, y: bar.midY))
                         reloadedByButton = await waitForPage()
                     }
-                    mouse(.mouseMoved, at: corner)
-                    await pause(0.4)
+                    // Does pointer movement reach the page itself (for its own
+                    // hover effects)? Recorded rather than required: it needs
+                    // the pointer to really travel, which only some
+                    // environments let an app do.
+                    if CGPreflightPostEventAccess() {
+                        for step in 1...10 {
+                            let point = CGPoint(x: webFrame.minX + 20 + CGFloat(step) * 12, y: webFrame.midY + CGFloat(step) * 6)
+                            CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: point, mouseButton: .left)?
+                                .post(tap: .cghidEventTap)
+                            await pause(0.05)
+                        }
+                        await pause(0.4)
+                        snapshots["pointerMovesSeenByPage"] = await js("document.documentElement.dataset.moves || 0")
+                    }
+
+                    // Park the pointer in the margin, off every tile.
+                    await movePointer(to: CGPoint(x: 4, y: panelSize.height - 4))
                     expect("hover", [
                         ("hovering a web tile shows its controls", shown.count == 1 && webFrame.contains(shown[0])),
                         ("the reload button reloads the page", reloadedByButton),
                         ("moving away hides the controls again", controls().isEmpty),
                     ])
-
-                    // The same with the real pointer, where the environment
-                    // lets an app move it. Recorded, not required: when it
-                    // does not work there is no telling whether the pointer
-                    // or the app is at fault.
-                    if CGPreflightPostEventAccess() {
-                        @MainActor func glide(to target: CGPoint) async {
-                            let start = NSEvent.mouseLocation
-                            let screenHeight = NSScreen.screens.first?.frame.height ?? panelSize.height
-                            let from = CGPoint(x: start.x, y: screenHeight - start.y)
-                            for step in 1...8 {
-                                let t = CGFloat(step) / 8
-                                let point = CGPoint(x: from.x + (target.x - from.x) * t, y: from.y + (target.y - from.y) * t)
-                                CGEvent(mouseEventSource: nil, mouseType: .mouseMoved, mouseCursorPosition: point, mouseButton: .left)?
-                                    .post(tap: .cghidEventTap)
-                                await pause(0.04)
-                            }
-                            await pause(0.5)
-                        }
-                        let beforeGlide = overlay.hoverDiagnostics
-                        await glide(to: CGPoint(x: webFrame.midX, y: webFrame.midY))
-                        let pointer = NSEvent.mouseLocation
-                        let afterGlide = overlay.hoverDiagnostics
-                        let shownByEvents = !controls().isEmpty
-                        // Ask the window where the pointer is, events aside.
-                        overlay.refreshHover()
-                        snapshots["realPointer"] = [
-                            "controlsShown": shownByEvents,
-                            "controlsShownAfterAsking": !controls().isEmpty,
-                            "pointer": [Double(pointer.x), Double(pointer.y)],
-                            "before": beforeGlide,
-                            "afterGlide": afterGlide,
-                            "afterAsking": overlay.hoverDiagnostics,
-                        ] as [String: Any]
-                        await glide(to: corner)
-                    }
                 }
             } else {
                 // No fixture server: just give the default page time to load.

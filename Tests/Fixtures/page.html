@@ -28,6 +28,12 @@
   <img id="blocked" alt="">
   <script>
     document.getElementById('blocked').src = 'http://localhost:' + location.port + '/pixel.gif';
+
+    // Lets the self-check see whether pointer movement reaches the page.
+    document.addEventListener('mousemove', function () {
+      var root = document.documentElement;
+      root.dataset.moves = String(Number(root.dataset.moves || 0) + 1);
+    });
   </script>
 </body>
 </html>

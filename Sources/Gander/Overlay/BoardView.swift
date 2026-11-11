@@ -185,58 +185,21 @@ final class BoardView: FlippedView {
 
     // MARK: - Hover
 
-    /// Works out which tile the pointer is over. Hover is derived from the
-    /// pointer's position each time it moves, rather than from enter and exit
-    /// events, which are easy to miss when the overlay appears underneath a
-    /// pointer that is not moving.
-    ///
-    /// - Parameter windowPoint: where the pointer is, or nil to ask the window.
-    func updateHover(at windowPoint: CGPoint? = nil) {
+    /// Works out which tile the pointer is over, from where the pointer is
+    /// rather than from enter and exit events. The overlay calls this
+    /// repeatedly while it is open: its window belongs to an app that is
+    /// never frontmost, and pointer events do not reliably reach such a
+    /// window.
+    func updateHover() {
         var hovered: UUID?
-        hoverDiagnostics["updates"] = (hoverDiagnostics["updates"] as? Int ?? 0) + 1
-        hoverDiagnostics["explicitPoint"] = windowPoint != nil
-        hoverDiagnostics["interactive"] = isInteractive
-        hoverDiagnostics["editing"] = isEditing
-        if isInteractive, !isEditing, let location = windowPoint ?? window?.mouseLocationOutsideOfEventStream {
-            let point = convert(location, from: nil)
-            hoverDiagnostics["point"] = [Double(point.x), Double(point.y)]
+        if isInteractive, !isEditing, let window {
+            let point = convert(window.mouseLocationOutsideOfEventStream, from: nil)
             // Topmost first.
             hovered = board.tiles.reversed().first { tileViews[$0.id]?.frame.contains(point) == true }?.id
         }
-        hoverDiagnostics["hovered"] = hovered?.uuidString ?? "none"
         for (id, view) in tileViews {
             view.isHovering = id == hovered
         }
-        hoverDiagnostics["showing"] = tileViews.values.filter(\.isShowingControls).count
-    }
-
-    /// What the last hover update saw. Read by the self-check.
-    private(set) var hoverDiagnostics: [String: Any] = [:]
-
-    override func updateTrackingAreas() {
-        super.updateTrackingAreas()
-        for area in trackingAreas {
-            removeTrackingArea(area)
-        }
-        // .activeAlways: the overlay belongs to an app that is never
-        // frontmost, and would not be sent pointer movement otherwise.
-        addTrackingArea(NSTrackingArea(
-            rect: .zero,
-            options: [.mouseMoved, .mouseEnteredAndExited, .activeAlways, .inVisibleRect],
-            owner: self
-        ))
-    }
-
-    override func mouseMoved(with event: NSEvent) {
-        updateHover(at: event.locationInWindow)
-    }
-
-    override func mouseEntered(with event: NSEvent) {
-        updateHover(at: event.locationInWindow)
-    }
-
-    override func mouseExited(with event: NSEvent) {
-        updateHover(at: event.locationInWindow)
     }
 
     // MARK: - Layout

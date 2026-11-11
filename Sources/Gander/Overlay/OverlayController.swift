@@ -24,7 +24,7 @@ final class OverlayController: NSObject {
     private var toolbarHost: NSView?
     private var cancellables: Set<AnyCancellable> = []
     private var keyMonitor: Any?
-    private var pointerMonitor: Any?
+    private var hoverTimer: Timer?
     /// Bumped on every show and hide so a finishing fade-out can tell whether
     /// the overlay has been reopened in the meantime.
     private var visibilityGeneration = 0
@@ -65,14 +65,6 @@ final class OverlayController: NSObject {
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self else { return event }
             return self.handleKeyDown(event) ? nil : event
-        }
-        // Pointer movement can be delivered to whichever view has focus (a
-        // web page, say) rather than to the board, so watch for it here too.
-        pointerMonitor = NSEvent.addLocalMonitorForEvents(matching: .mouseMoved) { [weak self] event in
-            if let self, event.window === self.panel {
-                self.activeBoardView?.updateHover(at: event.locationInWindow)
-            }
-            return event
         }
     }
 
@@ -162,10 +154,26 @@ final class OverlayController: NSObject {
         isInteractive = interactive
         activeBoardView?.isInteractive = interactive
         toolbarHost?.isHidden = !interactive
+        hoverTimer?.invalidate()
+        hoverTimer = nil
         if interactive {
             // Takes keyboard focus without activating the app.
             panel.makeKeyAndOrderFront(nil)
+            trackPointer()
         }
+    }
+
+    /// Keeps the tile under the pointer showing its controls. The position is
+    /// sampled rather than taken from mouse-moved events, which the system
+    /// does not reliably send to a window whose app is in the background.
+    private func trackPointer() {
+        let timer = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in
+            onMainActor { self?.activeBoardView?.updateHover() }
+        }
+        timer.tolerance = 0.03
+        // .common, so it keeps running while a menu or a drag is tracking.
+        RunLoop.main.add(timer, forMode: .common)
+        hoverTimer = timer
     }
 
     private func prepare(for screen: NSScreen) {
@@ -391,12 +399,6 @@ final class OverlayController: NSObject {
     // MARK: - Self-check support
 
     var ruleListCount: Int { web.ruleLists.count }
-
-    var hoverDiagnostics: [String: Any] { activeBoardView?.hoverDiagnostics ?? [:] }
-
-    func refreshHover() {
-        activeBoardView?.updateHover()
-    }
 
     var firstWebTile: WebTileContentView? {
         activeBoardView?.contentViews.lazy.compactMap { $0 as? WebTileContentView }.first
