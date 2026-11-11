@@ -31,4 +31,6 @@ done
 curl -sf "http://127.0.0.1:$PORT/page.html" -o /dev/null
 curl -sf "http://localhost:$PORT/pixel.gif" -o /dev/null
 
-GANDER_SMOKE_URL="http://127.0.0.1:$PORT/page.html" "$APP" --smoke-test "$OUT"
+GANDER_SMOKE_URL="http://127.0.0.1:$PORT/page.html" \
+GANDER_SMOKE_FIXTURES="$PWD/Tests/Fixtures" \
+    "$APP" --smoke-test "$OUT"

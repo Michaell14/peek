@@ -34,6 +34,23 @@ final class EventKitService: ObservableObject {
 
     private let store = EKEventStore()
     private var observer: NSObjectProtocol?
+    /// Stand-in data, used instead of the real stores once set.
+    private var sample: SampleData?
+
+    /// Calendar and reminder data that does not come from the user's
+    /// accounts. The self-check uses it to exercise the widgets, since an
+    /// automated run cannot be granted access to the real thing.
+    struct SampleData {
+        var events: [EventItem]
+        var reminders: [ReminderItem]
+    }
+
+    func useSampleData(_ data: SampleData) {
+        sample = data
+        canReadEvents = true
+        canReadReminders = true
+        revision += 1
+    }
 
     private init() {
         refreshAuthorization()
@@ -74,6 +91,7 @@ final class EventKitService: ObservableObject {
     }
 
     func refreshAuthorization() {
+        guard sample == nil else { return }
         canReadEvents = EKEventStore.authorizationStatus(for: .event) == .fullAccess
         canReadReminders = EKEventStore.authorizationStatus(for: .reminder) == .fullAccess
     }
@@ -81,6 +99,9 @@ final class EventKitService: ObservableObject {
     // MARK: - Calendar
 
     func events(from start: Date, to end: Date) -> [EventItem] {
+        if let sample {
+            return sample.events.filter { $0.end > start && $0.start < end }.sorted { $0.start < $1.start }
+        }
         guard canReadEvents else { return [] }
         let predicate = store.predicateForEvents(withStart: start, end: end, calendars: nil)
         return store.events(matching: predicate)
@@ -106,6 +127,10 @@ final class EventKitService: ObservableObject {
     // MARK: - Reminders
 
     func fetchReminders(completion: @escaping @MainActor @Sendable ([ReminderItem]) -> Void) {
+        if let sample {
+            completion(sample.reminders)
+            return
+        }
         guard canReadReminders else {
             completion([])
             return
@@ -135,12 +160,25 @@ final class EventKitService: ObservableObject {
     }
 
     func complete(_ id: String) {
+        if sample != nil {
+            sample?.reminders.removeAll { $0.id == id }
+            revision += 1
+            return
+        }
         guard let reminder = store.calendarItem(withIdentifier: id) as? EKReminder else { return }
         reminder.isCompleted = true
         save(reminder)
     }
 
     func addReminder(title: String, dueToday: Bool) {
+        if sample != nil {
+            let due = dueToday ? Calendar.current.startOfDay(for: Date()) : nil
+            sample?.reminders.append(ReminderItem(
+                id: UUID().uuidString, title: title, due: due, hasTime: false, listName: "Reminders", color: .blue
+            ))
+            revision += 1
+            return
+        }
         let reminder = EKReminder(eventStore: store)
         reminder.title = title
         reminder.calendar = store.defaultCalendarForNewReminders()

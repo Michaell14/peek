@@ -1,5 +1,6 @@
 import AppKit
 import GanderCore
+import SwiftUI
 
 /// An end-to-end self-check: drives the real overlay through its main states
 /// and writes what it saw to `smoke.json`, with screenshots alongside.
@@ -12,6 +13,47 @@ import GanderCore
 @MainActor
 enum SmokeTest {
     private static let pageTitle = "Gander self-check page"
+
+    /// A plausible day: overlapping meetings, an all-day event, something
+    /// tomorrow, and reminders in every state.
+    private static func sampleData() -> EventKitService.SampleData {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: Date())
+        func time(_ day: Int, _ hour: Int, _ minute: Int = 0) -> Date {
+            let base = calendar.date(byAdding: .day, value: day, to: today) ?? today
+            return calendar.date(bySettingHour: hour, minute: minute, second: 0, of: base) ?? base
+        }
+        func event(_ title: String, _ start: Date, _ end: Date, _ color: NSColor, allDay: Bool = false, location: String? = nil) -> EventItem {
+            EventItem(
+                id: title, title: title, start: start, end: end, isAllDay: allDay,
+                color: Color(nsColor: color), location: location
+            )
+        }
+        func reminder(_ title: String, _ due: Date?, hasTime: Bool = false, list: String = "Reminders", _ color: NSColor = .systemOrange) -> ReminderItem {
+            ReminderItem(id: title, title: title, due: due, hasTime: hasTime, listName: list, color: Color(nsColor: color))
+        }
+        let hour = calendar.component(.hour, from: Date())
+        // Keep the busy part of the day near "now", where the day view opens.
+        let anchor = min(max(hour, 1), 19)
+        return EventKitService.SampleData(
+            events: [
+                event("Release day", today, time(1, 0), .systemGreen, allDay: true),
+                event("Design review", time(0, anchor, 0), time(0, anchor + 1, 0), .systemBlue, location: "Room 4"),
+                event("1:1 with Sam", time(0, anchor, 30), time(0, anchor + 1, 30), .systemPurple),
+                event("Standup", time(0, anchor, 30), time(0, anchor, 45), .systemOrange),
+                event("Lunch", time(0, anchor + 2, 0), time(0, anchor + 2, 45), .systemTeal),
+                event("Planning", time(1, 11, 0), time(1, 12, 0), .systemBlue),
+                event("Dentist", time(3, 15, 30), time(3, 16, 0), .systemRed, location: "12 High Street"),
+            ],
+            reminders: [
+                reminder("Send the invoice", time(-1, 0)),
+                reminder("Water the plants", today),
+                reminder("Call the dentist", time(0, 23, 30), hasTime: true),
+                reminder("Renew passport", time(6, 0), list: "Admin", .systemBlue),
+                reminder("Read that book", nil, list: "Someday", .systemPurple),
+            ]
+        )
+    }
 
     static func run(model: AppModel, overlay: OverlayController, hotkeys: HotkeyMonitor, output: URL) {
         let pageURL = ProcessInfo.processInfo.environment["GANDER_SMOKE_URL"].flatMap(URL.init(string:))
@@ -429,6 +471,76 @@ enum SmokeTest {
             overlay.shortcutUp()
             await pause(0.6)
             expect("tapped-again", [("tapping again closes it", !flag("visible") && !flag("panelOnScreen"))])
+
+            // 8. Local files, opened the way Finder's "Open With" hands them over.
+            if let fixtures = ProcessInfo.processInfo.environment["GANDER_SMOKE_FIXTURES"] {
+                let folder = URL(fileURLWithPath: fixtures, isDirectory: true)
+                model.update { workspace in
+                    workspace.updateBoard(workspace.sharedBoardID) { $0.tiles = [] }
+                }
+                overlay.addFiles([
+                    folder.appendingPathComponent("sample.pdf"),
+                    folder.appendingPathComponent("page.html"),
+                    folder.appendingPathComponent("notes.txt"),  // not a kind Gander shows
+                ])
+                await pause(2.0)
+                expect("files", [
+                    ("adding files opens the overlay", flag("visible") && flag("interactive")),
+                    ("the PDF and the HTML file each get a tile", tileKinds() == ["file", "file"]),
+                ])
+                await capture("files")
+            }
+
+            // 9. Calendar and Reminders, fed with stand-in data.
+            EventKitService.shared.useSampleData(sampleData())
+            model.update { workspace in
+                workspace.updateBoard(workspace.sharedBoardID) { board in
+                    board.mode = .flow
+                    board.tiles = [
+                        Tile(content: .widget(.calendar(CalendarConfig(mode: .day)))),
+                        Tile(content: .widget(.calendar(CalendarConfig(mode: .agenda)))),
+                        Tile(content: .widget(.reminders(RemindersConfig(filter: .today)))),
+                        Tile(content: .widget(.reminders(RemindersConfig(filter: .all)))),
+                    ]
+                }
+            }
+            overlay.showPinned()
+            await pause(1.5)
+            expect("widgets", [("the four widgets are laid out", tileKinds().count == 4 && flag("visible"))])
+            await capture("widgets")
+
+            // 10. A layout per display starts as a copy and then goes its own way.
+            let sharedIDs = Set(tileIDs())
+            overlay.dismiss()
+            await pause(0.5)
+            model.updateSettings { $0.syncAcrossDisplays = false }
+            overlay.showPinned()
+            await pause(1.0)
+            let ownIDs = Set(tileIDs())
+            overlay.addTile(.widget(.notes(NotesConfig(text: "Only on this display"))))
+            await pause(0.5)
+            let ownCount = tileIDs().count
+            overlay.dismiss()
+            await pause(0.5)
+            model.updateSettings { $0.syncAcrossDisplays = true }
+            overlay.showPinned()
+            await pause(1.0)
+            expect("per-display", [
+                ("a display's own layout starts with the same tiles", ownIDs.count == sharedIDs.count),
+                ("but as separate copies", ownIDs.isDisjoint(with: sharedIDs)),
+                ("changes to it stay on that display", ownCount == sharedIDs.count + 1 && Set(tileIDs()) == sharedIDs),
+            ])
+            overlay.dismiss()
+            await pause(0.5)
+
+            // 11. The settings window.
+            overlay.onOpenSettings?()
+            await pause(1.5)
+            expect("settings", [
+                ("the settings window opens", NSApp.windows.contains { $0.title == "Gander Settings" && $0.isVisible }),
+                ("the overlay is out of its way", !flag("visible")),
+            ])
+            await capture("settings")
 
             let report: [String: Any] = [
                 "ok": failures.isEmpty,
