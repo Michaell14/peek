@@ -62,7 +62,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
         tapThreshold = 0.3
         syncAcrossDisplays = true
         displayTarget = DisplayTarget()
-        backdropOpacity = 0.5
+        backdropOpacity = 0.32
         backdropBlur = true
         tileCornerRadius = 18
         tileGap = 14

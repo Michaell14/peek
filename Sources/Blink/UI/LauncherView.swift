@@ -173,7 +173,7 @@ struct LauncherView: View {
                     }
                     .padding(8)
                 }
-                .scrollIndicators(.hidden)
+                .scrollIndicators(.never)
                 .onChange(of: model.selection) { _, selection in
                     if items.indices.contains(selection) {
                         proxy.scrollTo(items[selection].id)

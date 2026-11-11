@@ -58,7 +58,7 @@ struct ClockWidgetView: View {
                 }
                 .padding(.top, 4)
             }
-            .scrollIndicators(.hidden)
+            .scrollIndicators(.never)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }

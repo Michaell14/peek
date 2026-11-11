@@ -64,17 +64,12 @@ struct CalendarWidgetView: View {
             Text(today.formatted(.dateTime.day()))
                 .font(.system(size: 30, weight: .light, design: .rounded))
                 .monospacedDigit()
-            VStack(alignment: .leading, spacing: 0) {
-                Text(today.formatted(.dateTime.weekday(.wide)).uppercased())
-                    .font(.system(size: 10, weight: .bold))
-                    .tracking(0.6)
-                    .foregroundStyle(Color.red.opacity(0.95))
-                Text(today.formatted(.dateTime.month(.wide)))
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
+            // "WEDNESDAY / November" where there is room, "WED / Nov" where
+            // there is not.
+            ViewThatFits(in: .horizontal) {
+                dateLabel(weekday: .wide, month: .wide)
+                dateLabel(weekday: .abbreviated, month: .abbreviated)
             }
-            .lineLimit(1)
-            .layoutPriority(-1)
             Spacer(minLength: 4)
             PillPicker(
                 options: [(CalendarConfig.Mode.day, "Day"), (CalendarConfig.Mode.agenda, "7 Days")],
@@ -85,6 +80,23 @@ struct CalendarWidgetView: View {
         .padding(.horizontal, 14)
         .padding(.top, 10)
         .padding(.bottom, 8)
+    }
+
+    private func dateLabel(
+        weekday: Date.FormatStyle.Symbol.Weekday,
+        month: Date.FormatStyle.Symbol.Month
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(today.formatted(.dateTime.weekday(weekday)).uppercased())
+                .font(.system(size: 10, weight: .bold))
+                .tracking(0.6)
+                .foregroundStyle(Color.red.opacity(0.95))
+            Text(today.formatted(.dateTime.month(month)))
+                .font(.system(size: 12))
+                .foregroundStyle(.secondary)
+        }
+        .lineLimit(1)
+        .fixedSize()
     }
 
     private func reload() {
@@ -146,7 +158,7 @@ private struct DayTimelineView: View {
                     .frame(height: hourHeight * 24)
                     .padding(.top, 8)
                 }
-                .scrollIndicators(.hidden)
+                .scrollIndicators(.never)
                 .onAppear {
                     let hour = Calendar.current.component(.hour, from: Date())
                     proxy.scrollTo(max(hour - 1, 0), anchor: .top)
@@ -298,7 +310,7 @@ private struct AgendaView: View {
                 }
                 .padding(.bottom, 10)
             }
-            .scrollIndicators(.hidden)
+            .scrollIndicators(.never)
         }
     }
 

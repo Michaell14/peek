@@ -91,7 +91,7 @@ struct RemindersWidgetView: View {
                     }
                     .padding(.bottom, 6)
                 }
-                .scrollIndicators(.hidden)
+                .scrollIndicators(.never)
             }
 
             Rectangle()

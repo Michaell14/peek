@@ -27,7 +27,9 @@ final class OverlayRootView: FlippedView {
     init() {
         super.init(frame: .zero)
 
-        blur.material = .fullScreenUI
+        // Smoked glass rather than a blackout: what is behind stays faintly
+        // visible, so the overlay reads as a layer over your work.
+        blur.material = .hudWindow
         blur.blendingMode = .behindWindow
         blur.state = .active
         addSubview(blur)
