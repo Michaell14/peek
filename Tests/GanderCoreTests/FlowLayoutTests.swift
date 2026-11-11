@@ -85,6 +85,45 @@ final class FlowLayoutTests: XCTestCase {
         }
     }
 
+    func testReadingAnArrangementBackKeepsStacksTogether() {
+        let clock = item(280, 160), notes = item(300, 240), web = item(460, nil)
+        let frames = FlowLayout.layout([clock, notes, web], in: canvas, options: options)
+        let derived = FlowLayout.items(
+            from: [web, notes, clock].map { ($0.id, frames[$0.id]!) },  // any input order
+            canvasHeight: canvas.height, options: options
+        )
+        XCTAssertEqual(derived.map(\.id), [clock.id, notes.id, web.id])
+        XCTAssertNil(derived[2].height, "a tall tile on its own fills its column")
+        XCTAssertEqual(FlowLayout.columns(for: derived, availableHeight: canvas.height, options: options).map(\.count), [2, 1])
+        XCTAssertEqual(FlowLayout.layout(derived, in: canvas, options: options), frames)
+    }
+
+    /// Flow -> freeform -> flow must not move anything.
+    func testRoundTripThroughPositionsIsStable() {
+        var generator = SeededGenerator(seed: 2026)
+        for _ in 0..<300 {
+            let count = Int.random(in: 1...8, using: &generator)
+            let items = (0..<count).map { _ in
+                item(Double.random(in: 120...520, using: &generator).rounded(),
+                     Bool.random(using: &generator) ? nil : Double.random(in: 60...700, using: &generator).rounded())
+            }
+            let frames = FlowLayout.layout(items, in: canvas, options: options)
+            let derived = FlowLayout.items(
+                from: items.map { ($0.id, frames[$0.id]!) },
+                canvasHeight: canvas.height, options: options
+            )
+            let again = FlowLayout.layout(derived, in: canvas, options: options)
+            XCTAssertEqual(again.count, frames.count)
+            for (id, before) in frames {
+                let after = again[id]!
+                XCTAssertEqual(after.x, before.x, accuracy: 1.5, "x of \(before) became \(after)")
+                XCTAssertEqual(after.y, before.y, accuracy: 1.5, "y of \(before) became \(after)")
+                XCTAssertEqual(after.width, before.width, accuracy: 1.5)
+                XCTAssertEqual(after.height, before.height, accuracy: 1.5)
+            }
+        }
+    }
+
     func testInsertionIndexBetweenColumns() {
         let a = item(300, nil), b = item(300, nil), moving = item(300, nil)
         let items = [a, b, moving]

@@ -426,6 +426,11 @@ final class WebTileContentView: TileContentView {
         }
     }
 
+    /// Sends keyboard input to the page.
+    func focusPage() {
+        window?.makeFirstResponder(webView)
+    }
+
     /// Runs a script next to Gander's own and returns its result as text.
     /// Used by the self-check to look inside the page.
     func evaluate(_ script: String) async -> String {

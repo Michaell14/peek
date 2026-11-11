@@ -372,7 +372,6 @@ final class OverlayController: NSObject {
         actions.setMode = { [weak self] mode in self?.setLayoutMode(mode) }
         actions.stopPicking = { [weak self] in self?.activeBoardView?.stopPicking() }
         actions.openSettings = { [weak self] in self?.onOpenSettings?() }
-        actions.close = { [weak self] in self?.dismiss() }
 
         let host = NSHostingView(rootView: ToolbarView(state: state, actions: actions))
         host.isHidden = true
@@ -405,6 +404,7 @@ final class OverlayController: NSObject {
                 case .widget(let widget): kind = "widget:" + widget.displayName.lowercased()
                 }
                 tiles.append([
+                    "id": tile.id.uuidString,
                     "kind": kind,
                     "frame": [frame.minX, frame.minY, frame.width, frame.height].map { Double($0) },
                 ])
@@ -419,6 +419,7 @@ final class OverlayController: NSObject {
             "panelAlpha": Double(panel.alphaValue),
             "panelFrame": [panel.frame.minX, panel.frame.minY, panel.frame.width, panel.frame.height].map { Double($0) },
             "panelLevel": panel.level.rawValue,
+            "windowNumber": panel.windowNumber,
             "mode": activeBoardView?.board.mode.rawValue ?? "",
             "launcherOpen": root.isShowingLauncher,
             "tiles": tiles,

@@ -178,8 +178,10 @@ final class BoardView: FlippedView {
 
     /// The area tiles may occupy, in this view's coordinates.
     private var canvasFrame: CGRect {
-        let padding = CGFloat(settings.canvasPadding)
-        let top = topInset + 6
+        // Whole points throughout, so positions survive being saved and
+        // laid out again without drifting.
+        let padding = CGFloat(settings.canvasPadding.rounded())
+        let top = (topInset + 6).rounded()
         return CGRect(
             x: padding,
             y: top,
@@ -189,11 +191,11 @@ final class BoardView: FlippedView {
     }
 
     private var flowOptions: FlowLayout.Options {
-        FlowLayout.Options(gap: settings.tileGap, minWidth: 180, minHeight: 90)
+        FlowLayout.Options(gap: settings.tileGap.rounded(), minWidth: 180, minHeight: 90)
     }
 
     private var snapOptions: SnapOptions {
-        SnapOptions(isEnabled: settings.snapToGuides, threshold: 8, gap: settings.tileGap)
+        SnapOptions(isEnabled: settings.snapToGuides, threshold: 8, gap: settings.tileGap.rounded())
     }
 
     private var savedFlowItems: [FlowLayout.Item] {
@@ -273,6 +275,14 @@ final class BoardView: FlippedView {
         let size = LayoutSize(canvas.size)
         let current = canvasFrames()
 
+        // Would the tiles' saved flow sizes put them where they are now?
+        let saved = FlowLayout.layout(savedFlowItems, in: size, options: flowOptions)
+        let isUnchangedSinceFlow = board.tiles.allSatisfy { tile in
+            guard let now = current[tile.id], let then = saved[tile.id] else { return false }
+            return abs(now.x - then.x) <= 1.5 && abs(now.y - then.y) <= 1.5
+                && abs(now.width - then.width) <= 1.5 && abs(now.height - then.height) <= 1.5
+        }
+
         context.model.update { workspace in
             workspace.updateBoard(boardID) { board in
                 switch mode {
@@ -283,16 +293,24 @@ final class BoardView: FlippedView {
                         }
                     }
                 case .flow:
-                    // Read the canvas left to right, then top to bottom.
-                    board.tiles.sort { a, b in
-                        let ra = current[a.id] ?? .zero
-                        let rb = current[b.id] ?? .zero
-                        return (ra.x, ra.y) < (rb.x, rb.y)
+                    // Nothing was rearranged while in freeform: the flow
+                    // settings from before still describe the board exactly.
+                    if isUnchangedSinceFlow { break }
+                    // Otherwise read columns, order and sizes off the canvas.
+                    let items = FlowLayout.items(
+                        from: board.tiles.compactMap { tile in current[tile.id].map { (tile.id, $0) } },
+                        canvasHeight: size.height,
+                        options: flowOptions
+                    )
+                    var byID: [UUID: Tile] = [:]
+                    for tile in board.tiles {
+                        byID[tile.id] = tile
                     }
-                    for index in board.tiles.indices {
-                        guard let rect = current[board.tiles[index].id] else { continue }
-                        board.tiles[index].flowWidth = rect.width
-                        board.tiles[index].flowHeight = rect.height >= size.height * 0.7 ? nil : rect.height
+                    board.tiles = items.compactMap { item in
+                        guard var tile = byID[item.id] else { return nil }
+                        tile.flowWidth = item.width
+                        tile.flowHeight = item.height
+                        return tile
                     }
                 }
                 board.mode = mode
@@ -309,7 +327,7 @@ final class BoardView: FlippedView {
             height: min(sizing.height ?? size.height * 0.8, size.height)
         )
         let existing = Array(canvasFrames().values)
-        return FreeformLayout.placeNew(size: wanted, in: size, existing: existing, gap: settings.tileGap)
+        return FreeformLayout.placeNew(size: wanted, in: size, existing: existing, gap: settings.tileGap.rounded())
             .normalized(in: size)
     }
 

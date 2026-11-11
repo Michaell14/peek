@@ -51,7 +51,6 @@ public struct LayoutRect: Codable, Hashable, Sendable {
     public var midY: Double { y + height / 2 }
     public var size: LayoutSize { LayoutSize(width: width, height: height) }
     public var origin: LayoutPoint { LayoutPoint(x: x, y: y) }
-    public var area: Double { max(0, width) * max(0, height) }
 
     public func contains(_ point: LayoutPoint) -> Bool {
         point.x >= minX && point.x < maxX && point.y >= minY && point.y < maxY
@@ -63,10 +62,6 @@ public struct LayoutRect: Codable, Hashable, Sendable {
 
     public func insetBy(dx: Double, dy: Double) -> LayoutRect {
         LayoutRect(x: x + dx, y: y + dy, width: width - 2 * dx, height: height - 2 * dy)
-    }
-
-    public func intersects(_ other: LayoutRect) -> Bool {
-        minX < other.maxX && other.minX < maxX && minY < other.maxY && other.minY < maxY
     }
 
     /// Area shared with `other`; zero when the two do not overlap.

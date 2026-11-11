@@ -19,7 +19,9 @@ public enum FlowLayout {
 
     public struct Options: Hashable, Sendable {
         public var gap: Double
+        /// The narrowest a tile may be made by resizing.
         public var minWidth: Double
+        /// The shortest a stacked tile is ever drawn.
         public var minHeight: Double
 
         public init(gap: Double = 12, minWidth: Double = 160, minHeight: Double = 80) {
@@ -60,8 +62,12 @@ public enum FlowLayout {
         guard !items.isEmpty, canvas.width > 0, canvas.height > 0 else { return [:] }
 
         let columns = columns(for: items, availableHeight: canvas.height, options: options)
+        // Widths are taken as given. `minWidth` limits what a person can drag
+        // a tile down to; it must not re-inflate columns that were squeezed
+        // to fit, or reading a layout back and laying it out again would not
+        // land in the same place.
         var widths = columns.map { column in
-            max(options.minWidth, column.map(\.width).max() ?? options.minWidth)
+            max(1, column.map(\.width).max() ?? 1)
         }
 
         let gaps = options.gap * Double(columns.count - 1)
@@ -94,6 +100,51 @@ public enum FlowLayout {
             x += width + options.gap
         }
         return frames
+    }
+
+    /// Reads a flow arrangement back out of tile positions: which tiles share
+    /// a column, in what order, and how big each wants to be. Laying the
+    /// result out again reproduces the positions it was read from, which is
+    /// what lets a board switch to freeform and back without reshuffling.
+    public static func items(
+        from frames: [(id: UUID, rect: LayoutRect)],
+        canvasHeight: Double,
+        options: Options = Options()
+    ) -> [Item] {
+        // Tiles that overlap horizontally by at least half belong together.
+        var columns: [[(id: UUID, rect: LayoutRect)]] = []
+        for frame in frames.sorted(by: { ($0.rect.x, $0.rect.y) < ($1.rect.x, $1.rect.y) }) {
+            if let anchor = columns.last?.first?.rect {
+                let shared = min(anchor.maxX, frame.rect.maxX) - max(anchor.minX, frame.rect.minX)
+                if shared >= 0.5 * min(anchor.width, frame.rect.width) {
+                    columns[columns.count - 1].append(frame)
+                    continue
+                }
+            }
+            columns.append([frame])
+        }
+
+        var items: [Item] = []
+        for column in columns {
+            let stack = column.sorted { $0.rect.y < $1.rect.y }
+            var used = 0.0
+            for (index, tile) in stack.enumerated() {
+                var height: Double? = max(tile.rect.height, options.minHeight)
+                if stack.count == 1 {
+                    // A tall tile on its own was filling its column.
+                    if tile.rect.height >= canvasHeight * 0.7 { height = nil }
+                } else if index == stack.count - 1 {
+                    // The last tile of a stack is stretched to the bottom, so
+                    // its drawn height says nothing about the height it
+                    // asked for. Any height that fits keeps the stack whole.
+                    let room = canvasHeight - used - 1
+                    height = min(tile.rect.height, max(room, options.minHeight))
+                }
+                if let height { used += height + options.gap }
+                items.append(Item(id: tile.id, width: tile.rect.width, height: height))
+            }
+        }
+        return items
     }
 
     /// Where a dragged tile would land if dropped at `point`: an index into the

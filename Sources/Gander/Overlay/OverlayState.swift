@@ -8,7 +8,6 @@ final class OverlayState: ObservableObject {
     @Published var isPicking = false
     @Published var mode: LayoutMode = .flow
     @Published var shortcutText = ""
-    @Published var notice: String?
 }
 
 /// What the toolbar and launcher can ask the overlay to do.
@@ -19,6 +18,4 @@ struct OverlayActions {
     var setMode: (LayoutMode) -> Void = { _ in }
     var stopPicking: () -> Void = {}
     var openSettings: () -> Void = {}
-    var close: () -> Void = {}
-    var dismissNotice: () -> Void = {}
 }

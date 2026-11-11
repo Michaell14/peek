@@ -58,6 +58,89 @@ enum SmokeTest {
                 }
             }
 
+            /// Tile frames by id, in the board's coordinates (origin top-left).
+            @MainActor func framesByID() -> [String: CGRect] {
+                let tiles = overlay.snapshot()["tiles"] as? [[String: Any]] ?? []
+                var result: [String: CGRect] = [:]
+                for tile in tiles {
+                    guard let id = tile["id"] as? String, let frame = tile["frame"] as? [Double], frame.count == 4 else { continue }
+                    result[id] = CGRect(x: frame[0], y: frame[1], width: frame[2], height: frame[3])
+                }
+                return result
+            }
+
+            @MainActor func tileIDs() -> [String] {
+                let tiles = overlay.snapshot()["tiles"] as? [[String: Any]] ?? []
+                return tiles.compactMap { $0["id"] as? String }
+            }
+
+            @MainActor func tileKinds() -> [String] {
+                let tiles = overlay.snapshot()["tiles"] as? [[String: Any]] ?? []
+                return tiles.compactMap { $0["kind"] as? String }
+            }
+
+            // Input is simulated by placing events on the app's own queue, so
+            // it travels the same path a real click or key press would.
+            @MainActor func mouse(_ type: NSEvent.EventType, at point: CGPoint) {
+                let snapshot = overlay.snapshot()
+                let height = (snapshot["panelFrame"] as? [Double])?[3] ?? 0
+                guard let event = NSEvent.mouseEvent(
+                    with: type,
+                    // Window coordinates start at the bottom-left.
+                    location: CGPoint(x: point.x, y: height - point.y),
+                    modifierFlags: [],
+                    timestamp: ProcessInfo.processInfo.systemUptime,
+                    windowNumber: snapshot["windowNumber"] as? Int ?? 0,
+                    context: nil,
+                    eventNumber: 0,
+                    clickCount: 1,
+                    pressure: type == .leftMouseUp ? 0 : 1
+                ) else { return }
+                NSApp.postEvent(event, atStart: false)
+            }
+
+            @MainActor func drag(from start: CGPoint, to end: CGPoint) async {
+                mouse(.leftMouseDown, at: start)
+                await pause(0.15)
+                for step in 1...8 {
+                    let t = CGFloat(step) / 8
+                    mouse(.leftMouseDragged, at: CGPoint(x: start.x + (end.x - start.x) * t, y: start.y + (end.y - start.y) * t))
+                    await pause(0.04)
+                }
+                mouse(.leftMouseUp, at: end)
+                await pause(0.6)
+            }
+
+            @MainActor func click(at point: CGPoint) async {
+                mouse(.leftMouseDown, at: point)
+                mouse(.leftMouseUp, at: point)
+                await pause(0.6)
+            }
+
+            @MainActor func press(_ characters: String, keyCode: UInt16, flags: NSEvent.ModifierFlags = []) async {
+                let windowNumber = overlay.snapshot()["windowNumber"] as? Int ?? 0
+                for type in [NSEvent.EventType.keyDown, .keyUp] {
+                    guard let event = NSEvent.keyEvent(
+                        with: type,
+                        location: .zero,
+                        modifierFlags: flags,
+                        timestamp: ProcessInfo.processInfo.systemUptime,
+                        windowNumber: windowNumber,
+                        context: nil,
+                        characters: characters,
+                        charactersIgnoringModifiers: characters,
+                        isARepeat: false,
+                        keyCode: keyCode
+                    ) else { continue }
+                    NSApp.postEvent(event, atStart: false)
+                }
+                await pause(0.4)
+            }
+
+            @MainActor func near(_ a: CGFloat, _ b: CGFloat, within tolerance: CGFloat = 10) -> Bool {
+                abs(a - b) <= tolerance
+            }
+
             /// Saves a picture of the screen; a failure here is not a failure
             /// of the check, since some machines do not allow it.
             @MainActor func capture(_ name: String) async {
@@ -188,55 +271,139 @@ enum SmokeTest {
                     ("the element stays hidden after a reload", hiddenAfterReload == "none"),
                     ("the rest of the page is still there", await display("#body-text") == "block"),
                 ])
+
+                // Typing reaches the page while the overlay has focus.
+                web.focusPage()
+                _ = await js("document.getElementById('field').focus()")
+                await press("g", keyCode: 5)
+                await press("o", keyCode: 31)
+                let typed = await js("document.getElementById('field').value")
+                expect("typing", [("keys typed into a page field arrive", typed == "go")])
+                snapshots["typed"] = typed
             } else {
                 // No fixture server: just give the default page time to load.
                 await pause(5.0)
                 await capture("page")
             }
 
-            // 3. Arranging.
-            overlay.setEditing(true)
-            await pause(0.4)
-            expect("editing", [("edit mode is on", flag("editing"))])
+            // 3. Arranging, with the keyboard and mouse a person would use.
+            await press("e", keyCode: 14, flags: .command)
+            expect("editing", [("⌘E turns edit mode on", flag("editing"))])
             await capture("editing")
 
-            let flowFrames = tileFrames()
+            // Flow: drag the first tile past the last one to reorder.
+            let kindsBefore = tileKinds()
+            let idsBefore = tileIDs()
+            var layout = framesByID()
+            if let first = idsBefore.first.flatMap({ layout[$0] }),
+               let last = idsBefore.last.flatMap({ layout[$0] }) {
+                await drag(
+                    from: CGPoint(x: first.midX, y: first.midY),
+                    to: CGPoint(x: last.maxX - 20, y: last.midY)
+                )
+            }
+            expect("reordered", [
+                ("dragging a tile past the others moves it to the end",
+                 tileKinds() == Array(kindsBefore.dropFirst()) + kindsBefore.prefix(1)),
+                ("no tile was lost", Set(tileIDs()) == Set(idsBefore)),
+            ])
+
+            // Freeform: the switch keeps tiles in place, then resize and move.
+            let flowFrames = framesByID()
             overlay.setLayoutMode(.freeform)
             await pause(0.6)
-            let freeformFrames = tileFrames()
-            let stayedPut = flowFrames.count == freeformFrames.count && zip(flowFrames, freeformFrames).allSatisfy { a, b in
-                abs(a.minX - b.minX) <= 2 && abs(a.minY - b.minY) <= 2
-                    && abs(a.width - b.width) <= 2 && abs(a.height - b.height) <= 2
+            layout = framesByID()
+            let stayedPut = flowFrames.count == layout.count && flowFrames.allSatisfy { id, before in
+                guard let after = layout[id] else { return false }
+                return near(before.minX, after.minX, within: 2) && near(before.minY, after.minY, within: 2)
+                    && near(before.width, after.width, within: 2) && near(before.height, after.height, within: 2)
             }
             expect("freeform", [
                 ("the board is in freeform mode", overlay.snapshot()["mode"] as? String == "freeform"),
                 ("switching mode leaves tiles where they were", stayedPut),
             ])
+
+            if let id = tileIDs().first, let before = layout[id] {
+                // Pull the bottom edge up by 200 points.
+                await drag(
+                    from: CGPoint(x: before.midX, y: before.maxY - 5),
+                    to: CGPoint(x: before.midX, y: before.maxY - 205)
+                )
+                let resized = framesByID()[id] ?? .zero
+                expect("resized", [
+                    ("dragging the bottom edge changes the height", near(resized.height, before.height - 200)),
+                    ("the top edge stays put", near(resized.minY, before.minY, within: 1)),
+                    ("the width is unchanged", near(resized.width, before.width, within: 1)),
+                ])
+
+                // Then drag it by its middle.
+                await drag(
+                    from: CGPoint(x: resized.midX, y: resized.midY),
+                    to: CGPoint(x: resized.midX + 60, y: resized.midY + 40)
+                )
+                let moved = framesByID()[id] ?? .zero
+                expect("moved", [
+                    ("dragging the middle moves the tile", near(moved.minX, resized.minX + 60) && near(moved.minY, resized.minY + 40)),
+                    ("moving does not resize", near(moved.width, resized.width, within: 1) && near(moved.height, resized.height, within: 1)),
+                ])
+                await capture("freeform")
+
+                // Its remove button takes it off the board.
+                let countBefore = tileIDs().count
+                await click(at: CGPoint(x: moved.minX + 22, y: moved.minY + 22))
+                expect("removed", [
+                    ("the remove button removes the tile", tileIDs().count == countBefore - 1 && !tileIDs().contains(id)),
+                ])
+            }
+
+            // Back to flow: the tiles that were not touched return to
+            // exactly where flow had them.
+            let beforeFlow = framesByID()
             overlay.setLayoutMode(.flow)
             await pause(0.6)
-            expect("flow", [("the board is back in flow mode", overlay.snapshot()["mode"] as? String == "flow")])
+            let afterFlow = framesByID()
+            let untouched = afterFlow.keys.filter { flowFrames[$0] != nil }
+            expect("flow", [
+                ("the board is back in flow mode", overlay.snapshot()["mode"] as? String == "flow"),
+                ("every remaining tile is still on the board", Set(afterFlow.keys) == Set(beforeFlow.keys)),
+                ("tiles keep their heights and vertical positions", untouched.allSatisfy { id in
+                    guard let was = flowFrames[id], let now = afterFlow[id] else { return false }
+                    return near(was.minY, now.minY, within: 2) && near(was.height, now.height, within: 2)
+                }),
+            ])
+
+            // Escape backs out one step at a time: first out of edit mode.
+            await press("\u{1b}", keyCode: 53)
+            expect("escape-editing", [
+                ("esc leaves edit mode", !flag("editing")),
+                ("and keeps the overlay open", flag("visible")),
+            ])
 
             // 4. The launcher, and adding a tile from it.
-            overlay.presentLauncher()
-            await pause(0.5)
-            expect("launcher", [
-                ("launcher is open", flag("launcherOpen")),
-                ("opening the launcher leaves edit mode", !flag("editing")),
-            ])
+            await press("n", keyCode: 45, flags: .command)
+            expect("launcher", [("⌘N opens the launcher", flag("launcherOpen"))])
             await capture("launcher")
+            await press("\u{1b}", keyCode: 53)
+            expect("escape-launcher", [
+                ("esc closes the launcher", !flag("launcherOpen")),
+                ("and keeps the overlay open", flag("visible")),
+            ])
 
+            let countBeforeAdding = tileIDs().count
+            overlay.presentLauncher()
+            await pause(0.3)
             overlay.addTile(.widget(.clock(ClockConfig())))
             await pause(0.6)
             expect("added", [
-                ("the new tile appears", tileFrames().count == 4),
+                ("the new tile appears", tileIDs().count == countBeforeAdding + 1),
                 ("adding closes the launcher", !flag("launcherOpen")),
             ])
 
-            // 5. Dismissing.
-            overlay.dismiss()
-            await pause(0.6)
+            // 5. Dismissing with the keyboard.
+            await press("\u{1b}", keyCode: 53)
+            await pause(0.4)
             expect("dismissed", [
-                ("overlay is hidden", !flag("visible") && !flag("panelOnScreen")),
+                ("esc closes the overlay", !flag("visible") && !flag("panelOnScreen")),
                 ("overlay is no longer interactive", !flag("interactive")),
             ])
 

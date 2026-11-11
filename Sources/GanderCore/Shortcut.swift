@@ -206,19 +206,6 @@ public struct Shortcut: Codable, Hashable, Sendable {
 }
 
 public enum KeyNames {
-    /// Virtual key codes of the modifier keys themselves.
-    public static let modifierKeyCodes: [UInt16: ModifierKey] = [
-        54: ModifierKey(.command, side: .right),
-        55: ModifierKey(.command, side: .left),
-        56: ModifierKey(.shift, side: .left),
-        60: ModifierKey(.shift, side: .right),
-        58: ModifierKey(.option, side: .left),
-        61: ModifierKey(.option, side: .right),
-        59: ModifierKey(.control, side: .left),
-        62: ModifierKey(.control, side: .right),
-        63: ModifierKey(.function),
-    ]
-
     /// Names follow the US ANSI layout, as menu shortcuts conventionally do.
     public static func name(for keyCode: UInt16) -> String {
         names[keyCode] ?? "Key \(keyCode)"
