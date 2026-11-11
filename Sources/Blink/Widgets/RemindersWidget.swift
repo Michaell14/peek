@@ -48,82 +48,119 @@ struct RemindersWidgetView: View {
 
     private var content: some View {
         let sections = ReminderSections.make(from: items, filter: config.filter, now: Date())
+        let count = sections.reduce(0) { $0 + $1.items.count }
         return VStack(alignment: .leading, spacing: 0) {
-            Picker("Show", selection: Binding(get: { config.filter }, set: { onChange(RemindersConfig(filter: $0)) })) {
-                Text("Today").tag(RemindersConfig.Filter.today)
-                Text("Scheduled").tag(RemindersConfig.Filter.scheduled)
-                Text("Overdue").tag(RemindersConfig.Filter.overdue)
-                Text("All").tag(RemindersConfig.Filter.all)
+            HStack(spacing: 8) {
+                // Shorter labels when the tile is too narrow for the full ones.
+                ViewThatFits(in: .horizontal) {
+                    filterPicker(scheduled: "Scheduled", overdue: "Overdue")
+                    filterPicker(scheduled: "Later", overdue: "Late")
+                }
+                Spacer(minLength: 0)
+                Text("\(count)")
+                    .font(.system(size: 17, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                    .foregroundStyle(count == 0 ? Color.secondary : Color.blinkAccent)
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .controlSize(.small)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 8)
+            .padding(.horizontal, 12)
+            .padding(.top, 11)
+            .padding(.bottom, 7)
 
             if sections.isEmpty {
-                Text("All done")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                VStack(spacing: 8) {
+                    Image(systemName: "checkmark.circle")
+                        .font(.system(size: 22, weight: .light))
+                        .foregroundStyle(.tertiary)
+                    Text("All done")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 0) {
                         ForEach(sections) { section in
-                            Text(section.title)
-                                .font(.system(size: 10, weight: .semibold))
-                                .foregroundStyle(.secondary)
-                                .textCase(.uppercase)
-                                .padding(.horizontal, 12)
-                                .padding(.top, 8)
-                                .padding(.bottom, 2)
+                            SectionLabel(section.title)
+                                .padding(.horizontal, 14)
+                                .padding(.top, 9)
+                                .padding(.bottom, 3)
                             ForEach(section.items) { item in
                                 row(item)
                             }
                         }
                     }
+                    .padding(.bottom, 6)
                 }
+                .scrollIndicators(.hidden)
             }
 
-            Divider().opacity(0.4)
-            TextField("New Reminder", text: $newTitle)
-                .textFieldStyle(.plain)
-                .font(.system(size: 12))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .onSubmit { addReminder() }
+            Rectangle()
+                .fill(Color.white.opacity(0.07))
+                .frame(height: 1)
+            HStack(spacing: 8) {
+                Image(systemName: "plus.circle.fill")
+                    .font(.system(size: 14))
+                    .foregroundStyle(.tertiary)
+                TextField("New Reminder", text: $newTitle)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 12.5))
+                    .onSubmit { addReminder() }
+            }
+            .padding(.horizontal, 14)
+            .frame(height: 38)
         }
+    }
+
+    private func filterPicker(scheduled: String, overdue: String) -> some View {
+        PillPicker(
+            options: [
+                (RemindersConfig.Filter.today, "Today"),
+                (RemindersConfig.Filter.scheduled, scheduled),
+                (RemindersConfig.Filter.overdue, overdue),
+                (RemindersConfig.Filter.all, "All"),
+            ],
+            selection: config.filter,
+            onChange: { onChange(RemindersConfig(filter: $0)) }
+        )
     }
 
     private func row(_ item: ReminderItem) -> some View {
         let isDone = completing.contains(item.id)
-        return HStack(alignment: .top, spacing: 8) {
+        return HStack(alignment: .top, spacing: 9) {
             Button {
                 complete(item)
             } label: {
-                Image(systemName: isDone ? "checkmark.circle.fill" : "circle")
-                    .font(.system(size: 15))
-                    .foregroundStyle(item.color)
+                ZStack {
+                    Circle()
+                        .strokeBorder(item.color, lineWidth: 1.5)
+                    if isDone {
+                        Circle()
+                            .fill(item.color)
+                            .padding(3.5)
+                    }
+                }
+                .frame(width: 17, height: 17)
+                .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .disabled(isDone)
 
             VStack(alignment: .leading, spacing: 1) {
                 Text(item.title)
-                    .font(.system(size: 12))
+                    .font(.system(size: 12.5))
                     .strikethrough(isDone)
                     .foregroundStyle(isDone ? .secondary : .primary)
                     .lineLimit(3)
                 if let due = item.due {
                     Text(ReminderSections.dueText(due, hasTime: item.hasTime, now: Date()))
-                        .font(.system(size: 10))
+                        .font(.system(size: 10.5))
                         .foregroundStyle(ReminderSections.isOverdue(item, now: Date()) ? Color.red : Color.secondary)
                 }
             }
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 4)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 5)
     }
 
     private func complete(_ item: ReminderItem) {

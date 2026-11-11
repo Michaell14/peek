@@ -14,6 +14,48 @@ import SwiftUI
 enum SmokeTest {
     private static let pageTitle = "Blink self-check page"
 
+    private static var desktopStandIn: NSWindow?
+
+    /// The machines this runs on have a plain black desktop, which hides what
+    /// the overlay's blur and glass look like. Put something colourful behind
+    /// it: a gradient with a couple of pale rectangles for open windows.
+    private static func showDesktopStandIn() {
+        guard let screen = NSScreen.main ?? NSScreen.screens.first else { return }
+        let window = NSWindow(contentRect: screen.frame, styleMask: .borderless, backing: .buffered, defer: false)
+        window.isReleasedWhenClosed = false
+        window.ignoresMouseEvents = true
+
+        let view = NSView(frame: CGRect(origin: .zero, size: screen.frame.size))
+        view.wantsLayer = true
+        let gradient = CAGradientLayer()
+        gradient.frame = view.bounds
+        gradient.colors = [
+            NSColor(srgbRed: 0.09, green: 0.16, blue: 0.44, alpha: 1).cgColor,
+            NSColor(srgbRed: 0.52, green: 0.22, blue: 0.58, alpha: 1).cgColor,
+            NSColor(srgbRed: 0.98, green: 0.56, blue: 0.32, alpha: 1).cgColor,
+        ]
+        gradient.startPoint = CGPoint(x: 0, y: 0)
+        gradient.endPoint = CGPoint(x: 1, y: 1)
+        view.layer?.addSublayer(gradient)
+
+        let size = view.bounds.size
+        for (index, unit) in [CGRect(x: 0.07, y: 0.12, width: 0.5, height: 0.64), CGRect(x: 0.45, y: 0.26, width: 0.47, height: 0.6)].enumerated() {
+            let pane = CALayer()
+            pane.frame = CGRect(
+                x: unit.minX * size.width, y: unit.minY * size.height,
+                width: unit.width * size.width, height: unit.height * size.height
+            )
+            pane.backgroundColor = NSColor(white: index == 0 ? 0.97 : 0.14, alpha: 1).cgColor
+            pane.cornerRadius = 11
+            pane.shadowOpacity = 0.35
+            pane.shadowRadius = 24
+            view.layer?.addSublayer(pane)
+        }
+        window.contentView = view
+        window.orderFrontRegardless()
+        desktopStandIn = window
+    }
+
     /// A plausible day: overlapping meetings, an all-day event, something
     /// tomorrow, and reminders in every state.
     private static func sampleData() -> EventKitService.SampleData {
@@ -199,6 +241,7 @@ enum SmokeTest {
             }
 
             try? FileManager.default.createDirectory(at: output, withIntermediateDirectories: true)
+            showDesktopStandIn()
             await pause(0.5)
 
             // 1. Opening from the menu bar: visible, focused, tiles laid out.
@@ -347,7 +390,8 @@ enum SmokeTest {
                     var reloadedByButton = false
                     if let bar = shown.first {
                         // Back, forward, reload, more: the third button.
-                        await click(at: CGPoint(x: bar.minX + 4 + 2.5 * 24, y: bar.midY))
+                        let reloadX = bar.minX + TileChromeView.inset + 2.5 * TileChromeView.buttonSize
+                        await click(at: CGPoint(x: reloadX, y: bar.midY))
                         reloadedByButton = await waitForPage()
                     }
                     // Does pointer movement reach the page itself (for its own
@@ -443,7 +487,8 @@ enum SmokeTest {
 
                 // Its remove button takes it off the board.
                 let countBefore = tileIDs().count
-                await click(at: CGPoint(x: moved.minX + 22, y: moved.minY + 22))
+                let remove = TileEditCover.removeButtonFrame
+                await click(at: CGPoint(x: moved.minX + remove.midX, y: moved.minY + remove.midY))
                 expect("removed", [
                     ("the remove button removes the tile", tileIDs().count == countBefore - 1 && !tileIDs().contains(id)),
                 ])
@@ -482,14 +527,30 @@ enum SmokeTest {
                 ("and keeps the overlay open", flag("visible")),
             ])
 
+            // Typing filters the list; Return adds the best match.
             let countBeforeAdding = tileIDs().count
-            overlay.presentLauncher()
-            await pause(0.3)
-            overlay.addTile(.widget(.clock(ClockConfig())))
-            await pause(0.6)
-            expect("added", [
-                ("the new tile appears", tileIDs().count == countBeforeAdding + 1),
+            await press("n", keyCode: 45, flags: .command)
+            await press("c", keyCode: 8)
+            await press("a", keyCode: 0)
+            await press("l", keyCode: 37)
+            await capture("launcher-search")
+            await press("\r", keyCode: 36)
+            await pause(0.4)
+            expect("added-by-typing", [
+                ("typing \"cal\" and pressing Return adds the Calendar widget", tileKinds().contains("widget:calendar")),
+                ("exactly one tile was added", tileIDs().count == countBeforeAdding + 1),
                 ("adding closes the launcher", !flag("launcherOpen")),
+            ])
+
+            // The arrow keys move through the list: the third row is Reminders.
+            await press("n", keyCode: 45, flags: .command)
+            await press("\u{F701}", keyCode: 125)
+            await press("\u{F701}", keyCode: 125)
+            await press("\r", keyCode: 36)
+            await pause(0.4)
+            expect("added-by-arrows", [
+                ("two presses of ↓ and Return add the third item", tileKinds().contains("widget:reminders")),
+                ("exactly one more tile was added", tileIDs().count == countBeforeAdding + 2),
             ])
 
             // 5. Dismissing with the keyboard.

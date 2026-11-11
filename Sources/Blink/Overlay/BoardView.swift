@@ -31,10 +31,7 @@ final class BoardView: FlippedView {
     private let context: TileContext
     private var tileViews: [UUID: TileView] = [:]
     private let guideView = GuideOverlayView()
-    private let emptyView = MessageView(
-        symbol: "plus.rectangle.on.rectangle",
-        text: "Nothing here yet.\nPress + to add a website, a file or a widget."
-    )
+    private let emptyView: MessageView
     private var drag: DragSession?
 
     /// Height kept clear at the top for the menu bar strip and toolbar.
@@ -78,6 +75,12 @@ final class BoardView: FlippedView {
         self.board = board
         self.settings = settings
         self.context = context
+        emptyView = MessageView(
+            symbol: "rectangle.3.group",
+            text: "Nothing here yet.\nAdd a website, a file or a widget to get started.",
+            buttonTitle: "Add Something",
+            action: context.presentLauncher
+        )
         super.init(frame: .zero)
         addSubview(emptyView)
         addSubview(guideView)
@@ -209,7 +212,7 @@ final class BoardView: FlippedView {
         // Whole points throughout, so positions survive being saved and
         // laid out again without drifting.
         let padding = CGFloat(settings.canvasPadding.rounded())
-        let top = (topInset + 6).rounded()
+        let top = (topInset + 4).rounded()
         return CGRect(
             x: padding,
             y: top,
@@ -375,6 +378,7 @@ final class BoardView: FlippedView {
         // Lift the tile above its neighbours without moving it in the view
         // hierarchy, which would interrupt the drag in progress.
         tileView.layer?.zPosition = 1
+        tileView.setDragging(true, size: handle == nil ? nil : tileView.frame.size)
     }
 
     func continueDrag(with event: NSEvent) {
@@ -398,6 +402,7 @@ final class BoardView: FlippedView {
             session.currentFrame = result.rect
             drag = session
             tileView.frame = viewFrame(result.rect.integral)
+            if handle != nil { tileView.setDragging(true, size: tileView.frame.size) }
             showGuides(result.guides)
 
         case (.flow, nil):
@@ -435,6 +440,7 @@ final class BoardView: FlippedView {
             session.flowItems[index] = item
             drag = session
             layoutTiles(animated: false)
+            tileView.setDragging(true, size: tileView.frame.size)
         }
     }
 
@@ -443,6 +449,7 @@ final class BoardView: FlippedView {
         drag = nil
         guideView.lines = []
         tileViews[session.tileID]?.layer?.zPosition = 0
+        tileViews[session.tileID]?.setDragging(false)
         let size = LayoutSize(canvasFrame.size)
         let id = session.tileID
 
@@ -473,6 +480,7 @@ final class BoardView: FlippedView {
         drag = nil
         guideView.lines = []
         tileViews[session.tileID]?.layer?.zPosition = 0
+        tileViews[session.tileID]?.setDragging(false)
         restack()
         layoutTiles(animated: true)
     }

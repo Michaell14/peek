@@ -108,7 +108,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func installStatusItem() {
         let item = NSStatusBar.system.statusItem(withLength: NSStatusItem.squareLength)
-        item.button?.image = .symbol("eye", description: "Blink")
+        item.button?.image = BrandGlyph.menuBarImage()
 
         let menu = NSMenu()
         let shortcut = model?.settings.shortcut.displayString ?? ""

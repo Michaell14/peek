@@ -207,25 +207,33 @@ struct AccessPrompt: View {
     let openSettings: () -> Void
 
     var body: some View {
-        VStack(spacing: 10) {
+        VStack(spacing: 12) {
             Image(systemName: symbol)
-                .font(.system(size: 26))
-                .foregroundStyle(.secondary)
+                .font(.system(size: 20, weight: .medium))
+                .foregroundStyle(Color.blinkAccent)
+                .frame(width: 44, height: 44)
+                .background(Color.blinkAccent.opacity(0.14), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
             if isDenied {
                 Text("Blink is not allowed to read \(name). You can change that in System Settings → Privacy & Security.")
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                 Button("Open System Settings", action: openSettings)
+                    .buttonStyle(AccentButtonStyle())
             } else {
-                Text("Show your \(name.lowercased()) here.")
-                    .font(.system(size: 12))
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
+                VStack(spacing: 3) {
+                    Text(name)
+                        .font(.system(size: 14, weight: .semibold))
+                    Text("Show your \(name.lowercased()) here. They stay on this Mac.")
+                        .font(.system(size: 12))
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
                 Button("Allow Access…", action: request)
+                    .buttonStyle(AccentButtonStyle())
             }
         }
-        .padding(16)
+        .padding(18)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }

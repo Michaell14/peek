@@ -58,38 +58,33 @@ struct CalendarWidgetView: View {
         }
     }
 
+    /// The date the way a desk calendar shows it: weekday over a large number.
     private var header: some View {
-        HStack(alignment: .firstTextBaseline) {
-            // A narrow tile gets "Wed 11" rather than a wrapped "Wednesday".
-            ViewThatFits(in: .horizontal) {
-                dateLabel(weekday: .wide, month: true)
-                dateLabel(weekday: .abbreviated, month: true)
-                dateLabel(weekday: .abbreviated, month: false)
+        HStack(alignment: .center, spacing: 9) {
+            Text(today.formatted(.dateTime.day()))
+                .font(.system(size: 30, weight: .light, design: .rounded))
+                .monospacedDigit()
+            VStack(alignment: .leading, spacing: 0) {
+                Text(today.formatted(.dateTime.weekday(.wide)).uppercased())
+                    .font(.system(size: 10, weight: .bold))
+                    .tracking(0.6)
+                    .foregroundStyle(Color.red.opacity(0.95))
+                Text(today.formatted(.dateTime.month(.wide)))
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
             }
+            .lineLimit(1)
+            .layoutPriority(-1)
             Spacer(minLength: 4)
-            Picker("View", selection: Binding(get: { config.mode }, set: { onChange(CalendarConfig(mode: $0)) })) {
-                Text("Day").tag(CalendarConfig.Mode.day)
-                Text("7 Days").tag(CalendarConfig.Mode.agenda)
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
-            .controlSize(.small)
-            .fixedSize()
+            PillPicker(
+                options: [(CalendarConfig.Mode.day, "Day"), (CalendarConfig.Mode.agenda, "7 Days")],
+                selection: config.mode,
+                onChange: { onChange(CalendarConfig(mode: $0)) }
+            )
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-    }
-
-    private func dateLabel(weekday: Date.FormatStyle.Symbol.Weekday, month: Bool) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: 5) {
-            Text(today.formatted(.dateTime.weekday(weekday)))
-                .font(.system(size: 14, weight: .semibold))
-            Text(month ? today.formatted(.dateTime.month(.abbreviated).day()) : today.formatted(.dateTime.day()))
-                .font(.system(size: 14))
-                .foregroundStyle(.secondary)
-        }
-        .lineLimit(1)
-        .fixedSize()
+        .padding(.horizontal, 14)
+        .padding(.top, 10)
+        .padding(.bottom, 8)
     }
 
     private func reload() {
@@ -107,7 +102,7 @@ private struct DayTimelineView: View {
     let events: [EventItem]
 
     private let hourHeight: CGFloat = 46
-    private let gutter: CGFloat = 48
+    private let gutter: CGFloat = 46
 
     var body: some View {
         let allDay = events.filter(\.isAllDay)
@@ -115,20 +110,28 @@ private struct DayTimelineView: View {
 
         VStack(alignment: .leading, spacing: 0) {
             if !allDay.isEmpty {
-                VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: 4) {
                     ForEach(allDay) { event in
-                        Text(event.title)
-                            .font(.system(size: 11, weight: .medium))
-                            .lineLimit(1)
-                            .padding(.horizontal, 6)
-                            .padding(.vertical, 3)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(event.color.opacity(0.35), in: RoundedRectangle(cornerRadius: 4))
+                        HStack(spacing: 6) {
+                            Circle()
+                                .fill(event.color)
+                                .frame(width: 6, height: 6)
+                            Text(event.title)
+                                .font(.system(size: 11.5, weight: .medium))
+                                .lineLimit(1)
+                            Spacer(minLength: 0)
+                        }
+                        .padding(.horizontal, 9)
+                        .frame(height: 22)
+                        .background(event.color.opacity(0.2), in: RoundedRectangle(cornerRadius: 7, style: .continuous))
                     }
                 }
-                .padding(.horizontal, 12)
-                .padding(.bottom, 6)
+                .padding(.horizontal, 14)
+                .padding(.bottom, 8)
             }
+            Rectangle()
+                .fill(Color.white.opacity(0.07))
+                .frame(height: 1)
             ScrollViewReader { proxy in
                 ScrollView {
                     ZStack(alignment: .topLeading) {
@@ -141,7 +144,9 @@ private struct DayTimelineView: View {
                         }
                     }
                     .frame(height: hourHeight * 24)
+                    .padding(.top, 8)
                 }
+                .scrollIndicators(.hidden)
                 .onAppear {
                     let hour = Calendar.current.component(.hour, from: Date())
                     proxy.scrollTo(max(hour - 1, 0), anchor: .top)
@@ -153,14 +158,15 @@ private struct DayTimelineView: View {
     private var hourGrid: some View {
         VStack(spacing: 0) {
             ForEach(0..<24, id: \.self) { hour in
-                HStack(alignment: .top, spacing: 6) {
+                HStack(alignment: .top, spacing: 8) {
                     Text(hourLabel(hour))
-                        .font(.system(size: 10))
+                        .font(.system(size: 9.5, weight: .medium))
+                        .monospacedDigit()
                         .foregroundStyle(.tertiary)
-                        .frame(width: gutter - 10, alignment: .trailing)
+                        .frame(width: gutter - 12, alignment: .trailing)
                         .offset(y: -6)
                     Rectangle()
-                        .fill(Color.primary.opacity(0.08))
+                        .fill(Color.white.opacity(0.07))
                         .frame(height: 1)
                 }
                 .frame(height: hourHeight, alignment: .top)
@@ -182,7 +188,7 @@ private struct DayTimelineView: View {
             return (start, end)
         }
         let slots = EventLayout.arrange(spans)
-        let available = max(width - gutter - 8, 40)
+        let available = max(width - gutter - 10, 40)
 
         return ForEach(Array(events.enumerated()), id: \.element.id) { index, event in
             let span = spans[index]
@@ -190,13 +196,13 @@ private struct DayTimelineView: View {
             let columnWidth = available / CGFloat(slot.columnCount)
             EventBlockView(event: event)
                 .frame(
-                    width: max(columnWidth - 2, 10),
-                    height: max(CGFloat(span.end - span.start) / 3600 * hourHeight - 2, 16),
+                    width: max(columnWidth - 3, 10),
+                    height: max(CGFloat(span.end - span.start) / 3600 * hourHeight - 3, 17),
                     alignment: .topLeading
                 )
                 .offset(
                     x: gutter + CGFloat(slot.column) * columnWidth,
-                    y: CGFloat(span.start) / 3600 * hourHeight
+                    y: CGFloat(span.start) / 3600 * hourHeight + 1
                 )
         }
     }
@@ -211,9 +217,10 @@ private struct DayTimelineView: View {
                     .frame(width: 7, height: 7)
                 Rectangle()
                     .fill(Color.red)
-                    .frame(height: 1)
+                    .frame(height: 1.5)
             }
             .padding(.leading, gutter - 4)
+            .padding(.trailing, 6)
             .offset(y: CGFloat(seconds) / 3600 * hourHeight - 3.5)
         }
     }
@@ -223,25 +230,25 @@ private struct EventBlockView: View {
     let event: EventItem
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 1) {
-            Text(event.title)
-                .font(.system(size: 11, weight: .semibold))
-                .lineLimit(2)
-            Text(event.start.formatted(date: .omitted, time: .shortened))
-                .font(.system(size: 10))
-                .foregroundStyle(.secondary)
-                .lineLimit(1)
-        }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 3)
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .background(event.color.opacity(0.3), in: RoundedRectangle(cornerRadius: 5))
-        .overlay(alignment: .leading) {
-            RoundedRectangle(cornerRadius: 1.5)
+        HStack(alignment: .top, spacing: 0) {
+            Rectangle()
                 .fill(event.color)
                 .frame(width: 3)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(event.title)
+                    .font(.system(size: 11, weight: .semibold))
+                    .lineLimit(2)
+                Text(event.start.formatted(date: .omitted, time: .shortened))
+                    .font(.system(size: 10))
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
         }
-        .clipShape(RoundedRectangle(cornerRadius: 5))
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(event.color.opacity(0.24))
+        .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
     }
 }
 
@@ -267,28 +274,31 @@ private struct AgendaView: View {
 
     var body: some View {
         if events.isEmpty {
-            Text("Nothing in the next 7 days")
-                .font(.system(size: 12))
-                .foregroundStyle(.secondary)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            VStack(spacing: 8) {
+                Image(systemName: "calendar")
+                    .font(.system(size: 22, weight: .light))
+                    .foregroundStyle(.tertiary)
+                Text("Nothing in the next 7 days")
+                    .font(.system(size: 12))
+                    .foregroundStyle(.secondary)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0) {
                     ForEach(groups) { group in
-                        Text(dayLabel(group.id))
-                            .font(.system(size: 10, weight: .semibold))
-                            .foregroundStyle(.secondary)
-                            .textCase(.uppercase)
-                            .padding(.horizontal, 12)
-                            .padding(.top, 10)
-                            .padding(.bottom, 4)
+                        SectionLabel(dayLabel(group.id))
+                            .padding(.horizontal, 14)
+                            .padding(.top, 12)
+                            .padding(.bottom, 5)
                         ForEach(group.events) { event in
                             AgendaRowView(event: event)
                         }
                     }
                 }
-                .padding(.bottom, 8)
+                .padding(.bottom, 10)
             }
+            .scrollIndicators(.hidden)
         }
     }
 
@@ -307,13 +317,13 @@ private struct AgendaRowView: View {
     let event: EventItem
 
     var body: some View {
-        HStack(alignment: .top, spacing: 8) {
+        HStack(alignment: .top, spacing: 9) {
             RoundedRectangle(cornerRadius: 1.5)
                 .fill(event.color)
                 .frame(width: 3)
             VStack(alignment: .leading, spacing: 1) {
                 Text(event.title)
-                    .font(.system(size: 12, weight: .medium))
+                    .font(.system(size: 12.5, weight: .medium))
                     .lineLimit(2)
                 Text(timeText)
                     .font(.system(size: 11))
@@ -322,8 +332,8 @@ private struct AgendaRowView: View {
             }
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 4)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 5)
     }
 
     private var timeText: String {

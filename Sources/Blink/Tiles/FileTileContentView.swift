@@ -19,6 +19,10 @@ final class FileTileContentView: TileContentView {
 
     override var title: String { file.fileName }
 
+    override var symbolName: String {
+        file.kind == .pdf ? "doc.richtext" : "doc.text"
+    }
+
     override func apply(tile: Tile, settings: AppSettings) {
         super.apply(tile: tile, settings: settings)
         guard case .file(let updated) = tile.content, updated != file else { return }

@@ -100,6 +100,8 @@ final class WebTileContentView: TileContentView {
         return URLInput.displayHost(for: webView.url ?? web.url)
     }
 
+    override var symbolName: String { "globe" }
+
     var currentURL: URL { webView.url ?? web.url }
     var canGoBack: Bool { webView.canGoBack }
     var canGoForward: Bool { webView.canGoForward }

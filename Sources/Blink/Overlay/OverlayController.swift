@@ -22,6 +22,8 @@ final class OverlayController: NSObject {
     private var boardViews: [UUID: BoardView] = [:]
     private var activeBoardID: UUID?
     private var toolbarHost: NSView?
+    private var brandHost: NSView?
+    private var launcherModel: LauncherModel?
     private var cancellables: Set<AnyCancellable> = []
     private var keyMonitor: Any?
     private var hoverTimer: Timer?
@@ -121,10 +123,31 @@ final class OverlayController: NSObject {
         }
         panel.orderFrontRegardless()
         let duration = model.settings.fadeDuration
+        if !wasVisible { zoomBoard(appearing: true, duration: duration) }
         NSAnimationContext.runAnimationGroup { context in
             context.duration = duration
             panel.animator().alphaValue = 1
         }
+    }
+
+    /// Tiles settle into place as the overlay appears and ease back as it
+    /// goes: a small movement, but it makes the overlay feel like a layer
+    /// arriving rather than a picture switching on.
+    private func zoomBoard(appearing: Bool, duration: Double) {
+        guard duration > 0, let layer = root.boardContainer.layer else { return }
+        let bounds = root.boardContainer.bounds
+        let scale: CGFloat = 0.985
+        // Scale about the centre; a view's layer is anchored at its corner.
+        var small = CATransform3DMakeTranslation(bounds.midX, bounds.midY, 0)
+        small = CATransform3DScale(small, scale, scale, 1)
+        small = CATransform3DTranslate(small, -bounds.midX, -bounds.midY, 0)
+
+        let animation = CABasicAnimation(keyPath: "transform")
+        animation.fromValue = NSValue(caTransform3D: appearing ? small : CATransform3DIdentity)
+        animation.toValue = NSValue(caTransform3D: appearing ? CATransform3DIdentity : small)
+        animation.duration = duration
+        animation.timingFunction = CAMediaTimingFunction(name: .easeOut)
+        layer.add(animation, forKey: "zoom")
     }
 
     private func hide() {
@@ -138,6 +161,7 @@ final class OverlayController: NSObject {
         setInteractive(false)
 
         let duration = model.settings.fadeDuration
+        zoomBoard(appearing: false, duration: duration)
         NSAnimationContext.runAnimationGroup({ context in
             context.duration = duration
             panel.animator().alphaValue = 0
@@ -154,6 +178,7 @@ final class OverlayController: NSObject {
         isInteractive = interactive
         activeBoardView?.isInteractive = interactive
         toolbarHost?.isHidden = !interactive
+        brandHost?.isHidden = !interactive
         hoverTimer?.invalidate()
         hoverTimer = nil
         if interactive {
@@ -181,7 +206,7 @@ final class OverlayController: NSObject {
         if panel.frame != screen.frame {
             panel.setFrame(screen.frame, display: false)
         }
-        root.topInset = screen.menuBarHeight
+        root.topInset = max(screen.menuBarHeight, Theme.minimumTopInset)
         activate(boardID)
     }
 
@@ -191,9 +216,13 @@ final class OverlayController: NSObject {
         if let existing = boardViews[boardID] {
             view = existing
         } else {
-            let context = TileContext(model: model, boardID: boardID, web: web) { [weak self] in
-                self?.pickerDidChange()
-            }
+            let context = TileContext(
+                model: model,
+                boardID: boardID,
+                web: web,
+                pickerDidChange: { [weak self] in self?.pickerDidChange() },
+                presentLauncher: { [weak self] in self?.presentLauncher() }
+            )
             view = BoardView(board: board, settings: model.settings, context: context)
             boardViews[boardID] = view
             root.boardContainer.addSubview(view)
@@ -266,13 +295,14 @@ final class OverlayController: NSObject {
     func presentLauncher() {
         if !isVisible || !isInteractive { showPinned() }
         setEditing(false)
-        let view = LauncherView(
-            searchTemplate: model.settings.searchTemplate,
-            onAddWebsite: { [weak self] url in self?.addTile(.web(WebContent(url: url))) },
-            onAddWidget: { [weak self] widget in self?.addTile(.widget(widget)) },
-            onChooseFile: { [weak self] in self?.chooseFiles() }
-        )
-        let host = NSHostingView(rootView: view)
+
+        let launcher = LauncherModel(searchTemplate: model.settings.searchTemplate)
+        launcher.onWebsite = { [weak self] url in self?.addTile(.web(WebContent(url: url))) }
+        launcher.onWidget = { [weak self] widget in self?.addTile(.widget(widget)) }
+        launcher.onChooseFile = { [weak self] in self?.chooseFiles() }
+        launcherModel = launcher
+
+        let host = NSHostingView(rootView: LauncherView(model: launcher))
         host.sizingOptions = []
         root.setLauncher(host)
         panel.makeFirstResponder(host)
@@ -280,6 +310,7 @@ final class OverlayController: NSObject {
 
     func closeLauncher() {
         guard root.isShowingLauncher else { return }
+        launcherModel = nil
         root.setLauncher(nil)
     }
 
@@ -345,6 +376,24 @@ final class OverlayController: NSObject {
             return true
         }
 
+        // With the launcher open, the arrow keys and Return drive its list
+        // while typing goes to its text field.
+        if let launcherModel, root.isShowingLauncher, flags.isEmpty {
+            switch event.keyCode {
+            case 125:
+                launcherModel.moveSelection(by: 1)
+                return true
+            case 126:
+                launcherModel.moveSelection(by: -1)
+                return true
+            case 36, 76:
+                launcherModel.activateSelection()
+                return true
+            default:
+                break
+            }
+        }
+
         guard isInteractive, flags == .command,
               let key = event.charactersIgnoringModifiers?.lowercased() else { return false }
         switch key {
@@ -394,6 +443,11 @@ final class OverlayController: NSObject {
         host.isHidden = true
         toolbarHost = host
         root.setToolbar(host)
+
+        let brand = PassthroughHostingView(rootView: BrandView(state: state))
+        brand.isHidden = true
+        brandHost = brand
+        root.setBrand(brand)
     }
 
     // MARK: - Self-check support

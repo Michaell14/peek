@@ -15,10 +15,23 @@ struct NotesWidgetView: View {
 
     var body: some View {
         TextEditor(text: $text)
-            .font(.system(size: 13))
-            .lineSpacing(3)
+            .font(.system(size: 13.5))
+            .lineSpacing(4)
             .scrollContentBackground(.hidden)
-            .padding(10)
+            .scrollIndicators(.never)
+            .padding(.horizontal, 11)
+            .padding(.vertical, 14)
+            .overlay(alignment: .topLeading) {
+                if text.isEmpty {
+                    Text("Jot something down…")
+                        .font(.system(size: 13.5))
+                        .foregroundStyle(.tertiary)
+                        // Lines up with where the editor draws its text.
+                        .padding(.horizontal, 16)
+                        .padding(.vertical, 14)
+                        .allowsHitTesting(false)
+                }
+            }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .onChange(of: text) { _, updated in
                 onChange(NotesConfig(text: updated))

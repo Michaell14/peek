@@ -9,6 +9,8 @@ struct TileContext {
     let web: WebEnvironment
     /// Called when a web tile enters or leaves "hide elements" mode.
     let pickerDidChange: @MainActor () -> Void
+    /// Opens the "add something" palette.
+    let presentLauncher: @MainActor () -> Void
 }
 
 /// Base class for whatever a tile shows: a web page, a file or a widget.
@@ -33,6 +35,9 @@ class TileContentView: FlippedView {
 
     /// Short label shown while arranging tiles.
     var title: String { "" }
+
+    /// SF Symbol shown with the label while arranging tiles.
+    var symbolName: String { "square" }
 
     /// Called whenever the saved tile or the settings change.
     func apply(tile: Tile, settings: AppSettings) {
@@ -71,8 +76,8 @@ final class MessageView: NSView {
         super.init(frame: .zero)
 
         let icon = NSImageView(image: .symbol(symbol, description: ""))
-        icon.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 28, weight: .regular)
-        icon.contentTintColor = .secondaryLabelColor
+        icon.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 26, weight: .light)
+        icon.contentTintColor = .tertiaryLabelColor
 
         let label = NSTextField(wrappingLabelWithString: text)
         label.alignment = .center
@@ -82,11 +87,12 @@ final class MessageView: NSView {
 
         let stack = NSStackView(views: [icon, label])
         stack.orientation = .vertical
-        stack.spacing = 10
+        stack.spacing = 12
         stack.translatesAutoresizingMaskIntoConstraints = false
         if let buttonTitle {
             let button = NSButton(title: buttonTitle, target: self, action: #selector(runAction))
             button.bezelStyle = .rounded
+            button.controlSize = .large
             stack.addArrangedSubview(button)
         }
         addSubview(stack)

@@ -19,6 +19,15 @@ final class WidgetTileContentView: TileContentView {
 
     override var title: String { widget.displayName }
 
+    override var symbolName: String {
+        switch widget {
+        case .clock: return "clock"
+        case .calendar: return "calendar"
+        case .reminders: return "checklist"
+        case .notes: return "note.text"
+        }
+    }
+
     override func apply(tile: Tile, settings: AppSettings) {
         super.apply(tile: tile, settings: settings)
         guard case .widget(let updated) = tile.content, updated != widget else { return }

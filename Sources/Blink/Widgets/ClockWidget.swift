@@ -25,21 +25,27 @@ struct ClockWidgetView: View {
             }
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
-                    ForEach(rows) { row in
+                    ForEach(Array(rows.enumerated()), id: \.element.id) { index, row in
                         ClockRowView(row: row)
                             .contextMenu {
                                 Button("Remove \(row.city)") { remove(row.id) }
                                     .disabled(config.zones.count <= 1)
                             }
+                        if index < rows.count - 1 {
+                            Rectangle()
+                                .fill(Color.white.opacity(0.07))
+                                .frame(height: 1)
+                                .padding(.leading, 44)
+                        }
                     }
                     Button {
                         isAddingCity = true
                     } label: {
                         Label("Add City", systemImage: "plus")
-                            .font(.system(size: 11))
-                            .foregroundStyle(.secondary)
-                            .padding(.horizontal, 14)
-                            .padding(.vertical, 8)
+                            .font(.system(size: 11.5, weight: .medium))
+                            .foregroundStyle(.tertiary)
+                            .padding(.horizontal, 16)
+                            .frame(height: 34)
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
@@ -52,6 +58,7 @@ struct ClockWidgetView: View {
                 }
                 .padding(.top, 4)
             }
+            .scrollIndicators(.hidden)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
@@ -72,30 +79,35 @@ private struct ClockRowView: View {
     let row: WorldClock.Row
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: 2) {
+        HStack(alignment: .center, spacing: 10) {
+            // Sun or moon: whether it is a sensible hour to call.
+            Image(systemName: row.isDaytime ? "sun.max.fill" : "moon.fill")
+                .font(.system(size: 11))
+                .foregroundStyle(row.isDaytime ? Color.blinkAccent : Color.blinkCool)
+                .frame(width: 18)
+            VStack(alignment: .leading, spacing: 1) {
                 Text(row.city)
                     .font(.system(size: 14, weight: .semibold))
-                    .lineLimit(1)
                 Text(row.detail)
                     .font(.system(size: 11))
                     .foregroundStyle(.secondary)
-                    .lineLimit(1)
             }
+            .lineLimit(1)
             Spacer(minLength: 8)
             HStack(alignment: .firstTextBaseline, spacing: 3) {
                 Text(row.time)
-                    .font(.system(size: 26, weight: .regular, design: .rounded))
+                    .font(.system(size: 27, weight: .light, design: .rounded))
                     .monospacedDigit()
                 if !row.period.isEmpty {
                     Text(row.period)
-                        .font(.system(size: 12, weight: .medium))
+                        .font(.system(size: 10.5, weight: .semibold))
                         .foregroundStyle(.secondary)
                 }
             }
+            .fixedSize()
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 8)
+        .padding(.horizontal, 16)
+        .frame(height: 59)
         .contentShape(Rectangle())
     }
 }
