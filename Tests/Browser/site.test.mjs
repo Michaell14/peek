@@ -1,5 +1,6 @@
-// Exercises the website in docs/ in a real browser: the hold-to-blink demo,
-// arranging tiles, and the smaller interactive pieces.
+// Exercises the website in docs/ in a real browser: the walkthrough that
+// scrolling plays on the pinned screen, the hold-to-blink demo, and the rest
+// of the page.
 //
 //   node Tests/Browser/site.test.mjs
 //
@@ -16,7 +17,10 @@ const playwright = createRequire(import.meta.url)('playwright');
 const engine = playwright[process.env.BROWSER || 'chromium'];
 const root = join(fileURLToPath(new URL('.', import.meta.url)), '..', '..', 'docs');
 
-const types = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.png': 'image/png', '.jpg': 'image/jpeg', '.woff2': 'font/woff2' };
+const types = {
+  '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.png': 'image/png',
+  '.jpg': 'image/jpeg', '.svg': 'image/svg+xml', '.woff2': 'font/woff2',
+};
 const server = createServer(async (request, response) => {
   const path = normalize(decodeURIComponent(new URL(request.url, 'http://x').pathname));
   try {
@@ -43,6 +47,7 @@ async function test(name, body, viewport = { width: 1280, height: 800 }, options
   page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
   try {
     await page.goto(origin);
+    await page.evaluate(() => document.fonts.ready);
     await body(page);
     assert.deepEqual(errors, [], 'the page logged errors');
     passed += 1;
@@ -55,10 +60,9 @@ async function test(name, body, viewport = { width: 1280, height: 800 }, options
   }
 }
 
+const blink = (page, key) => page.evaluate((name) => window.__blink[name], key);
 const state = (page) => page.evaluate(() => window.__blink.peek.state);
-const isOpen = (page) => page.evaluate(() => document.getElementById('overlay').classList.contains('is-open'));
-const order = (page) => page.evaluate(() => window.__blink.board.tiles.map((tile) => tile.kind));
-const frames = (page) => page.evaluate(() => Object.fromEntries(window.__blink.board.tiles.map((tile) => [tile.kind, tile.frame])));
+const pageOverlayOpen = (page) => page.evaluate(() => document.getElementById('pov').classList.contains('is-open'));
 
 async function tap(page, key = 'Space') {
   await page.keyboard.down(key);
@@ -67,66 +71,129 @@ async function tap(page, key = 'Space') {
   await page.waitForTimeout(350);
 }
 
-// Jump straight there: the page scrolls smoothly otherwise.
-async function scrollTo(page, y) {
+// Jump straight to a point in the walkthrough (T runs from 0 to 10).
+async function goToBeat(page, T) {
+  const y = await page.evaluate((target) => window.__blink.scrollForT(target), T);
   await page.evaluate((top) => window.scrollTo({ top, behavior: 'instant' }), y);
-  await page.waitForTimeout(150);
+  await page.waitForTimeout(250);
 }
-
-const storyUnit = (page) => page.evaluate(() => (document.getElementById('story').offsetHeight - window.innerHeight) / 5.6);
-const pictureStep = (page) => page.evaluate(() => Number(document.getElementById('screen').dataset.step));
-const opacity = (page, selector) => page.locator(selector).evaluate((el) => getComputedStyle(el).opacity);
 
 async function centre(page, selector) {
   const box = await page.locator(selector).boundingBox();
   return [box.x + box.width / 2, box.y + box.height / 2];
 }
 
-await test('holding the key shows the overlay only while it is down', async (page) => {
-  assert.equal(await isOpen(page), false);
+// The caption that is showing, by its beat number.
+const shownCaption = (page) => page.evaluate(() => {
+  const caps = [...document.querySelectorAll('#caps .cap')];
+  const shown = caps.filter((cap) => Number(getComputedStyle(cap).opacity) > 0.9);
+  return shown.map((cap) => Number(cap.dataset.beat));
+});
+
+await test('scrolling plays the walkthrough on the pinned screen', async (page) => {
+  assert.equal(await blink(page, 'mode'), 'take');
+  const before = await page.locator('#display').boundingBox();
+  for (const beat of [1, 3, 5, 9]) {
+    await goToBeat(page, beat - 0.5);
+    const T = await blink(page, 'T');
+    assert.ok(Math.abs(T - (beat - 0.5)) < 0.05, `expected T near ${beat - 0.5}, got ${T}`);
+    assert.deepEqual(await shownCaption(page), [beat]);
+  }
+  // The screen stays where it is while the story plays.
+  await goToBeat(page, 1.5);
+  const a = await page.locator('#display').boundingBox();
+  await goToBeat(page, 2.5);
+  const b = await page.locator('#display').boundingBox();
+  assert.equal(Math.round(a.y), Math.round(b.y), 'the screen moved while pinned');
+  assert.ok(before.y > a.y, 'the screen should rise into place from the opening');
+
+  // Holding fn in the story brings Blink up over the writer.
+  await goToBeat(page, 2.6);
+  const shown = await page.locator('[data-ov]').evaluate((el) => Number(getComputedStyle(el).opacity));
+  assert.ok(shown > 0.9, 'Blink is not showing during the hold beat');
+});
+
+await test('the step list jumps to a beat', async (page) => {
+  await goToBeat(page, 1.5);
+  await page.click('#index a[data-go="7"]');
+  await page.waitForFunction(() => Math.abs(window.__blink.T - 6.5) < 0.1, null, { timeout: 4000 });
+  await page.waitForTimeout(200);
+  assert.deepEqual(await shownCaption(page), [7]);
+});
+
+await test('holding Space over the screen opens Blink on it, only while held', async (page) => {
+  await goToBeat(page, 0.4);
   await page.keyboard.down('Space');
-  await page.waitForTimeout(500);
-  assert.equal(await isOpen(page), true);
+  await page.waitForTimeout(400);
   assert.equal(await state(page), 'holding');
-  assert.equal(await page.evaluate(() => document.getElementById('overlay').classList.contains('is-pinned')), false);
+  assert.equal(await page.evaluate(() => window.__blink.peek.where), 'stage');
+  assert.equal(await blink(page, 'user'), 1);
+  assert.equal(await pageOverlayOpen(page), false, 'it opened over the page instead');
   await page.keyboard.up('Space');
-  await page.waitForTimeout(300);
-  assert.equal(await isOpen(page), false);
+  await page.waitForTimeout(400);
   assert.equal(await state(page), 'hidden');
+  assert.equal(await blink(page, 'user'), 0);
 });
 
 await test('holding does not scroll the page or repeat', async (page) => {
+  await goToBeat(page, 0.4);
+  const before = await page.evaluate(() => window.scrollY);
   await page.keyboard.down('Space');
   for (let i = 0; i < 5; i += 1) { await page.keyboard.down('Space'); } // auto-repeat
   await page.waitForTimeout(400);
-  assert.equal(await page.evaluate(() => window.scrollY), 0);
+  assert.equal(await page.evaluate(() => window.scrollY), before);
   assert.equal(await state(page), 'holding');
   await page.keyboard.up('Space');
 });
 
-await test('a tap keeps it open; a second tap or esc closes it', async (page) => {
+await test('a tap keeps it open; a second tap or esc closes it; reminders can be ticked', async (page) => {
+  await goToBeat(page, 0.4);
   await tap(page);
   assert.equal(await state(page), 'pinned');
-  assert.equal(await page.evaluate(() => document.querySelector('main').inert), true, 'the page behind is out of reach');
+  const reminder = page.locator('#display [data-rem="plants"]');
+  await reminder.click();
+  assert.equal(await reminder.evaluate((el) => el.classList.contains('is-done')), true);
   await tap(page);
   assert.equal(await state(page), 'hidden');
-  assert.equal(await page.evaluate(() => document.querySelector('main').inert), false);
 
   await tap(page);
   await page.keyboard.press('Escape');
-  await page.waitForTimeout(250);
+  await page.waitForTimeout(300);
   assert.equal(await state(page), 'hidden');
 });
 
-await test('the key in the hero works with a pointer: hold and tap', async (page) => {
-  const [x, y] = await centre(page, '#hero-key');
+await test('below the walkthrough, Space opens Blink over the page itself', async (page) => {
+  await page.locator('#faq').scrollIntoViewIfNeeded();
+  await page.waitForTimeout(200);
+  await page.keyboard.down('Space');
+  await page.waitForTimeout(300);
+  assert.equal(await pageOverlayOpen(page), true);
+  await page.keyboard.up('Space');
+  await page.waitForTimeout(300);
+  assert.equal(await pageOverlayOpen(page), false);
+
+  await tap(page);
+  assert.equal(await state(page), 'pinned');
+  assert.equal(await page.evaluate(() => document.querySelector('main').inert), true, 'the page behind is out of reach');
+  const item = page.locator('#pov-board .w-rem__item >> nth=0');
+  await item.click();
+  assert.equal(await item.evaluate((el) => el.classList.contains('is-done')), true);
+  await page.keyboard.press('Escape');
+  await page.waitForTimeout(300);
+  assert.equal(await state(page), 'hidden');
+  assert.equal(await page.evaluate(() => document.querySelector('main').inert), false);
+});
+
+await test('the fn key on the page works with a pointer: hold and tap', async (page) => {
+  await goToBeat(page, 0.4);
+  const [x, y] = await centre(page, '.foot .fnkey');
   await page.mouse.move(x, y);
   await page.mouse.down();
-  await page.waitForTimeout(500);
-  assert.equal(await isOpen(page), true);
+  await page.waitForTimeout(450);
+  assert.equal(await state(page), 'holding');
   await page.mouse.up();
-  await page.waitForTimeout(300);
-  assert.equal(await isOpen(page), false);
+  await page.waitForTimeout(350);
+  assert.equal(await state(page), 'hidden');
 
   await page.mouse.down();
   await page.waitForTimeout(40);
@@ -135,257 +202,45 @@ await test('the key in the hero works with a pointer: hold and tap', async (page
   assert.equal(await state(page), 'pinned');
 });
 
-await test('tiles are laid out in columns that fill the board without overlapping', async (page) => {
-  await tap(page);
-  const layout = await frames(page);
-  const size = await page.evaluate(() => window.__blink.board.size());
-  assert.deepEqual(Object.keys(layout), ['clock', 'reminders', 'web', 'calendar']);
-  assert.equal(layout.clock.x, layout.reminders.x, 'short tiles stack in one column');
-  assert.equal(layout.reminders.y + layout.reminders.h, size.height, 'the last tile in a column reaches the bottom');
-  assert.equal(layout.web.h, size.height);
-  const list = Object.values(layout);
-  for (let i = 0; i < list.length; i += 1) {
-    for (let j = i + 1; j < list.length; j += 1) {
-      const a = list[i], b = list[j];
-      const overlap = a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
-      assert.equal(overlap, false, 'tiles overlap');
-    }
-  }
-});
-
-await test('escape leaves arranging before it closes the overlay', async (page) => {
-  await tap(page);
-  await page.click('#board-edit');
-  assert.equal(await page.textContent('#board-edit'), 'Done');
-  await page.keyboard.press('Escape');
-  assert.equal(await page.textContent('#board-edit'), 'Edit');
-  assert.equal(await state(page), 'pinned');
-  await page.keyboard.press('Escape');
-  await page.waitForTimeout(250);
-  assert.equal(await state(page), 'hidden');
-});
-
-await test('dragging a tile past the others reorders the board', async (page) => {
-  await tap(page);
-  await page.click('#board-edit');
-  const before = await frames(page);
-  const bounds = await page.locator('#board').boundingBox();
-  const from = [bounds.x + before.clock.x + before.clock.w / 2, bounds.y + before.clock.y + before.clock.h / 2];
-  const to = [bounds.x + before.calendar.x + before.calendar.w - 20, bounds.y + before.calendar.y + before.calendar.h / 2];
-  await page.mouse.move(...from);
-  await page.mouse.down();
-  await page.mouse.move((from[0] + to[0]) / 2, (from[1] + to[1]) / 2, { steps: 6 });
-  await page.mouse.move(...to, { steps: 6 });
-  await page.mouse.up();
-  await page.waitForTimeout(400);
-  assert.deepEqual(await order(page), ['reminders', 'web', 'calendar', 'clock']);
-});
-
-await test('freeform starts from the flow arrangement and lets tiles go anywhere', async (page) => {
-  await tap(page);
-  const flow = await frames(page);
-  await page.click('[data-board-mode="freeform"]');
-  await page.waitForTimeout(400);
-  assert.deepEqual(await frames(page), flow, 'switching mode moves nothing');
-
-  await page.click('#board-edit');
-  const bounds = await page.locator('#board').boundingBox();
-  const start = [bounds.x + flow.clock.x + flow.clock.w / 2, bounds.y + flow.clock.y + flow.clock.h / 2];
-  await page.mouse.move(...start);
-  await page.mouse.down();
-  await page.mouse.move(start[0] + 120, start[1] + 90, { steps: 8 });
-  await page.mouse.up();
-  const moved = (await frames(page)).clock;
-  assert.equal(moved.x, flow.clock.x + 120);
-  assert.equal(moved.y, flow.clock.y + 90);
-  assert.equal(moved.w, flow.clock.w);
-});
-
-await test('tiles can be removed and added back from the palette', async (page) => {
-  await tap(page);
-  await page.click('#board-edit');
-  await page.click('[aria-label="Remove Clock"]');
-  await page.waitForTimeout(350);
-  assert.deepEqual(await order(page), ['reminders', 'web', 'calendar']);
-
-  await page.click('#board-add');
-  const offered = await page.locator('#palette-list button').allTextContents();
-  assert.equal(offered.length, 2, 'the palette offers what is not on the board');
-  await page.keyboard.press('ArrowDown');
-  await page.keyboard.press('Enter');
-  await page.waitForTimeout(350);
-  assert.deepEqual(await order(page), ['reminders', 'web', 'calendar', 'notes']);
-  assert.equal(await page.locator('#palette').isHidden(), true);
-});
-
-await test('widgets are alive: clocks tick, reminders tick off, new ones can be added', async (page) => {
-  await tap(page);
-  const time = await page.textContent('#board [data-zone-row="0"] .w-clock__time');
-  assert.match(time, /^\d{1,2}:\d{2}/);
-  assert.equal(await page.locator('#board .w-clock__glyph svg').count(), 3);
-
-  assert.equal(await page.textContent('#board .w-rem__count'), '3');
-  await page.click('#board .w-rem__item >> nth=0');
-  assert.equal(await page.textContent('#board .w-rem__count'), '2');
-  await page.fill('#board .w-rem__new input', 'Tell a friend');
-  await page.keyboard.press('Enter');
-  assert.equal(await page.textContent('#board .w-rem__count'), '3');
-  assert.equal(await state(page), 'pinned', 'typing in a field does not trigger the shortcut');
-
-  assert.ok(await page.locator('#board .w-cal__event').count() >= 3);
-  assert.equal(await page.locator('#board .w-cal__now').count(), 1);
-});
-
-await test('typing a space in a field does not close the overlay', async (page) => {
-  await tap(page);
-  await page.click('#board .w-rem__new input');
-  await page.keyboard.type('a b c');
-  assert.equal(await page.inputValue('#board .w-rem__new input'), 'a b c');
-  assert.equal(await state(page), 'pinned');
-});
-
 await test('space with another key held is some other shortcut', async (page) => {
+  await goToBeat(page, 0.4);
   for (const modifier of ['Shift', 'Alt', 'Control', 'Meta']) {
     await page.keyboard.down(modifier);
     await page.keyboard.down('Space');
     await page.waitForTimeout(150);
-    assert.equal(await isOpen(page), false, `${modifier} + Space opened it`);
+    assert.equal(await state(page), 'hidden', `${modifier} + Space opened it`);
     await page.keyboard.up('Space');
     await page.keyboard.up(modifier);
   }
-  assert.equal(await state(page), 'hidden');
-  assert.equal(await page.locator('#recorder').count(), 0);
 });
 
-await test('the questions respond', async (page) => {
+await test('the questions respond, and say what the app does by default', async (page) => {
   await page.locator('#faq').scrollIntoViewIfNeeded();
   await page.click('.faq summary >> nth=0');
   assert.equal(await page.locator('.faq details >> nth=0').getAttribute('open'), '');
-  // The page should say what the app actually does by default.
   const answers = await page.locator('.faq').textContent(); // closed answers included
   assert.match(answers, /fn/);
   assert.match(answers, /Input Monitoring/);
   assert.match(answers, /Open Anyway/);
 });
 
-await test('the story: scrolling steps through it, and the picture follows', async (page) => {
-  const said = () => page.locator('.step.is-on').innerText();
-  assert.equal(await pictureStep(page), 0);
-  assert.match(await said(), /brings them to you/);
-
-  const unit = await storyUnit(page);
-  const lines = [/middle of something/, /quick look/, /find your way back/, /hold one key/, /never left/];
-  for (let step = 1; step <= 5; step += 1) {
-    await scrollTo(page, unit * (step - 0.1));
-    assert.equal(await pictureStep(page), step);
-    assert.equal(await page.locator('.step.is-on').count(), 1);
-    assert.match(await said(), lines[step - 1]);
-  }
-
-  // The windows pile up, then one key clears them.
-  await scrollTo(page, unit * 2.9);
-  await page.waitForTimeout(900);
-  assert.equal(await opacity(page, '.win--mail'), '1');
-  assert.equal(await opacity(page, '.scr-overlay'), '0');
-  await scrollTo(page, unit * 3.9);
-  await page.waitForTimeout(1000);
-  assert.equal(await opacity(page, '.win--mail'), '0');
-  assert.equal(await opacity(page, '.scr-overlay'), '1');
-  assert.equal(await page.locator('#hero-key').evaluate((el) => el.classList.contains('is-ghost')), true, 'the key goes down with it');
-  await scrollTo(page, unit * 4.9);
-  await page.waitForTimeout(500);
-  assert.equal(await opacity(page, '.scr-overlay'), '0');
-  assert.equal(await page.locator('#hero-key').evaluate((el) => el.classList.contains('is-ghost')), false);
-
-  // And back up again.
-  await scrollTo(page, 0);
-  assert.equal(await pictureStep(page), 0);
-  assert.match(await said(), /brings them to you/);
-});
-
-await test('the picture fits its place, and its tiles fill it without overlapping', async (page) => {
-  const box = await page.locator('#display-wrap').boundingBox();
-  const display = await page.locator('.display').boundingBox();
-  assert.ok(Math.abs(display.width - box.width) < 2 && Math.abs(display.height - box.height) < 2, 'the picture is not scaled to its place');
-  assert.ok(box.x + box.width <= 1280 && box.y + box.height <= 800, 'the picture runs off the screen');
-
-  const tiles = await page.locator('#screen-board .tile').evaluateAll((els) => els.map((el) => ({ x: el.offsetLeft, y: el.offsetTop, w: el.offsetWidth, h: el.offsetHeight })));
-  assert.equal(tiles.length, 4);
-  for (let i = 0; i < tiles.length; i += 1) {
-    for (let j = i + 1; j < tiles.length; j += 1) {
-      const a = tiles[i], b = tiles[j];
-      assert.equal(a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h, false, 'tiles overlap');
-    }
-  }
-  assert.ok(Math.max(...tiles.map((t) => t.x + t.w)) > 1180, 'the tiles leave the canvas half empty');
-  assert.equal(await page.locator('.display').evaluate((el) => el.inert), true, 'the picture is not something to tab into');
-});
-
-await test('the cover shows itself off until someone tries it', async (page) => {
-  const attract = () => page.evaluate(() => document.getElementById('screen').dataset.attract);
-  const ghost = () => page.locator('#hero-key').evaluate((el) => el.classList.contains('is-ghost'));
-  assert.equal(await attract(), 'on');
-  assert.equal(await ghost(), true);
-  await page.waitForFunction(() => document.getElementById('screen').dataset.attract === 'off', null, { timeout: 6000 });
-  assert.equal(await ghost(), false);
-  await page.waitForFunction(() => document.getElementById('screen').dataset.attract === 'on', null, { timeout: 4000 });
-
-  await tap(page);
-  await tap(page);
-  assert.equal(await state(page), 'hidden');
-  assert.equal(await ghost(), false);
-  await page.waitForTimeout(4200);
-  assert.equal(await attract(), 'on', 'it stops once the real thing has been used');
-  assert.equal(await ghost(), false);
-});
-
-await test('with reduced motion the cover stays still', async (page) => {
-  await page.waitForTimeout(4200);
-  assert.equal(await page.evaluate(() => document.getElementById('screen').dataset.attract), 'on');
-  assert.equal(await page.locator('#hero-key').evaluate((el) => el.classList.contains('is-ghost')), false);
-  await tap(page);
-  assert.equal(await state(page), 'pinned');
-}, { width: 1280, height: 800 }, { reducedMotion: 'reduce' });
-
-await test('past the story: the bar names the section, and the key still works', async (page) => {
-  assert.equal(await page.locator('#top-bar').evaluate((el) => el.classList.contains('is-past')), false);
-  await scrollTo(page, await page.evaluate(() => document.getElementById('faq').offsetTop));
-  assert.equal(await page.locator('#top-bar').evaluate((el) => el.classList.contains('is-past')), true);
-  assert.equal(await page.textContent('#running'), '02 — Questions');
-  assert.equal(await page.locator('#hint').evaluate((el) => el.classList.contains('is-on')), true);
-
-  const before = await page.evaluate(() => window.scrollY);
-  await page.keyboard.down('Space');
-  await page.waitForTimeout(500);
-  assert.equal(await isOpen(page), true);
-  assert.equal(await page.locator('#hint').evaluate((el) => el.classList.contains('is-on')), false, 'the reminder gets out of the way');
-  await page.keyboard.up('Space');
-  await page.waitForTimeout(300);
-  assert.equal(await isOpen(page), false);
-  assert.equal(await page.evaluate(() => window.scrollY), before, 'holding Space scrolled the page');
-
-  assert.deepEqual(await page.locator('.sec__label').allInnerTexts(), ['02 Questions']);
-});
-
-await test('the page loads nothing from anywhere else, and its typefaces arrive', async (page) => {
-  await page.evaluate(() => document.fonts.ready);
+await test('the page loads nothing from anywhere else, and its typefaces and wallpaper arrive', async (page) => {
   for (const url of page.requests) {
     assert.ok(url.startsWith(origin) || url.startsWith('data:'), `the page asked for ${url}`);
   }
-  assert.equal(await page.evaluate(() => document.fonts.check('40px Fraunces') && document.fonts.check('16px Archivo')), true);
-  assert.equal(await page.getAttribute('h1', 'aria-label'), 'Blink');
-  const picture = await page.evaluate(() => new Promise((resolve) => {
+  assert.equal(await page.evaluate(() => document.fonts.check('40px Fraunces') && document.fonts.check('16px "Schibsted Grotesk"')), true);
+  const wallpaper = await page.evaluate(() => new Promise((resolve) => {
     const image = new Image();
     image.onload = () => resolve(image.naturalWidth);
     image.onerror = () => resolve(0);
-    image.src = 'desk.jpg';
+    image.src = 'wall.svg';
   }));
-  assert.ok(picture > 1000, 'the desktop picture is missing');
+  assert.ok(wallpaper > 0, 'the wallpaper is missing');
 });
 
 await test('the download links ask for the file the release workflow publishes', async (page) => {
   const links = await page.locator('a', { hasText: /Download/ }).evaluateAll((anchors) => anchors.map((a) => a.href));
-  assert.equal(links.length, 3, 'top bar, cover and footer');
+  assert.equal(links.length, 3, 'top bar, opening and closing');
   for (const href of links) {
     assert.equal(href, 'https://github.com/Michaell14/peek/releases/latest/download/Blink.dmg');
   }
@@ -406,24 +261,32 @@ await test('every link on the page goes somewhere real', async (page) => {
   }
 });
 
-await test('on a phone: no sideways scrolling, and the overlay becomes a list', async (page) => {
+await test('with reduced motion the walkthrough is a list of stills', async (page) => {
+  assert.equal(await blink(page, 'mode'), 'stack');
+  assert.equal(await page.locator('#stack').isVisible(), true);
+  assert.equal(await page.locator('#stack .still').count(), 10);
+  const caption = await page.locator('#stack .still__cap >> nth=2').textContent();
+  assert.match(caption, /Hold fn/);
+}, { width: 1280, height: 800 }, { reducedMotion: 'reduce' });
+
+await test('on a phone: stills, no sideways scrolling, and the key opens Blink as a list', async (page) => {
+  assert.equal(await blink(page, 'mode'), 'stack');
   const widths = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth]);
   assert.equal(widths[0], widths[1], 'the page is wider than the screen');
+  assert.equal(await page.locator('#stack .still').count(), 10);
 
-  // No keyboard on a phone: press and hold the key on the page.
-  const [x, y] = await centre(page, '#hero-key');
-  await page.mouse.move(x, y);
-  await page.mouse.down();
-  await page.waitForTimeout(40);
-  await page.mouse.up();
+  // No keyboard on a phone: the floating key appears by the stills.
+  await page.locator('#stack .still >> nth=3').scrollIntoViewIfNeeded();
+  await page.waitForTimeout(300);
+  await page.locator('#float-key').tap();
   await page.waitForTimeout(350);
   assert.equal(await state(page), 'pinned');
-  assert.equal(await page.locator('#board').evaluate((el) => el.classList.contains('is-stacked')), true);
-  const tiles = await page.locator('#board .tile').evaluateAll((els) => els.map((el) => el.getBoundingClientRect()).map((r) => [r.left, r.right, r.width]));
-  for (const [left, right, width] of tiles) {
-    assert.ok(left >= 0 && right <= 390 && width > 300, 'a tile does not fit the screen');
+  assert.equal(await page.locator('#pov-board').evaluate((el) => el.classList.contains('is-list')), true);
+  const tiles = await page.locator('#pov-board .tile').evaluateAll((els) => els.map((el) => el.getBoundingClientRect()).map((r) => [r.left, r.right]));
+  for (const [left, right] of tiles) {
+    assert.ok(left >= 0 && right <= 390, 'a tile does not fit the screen');
   }
-}, { width: 390, height: 780 });
+}, { width: 390, height: 780 }, { hasTouch: true, isMobile: true });
 
 await browser.close();
 server.close();

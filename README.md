@@ -165,15 +165,18 @@ keeps layouts somewhere other than `~/Library/Application Support/Blink`.
 
 ## The website
 
-`docs/` holds Blink's website. It opens with a short story told by scrolling: a desktop, drawn in
-HTML, fills up with windows and is then cleared with one key. The page is also its own demo: hold
-Space anywhere on it and the overlay appears over the page, with a live clock, calendar and
-reminders, and tiles you can rearrange.
+`docs/` holds Blink's website. One Mac screen, drawn in HTML, stays pinned while you scroll, and
+the scroll plays Blink's story on it: someone mid-sentence, the overlay coming up while fn is held,
+a website refreshing, widgets, a PDF, arranging tiles, and a full-screen app. Each step has a
+caption that fills in as you go. The page is also its own demo: hold Space at any point and the
+overlay opens on the screen, or over the page itself further down. On phones, and with reduced
+motion, the story is a list of stills instead.
 
 It is plain HTML, CSS and JavaScript, loads nothing from anywhere else, and needs no build step.
-The two typefaces, Fraunces and Archivo, are served from `docs/fonts` under the SIL Open Font
-License. The desktop picture is generated, not photographed: `python3 Scripts/make-wallpaper.py`
-draws it again.
+The two typefaces, Schibsted Grotesk and Fraunces, are served from `docs/fonts` under the SIL Open
+Font License, and the wallpaper is a small SVG.
+
+Earlier design directions for the site are kept in `drafts/`; each folder is a standalone page.
 
 ```bash
 make site

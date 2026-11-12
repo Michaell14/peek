@@ -1,49 +1,805 @@
-// Blink — site behaviour. The page is its own demo: hold the shortcut anywhere
-// and the overlay appears, exactly as the app does it over your desktop.
+// Blink, "Daylight" draft.
+// One screen stays pinned while the page scrolls, and the distance scrolled
+// plays Blink's story on it. Hold Space (or press the fn key on screen) at any
+// point to open Blink yourself.
 (() => {
   'use strict';
 
   const $ = (selector, root = document) => root.querySelector(selector);
   const $$ = (selector, root = document) => Array.from(root.querySelectorAll(selector));
-  const TAP_THRESHOLD = 300; // ms: shorter than this is a tap, longer is a hold
+  const clamp = (v, a, b) => Math.min(Math.max(v, a), b);
+  const seg = (t, a, b) => clamp((t - a) / (b - a), 0, 1);
+  const lerp = (a, b, p) => a + (b - a) * p;
+  const easeInOut = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+  const linear = (x) => x;
+  const mix = (a, b, p) => (Array.isArray(a) ? a.map((v, i) => lerp(v, b[i], p)) : lerp(a, b, p));
+
+  // A keyframe track: [[t, value], ...]; holds its ends, eases between keys.
+  function track(keys, T, ease = easeInOut) {
+    if (T <= keys[0][0]) return keys[0][1];
+    for (let i = 1; i < keys.length; i += 1) {
+      const [t1, v1] = keys[i];
+      if (T <= t1) {
+        const [t0, v0] = keys[i - 1];
+        return mix(v0, v1, t1 === t0 ? 1 : ease((T - t0) / (t1 - t0)));
+      }
+    }
+    return keys[keys.length - 1][1];
+  }
+  const within = (T, ranges) => ranges.some(([a, b]) => T >= a && T < b);
+
+  const DMG = 'https://github.com/Michaell14/peek/releases/latest/download/Blink.dmg';
+  void DMG;
 
   // ---------------------------------------------------------------------
-  // The shortcut. In the app it is yours to choose; on this page it is Space.
+  // The story, as a timeline. Beat k runs from T = k - 1 to T = k.
+  // Before the screen pins, T runs from -1 up to 0.
   // ---------------------------------------------------------------------
 
-  const SHORTCUT = 'Space';
-  let shortcutHeld = false;
+  // How far you scroll through each beat, in viewport heights.
+  const LENGTHS = [0.62, 1.1, 0.95, 0.85, 1.15, 1.0, 1.0, 1.0, 1.4, 1.15];
+  // Where each beat's still sits, for phones and reduced motion.
+  const STILLS = [0.92, 1.82, 2.75, 3.8, 4.9, 5.74, 6.85, 7.56, 8.74, 9.75];
+  // When each caption fills, as a fraction of its beat.
+  const FILL = [[-0.3, 0.35], [0.03, 0.45], [0.02, 0.36], [0.02, 0.42], [0.03, 0.5], [0.03, 0.62], [0.03, 0.5], [0.02, 0.42], [0.03, 0.5], [0.03, 0.45]];
 
-  function isShortcut(event) {
-    return event.code === SHORTCUT && !event.ctrlKey && !event.altKey && !event.shiftKey && !event.metaKey;
+  const OVERLAY = [[-2, 0], [2.12, 0], [2.4, 1], [3.06, 1], [3.12, 0], [4.04, 0], [4.1, 1], [6.94, 1], [7.0, 0], [7.12, 0], [7.17, 1], [9.03, 1], [9.08, 0], [9.56, 0], [9.62, 1], [9.88, 1], [9.93, 0]];
+  const KEY_DOWN = [[2.1, 3.06], [4.03, 6.94], [7.11, 7.15], [9.02, 9.05], [9.55, 9.88]];
+  const STRIP = [[7.17, 0], [7.23, 1], [9.03, 1], [9.07, 0]];
+
+  const TEXT_A = 'Since the new page went live, we are at';
+  const TEXT_B = ' 368.';
+  const TYPE_A = [[-0.62, 0], [0.42, TEXT_A.length]];
+  const TYPE_B = [[3.2, 0], [3.4, TEXT_B.length]];
+
+  // Clicking around to check things: which window comes forward, and when.
+  const FRONT = [[1.18, 'cal'], [1.43, 'mail'], [1.67, 'web'], [1.92, 'writer']];
+  const APP_NAME = { writer: 'Writer', cal: 'Calendar', mail: 'Mail', web: 'Browser' };
+  const DOCK_X = { files: 495, writer: 553, cal: 611, mail: 669, web: 727, settings: 785 };
+  const DOCK_Y = 761;
+
+  // Camera: [zoom, x, y] where (x, y) is the point of the screen to centre on.
+  const CAMERA = [[4.12, [1, 640, 400]], [4.38, [1.42, 628, 330]], [4.92, [1.42, 628, 330]], [5.12, [1, 640, 400]]];
+
+  // Tile frames on the board, [x, y, w, h], in screen pixels.
+  // Arranging (beat 9): resize the page, move the file, move the clock, then
+  // back to Flow, which packs everything into columns again.
+  const FRAMES = {
+    clock: [[8.54, [0, 0, 330, 212]], [8.64, [902, 394, 330, 212]], [8.79, [902, 394, 330, 212]], [8.93, [0, 0, 330, 212]]],
+    reminders: [[0, [0, 226, 330, 504]]],
+    web: [[8.2, [344, 0, 520, 730]], [8.3, [344, 0, 520, 380]], [8.79, [344, 0, 520, 380]], [8.93, [344, 0, 520, 730]]],
+    calendar: [[6.1, [878, 0, 354, 730]], [6.36, [878, 0, 354, 380]]],
+    pdf: [[6.14, [878, 780, 354, 336]], [6.4, [878, 394, 354, 336]], [8.37, [878, 394, 354, 336]], [8.47, [344, 394, 354, 336]], [8.79, [344, 394, 354, 336]], [8.93, [878, 394, 354, 336]]],
+  };
+  const HELD = { web: [8.2, 8.31], pdf: [8.37, 8.48], clock: [8.54, 8.65] };
+  const TILE_ORDER = ['clock', 'reminders', 'web', 'calendar', 'pdf'];
+
+  // The pointer, in two acts. Points that depend on layout are measured.
+  const P = {};
+  let POINTER = [];
+  const POINTER_SHOWN = [[0.98, 0], [1.02, 1], [2.0, 1], [2.06, 0], [7.22, 0], [7.27, 1], [8.94, 1], [9.0, 0]];
+  const CLICKS = [1.18, 1.43, 1.67, 1.92, 7.45, 8.09, 8.16, 8.71, 8.77];
+
+  function buildPointerPath() {
+    POINTER = [
+      [1.0, [560, 470]],
+      [1.15, [DOCK_X.cal, DOCK_Y]], [1.21, [DOCK_X.cal, DOCK_Y]],
+      [1.4, [DOCK_X.mail, DOCK_Y]], [1.46, [DOCK_X.mail, DOCK_Y]],
+      [1.64, [DOCK_X.web, DOCK_Y]], [1.7, [DOCK_X.web, DOCK_Y]],
+      [1.8, [800, 352]], [1.84, [800, 352]],
+      [1.9, [DOCK_X.writer, DOCK_Y]], [1.94, [DOCK_X.writer, DOCK_Y]],
+      [2.04, [620, 500]],
+      [7.22, P.boardMid], [7.42, P.room], [7.5, P.room],
+      [7.62, P.webMid], [7.98, P.webMid],
+      [8.07, P.free], [8.1, P.free],
+      [8.14, P.edit], [8.17, P.edit],
+      [8.19, P.webEdge], [8.2, P.webEdge], [8.3, [P.webEdge[0], 46 + 380]], [8.31, [P.webEdge[0], 46 + 380]],
+      [8.36, P.pdf], [8.37, P.pdf], [8.47, [P.pdf[0] - 534, P.pdf[1]]], [8.48, [P.pdf[0] - 534, P.pdf[1]]],
+      [8.53, P.clock], [8.54, P.clock], [8.64, [P.clock[0] + 902, P.clock[1] + 394]], [8.65, [P.clock[0] + 902, P.clock[1] + 394]],
+      [8.7, P.edit], [8.72, P.edit],
+      [8.76, P.flow], [8.9, P.flow],
+    ];
   }
 
-  function isTyping(target) {
-    return target instanceof HTMLElement
-      && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))
-      && target.type !== 'checkbox';
+  // ---------------------------------------------------------------------
+  // Tiles. The same renderers fill the screen in the picture and the
+  // overlay over the page.
+  // ---------------------------------------------------------------------
+
+  const icon = (paths) => `<svg viewBox="0 0 16 16" aria-hidden="true">${paths}</svg>`;
+  const ICONS = {
+    clock: icon('<circle cx="8" cy="8" r="6"/><path d="M8 4.6V8l2.3 1.5"/>'),
+    reminders: icon('<circle cx="3.6" cy="4.5" r="1.4"/><circle cx="3.6" cy="11.5" r="1.4"/><path d="M7.4 4.5h6M7.4 11.5h6"/>'),
+    web: icon('<circle cx="8" cy="8" r="6"/><path d="M2 8h12M8 2c2 2 2 10 0 12M8 2c-2 2-2 10 0 12"/>'),
+    calendar: icon('<rect x="2.2" y="3" width="11.6" height="10.8" rx="2"/><path d="M2.2 6.6h11.6M5.4 1.8v2.4M10.6 1.8v2.4"/>'),
+    pdf: icon('<path d="M4 1.8h5.4L12.6 5v8.2a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V2.8a1 1 0 0 1 1-1z"/><path d="M9.2 1.8V5h3.4M5.4 8.4h5.2M5.4 11h3.4"/>'),
+    sun: '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><circle cx="8" cy="8" r="3.1" fill="currentColor"/><path stroke="currentColor" stroke-width="1.4" stroke-linecap="round" d="M8 1.3v1.5M8 13.2v1.5M1.3 8h1.5M13.2 8h1.5M3.3 3.3l1 1M11.7 11.7l1 1M3.3 12.7l1-1M11.7 4.3l1-1"/></svg>',
+    moon: '<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path fill="currentColor" d="M13.4 10A5.7 5.7 0 0 1 6 2.6a5.7 5.7 0 1 0 7.4 7.4z"/></svg>',
+  };
+  const TITLES = { clock: 'Clock', reminders: 'Reminders', web: 'Example dashboard', calendar: 'Calendar', pdf: 'agenda.pdf' };
+
+  const ZONES = [
+    { zone: 'America/New_York', name: 'New York' },
+    { zone: 'Europe/London', name: 'London' },
+    { zone: 'Asia/Tokyo', name: 'Tokyo' },
+  ];
+
+  const WEB_VALUES = {
+    before: { visitors: '12,480', signups: '368', bounce: '38%', visit: '2m 41s', 'visitors-e': '▲ 8.2%', 'signups-e': '▲ 7.6%', 'bounce-e': '▼ 1.4%', 'visit-e': '▲ 12s' },
+    after: { visitors: '12,536', signups: '371', bounce: '37%', visit: '2m 44s', 'visitors-e': '▲ 8.7%', 'signups-e': '▲ 8.5%', 'bounce-e': '▼ 2.6%', 'visit-e': '▲ 15s' },
+  };
+  const BARS = [52, 49, 58, 55, 61, 84, 90];
+
+  const RENDER = {
+    clock: () => `<div class="w-clock">${ZONES.map((entry, index) => `
+        <div class="w-clock__row" data-zone-row="${index}">
+          <span class="w-clock__glyph"></span>
+          <span class="w-clock__place"><b>${entry.name}</b><span></span></span>
+          <span class="w-clock__time"></span>
+        </div>`).join('')}</div>`,
+
+    reminders: () => `
+      <div class="w-rem">
+        <div class="w-rem__head"><span class="seg"><i class="is-on">Today</i><i>Scheduled</i><i>All</i></span><span class="w-rem__count" data-rem-count>5</span></div>
+        <div class="w-rem__list">
+          <p class="w-label">Overdue</p>
+          <button type="button" tabindex="-1" class="w-rem__item" data-rem="invoice"><i></i><span><b>Send the invoice</b><small class="is-late">Yesterday</small></span></button>
+          <p class="w-label">Today</p>
+          <button type="button" tabindex="-1" class="w-rem__item" data-rem="room"><i></i><span><b>Book a room for Thursday</b><small>10:00 AM</small></span></button>
+          <button type="button" tabindex="-1" class="w-rem__item" data-rem="sam"><i></i><span><b>Reply to Sam</b><small>Today</small></span></button>
+          <button type="button" tabindex="-1" class="w-rem__item" data-rem="plants"><i></i><span><b>Water the plants</b><small>Today</small></span></button>
+          <button type="button" tabindex="-1" class="w-rem__item" data-rem="dentist"><i></i><span><b>Call the dentist</b><small>Today, 5:30 PM</small></span></button>
+        </div>
+        <div class="w-rem__new"><b>+</b>New Reminder</div>
+      </div>`,
+
+    web: () => `
+      <div class="w-web">
+        <div class="w-hover" data-hover>
+          <i>${icon('<path d="M9.8 3.5 5.3 8l4.5 4.5"/>')}</i>
+          <i>${icon('<path d="M6.2 3.5 10.7 8l-4.5 4.5"/>')}</i>
+          <i class="ring" data-ring>${icon('<path d="M12.6 8a4.6 4.6 0 1 1-1.4-3.3M12.8 2.8v2.6h-2.6"/>')}<svg class="r" viewBox="0 0 26 24" aria-hidden="true"><circle cx="13" cy="12" r="10"/></svg></i>
+          <span data-refresh>Refresh in 5:00</span>
+        </div>
+        <div class="w-web__body" data-web-body>
+          <h5>Example dashboard</h5>
+          <p class="w-web__sub">Last 7 days</p>
+          <div class="w-web__stats">
+            <div class="w-web__card"><small>Visitors</small><b data-v="visitors">12,480</b><em class="up" data-v="visitors-e">▲ 8.2%</em></div>
+            <div class="w-web__card"><small>Sign-ups per day</small><b data-v="signups">368</b><em class="up" data-v="signups-e">▲ 7.6%</em></div>
+            <div class="w-web__card"><small>Bounce rate</small><b data-v="bounce">38%</b><em class="down" data-v="bounce-e">▼ 1.4%</em></div>
+            <div class="w-web__card"><small>Avg. visit</small><b data-v="visit">2m 41s</b><em class="up" data-v="visit-e">▲ 12s</em></div>
+          </div>
+          <div class="w-web__card" style="margin-top:10px"><small>Sign-ups per day</small>
+            <div class="w-web__chart">${BARS.map((h) => `<i style="height:${h}%"></i>`).join('')}</div>
+          </div>
+          <div class="w-web__card" style="margin-top:10px"><small>Top pages</small>
+            <div class="w-web__rows"><div><span>/</span><span>5,210</span></div><div><span>/signup</span><span>2,577</span></div><div><span>/pricing</span><span>2,034</span></div><div><span>/docs/getting-started</span><span>1,377</span></div><div><span>/blog/new-page</span><span>962</span></div></div>
+          </div>
+        </div>
+        <div class="w-web__flash" data-flash></div>
+      </div>`,
+
+    calendar: () => `
+      <div class="w-cal">
+        <div class="w-cal__head">
+          <span class="w-cal__day"></span>
+          <span class="w-cal__date"><b></b><span></span></span>
+          <span class="seg"><i class="is-on">Day</i><i>7 Days</i></span>
+        </div>
+        <div class="w-cal__grid"></div>
+      </div>`,
+
+    pdf: () => `
+      <div class="w-pdf" data-pdf>
+        <div class="w-pdf__page">
+          <h6>Agenda</h6>
+          <h4>Thursday review</h4>
+          <ol>
+            <li>The new sign-up page, first week</li>
+            <li>Pricing page copy</li>
+            <li>Hiring a second designer</li>
+            <li class="is-new">Sign-ups: 342 a day before, 368 now</li>
+          </ol>
+          <p>Room 2, 2:00 PM. Sam to bring the numbers.</p>
+        </div>
+        <span class="w-pdf__tag">agenda.pdf changed, reloaded</span>
+      </div>`,
+  };
+
+  function tileHTML(kind) {
+    return `<section class="tile" data-tile="${kind}" aria-label="${TITLES[kind]}">${RENDER[kind]()}
+      <div class="tile__dim"></div>
+      <div class="tile__cover" aria-hidden="true"><span class="tile__x"><svg viewBox="0 0 10 10"><path d="M2 2l6 6M8 2l-6 6"/></svg></span>${ICONS[kind]}<span>${TITLES[kind]}</span></div>
+    </section>`;
+  }
+
+  // ---- Live contents ---------------------------------------------------------
+
+  function hourIn(zone, date) {
+    return Number(new Intl.DateTimeFormat('en-GB', { hour: 'numeric', hourCycle: 'h23', timeZone: zone }).format(date));
+  }
+  function dayDifference(zone, date) {
+    const format = (timeZone) => new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
+    return Math.round((Date.parse(format(zone)) - Date.parse(format(undefined))) / 86400000);
+  }
+  function offsetHours(zone, date) {
+    const local = new Date(date.toLocaleString('en-US'));
+    const remote = new Date(date.toLocaleString('en-US', { timeZone: zone }));
+    return Math.round((remote - local) / 360000) / 10;
+  }
+
+  function updateClocks() {
+    const now = new Date();
+    const time = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }).replace(/\s?[AP]M/i, '');
+    const date = now.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).replace(',', '');
+    $$('[data-live-time]').forEach((element) => { if (element.textContent !== time) element.textContent = time; });
+    $$('[data-live-date]').forEach((element) => { if (element.textContent !== date) element.textContent = date; });
+
+    const rows = ZONES.map((entry) => {
+      const parts = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', timeZone: entry.zone }).formatToParts(now);
+      const digits = parts.filter((part) => ['hour', 'literal', 'minute'].includes(part.type)).map((part) => part.value).join('').trim();
+      const period = (parts.find((part) => part.type === 'dayPeriod') || {}).value || '';
+      const hour = hourIn(entry.zone, now);
+      const difference = dayDifference(entry.zone, now);
+      const offset = offsetHours(entry.zone, now);
+      const dayName = difference > 0 ? 'Tomorrow' : difference < 0 ? 'Yesterday' : 'Today';
+      const detail = offset === 0 ? dayName : `${dayName}, ${offset > 0 ? '+' : '−'}${Math.abs(offset)} ${Math.abs(offset) === 1 ? 'hr' : 'hrs'}`;
+      return { html: `${digits}<small>${period}</small>`, day: hour >= 6 && hour < 18, detail };
+    });
+    $$('[data-zone-row]').forEach((row) => {
+      const data = rows[Number(row.dataset.zoneRow)];
+      const glyph = $('.w-clock__glyph', row);
+      const glyphClass = `w-clock__glyph ${data.day ? 'is-day' : 'is-night'}`;
+      if (glyph.className !== glyphClass) { glyph.className = glyphClass; glyph.innerHTML = data.day ? ICONS.sun : ICONS.moon; }
+      const timeElement = $('.w-clock__time', row);
+      if (timeElement.innerHTML !== data.html) timeElement.innerHTML = data.html;
+      const place = $('.w-clock__place span', row);
+      if (place.textContent !== data.detail) place.textContent = data.detail;
+    });
+  }
+
+  // A day that always has something going on around now.
+  function updateCalendar() {
+    const now = new Date();
+    const anchor = Math.min(Math.max(now.getHours(), 2), 19);
+    const first = anchor - 2;
+    const hours = 9;
+    const scale = 100 / hours;
+    const position = (hour) => (hour - first) * scale;
+    const label = (hour) => new Date(2000, 0, 1, Math.floor(hour), (hour % 1) * 60).toLocaleTimeString('en-US', { hour: 'numeric', minute: hour % 1 ? '2-digit' : undefined });
+    const events = [
+      { title: 'Design review', start: anchor - 1.5, end: anchor - 0.5, color: '#5fd0c2', column: 0, of: 1 },
+      { title: 'Thursday review', start: anchor + 0.25, end: anchor + 1.25, color: '#5b9dff', column: 0, of: 2 },
+      { title: 'Sam, 1:1', start: anchor + 0.75, end: anchor + 1.75, color: '#b98cff', column: 1, of: 2 },
+      { title: 'Lunch', start: anchor + 2.5, end: anchor + 3.25, color: '#ffc761', column: 0, of: 1 },
+      { title: 'Ship it', start: anchor + 4.5, end: anchor + 5.5, color: '#ff8a7a', column: 0, of: 1 },
+    ];
+    let html = '';
+    for (let i = 1; i < hours; i += 1) html += `<div class="w-cal__hour" style="top:${i * scale}%"><span>${label(first + i)}</span></div>`;
+    for (const event of events) {
+      const width = `calc((100% - 54px) / ${event.of} - 3px)`;
+      const left = `calc(44px + (100% - 54px) / ${event.of} * ${event.column})`;
+      html += `<div class="w-cal__event" style="--c:${event.color};background:${event.color}38;top:calc(${position(event.start)}% + 1px);height:calc(${(event.end - event.start) * scale}% - 3px);left:${left};width:${width}"><b>${event.title}</b><span>${label(event.start)}</span></div>`;
+    }
+    const nowHour = now.getHours() + now.getMinutes() / 60;
+    if (nowHour >= first && nowHour <= first + hours) html += `<div class="w-cal__now" data-now style="top:${position(nowHour)}%"></div>`;
+
+    $$('.w-cal').forEach((root) => {
+      $('.w-cal__day', root).textContent = now.getDate();
+      $('.w-cal__date b', root).textContent = now.toLocaleDateString('en-US', { weekday: 'long' });
+      $('.w-cal__date span', root).textContent = now.toLocaleDateString('en-US', { month: 'long' });
+      $('.w-cal__grid', root).innerHTML = html;
+    });
+    scenes.forEach((scene) => { scene.calNow = $('[data-now]', scene.display); });
+    if (stills.length) renderStills();
+  }
+
+  // ---------------------------------------------------------------------
+  // A scene: one copy of the screen, and how to draw it at any moment T.
+  // ---------------------------------------------------------------------
+
+  const scenes = [];
+
+  function makeScene(display) {
+    const q = (selector) => $(selector, display);
+    const webTile = $('[data-tile="web"]', display);
+    const w = (selector) => $(selector, webTile);
+    const scene = {
+      display,
+      cache: new WeakMap(),
+      fit: 1,
+      screen: q('.screen'),
+      desk: q('.desk'),
+      cam: display.closest('.cam'),
+      wins: {},
+      dockIcons: {},
+      appName: q('[data-app-name]'),
+      mbBlink: q('[data-mb-blink]'),
+      menubar: q('.menubar'),
+      dock: q('.dock'),
+      typedA: $$('[data-typed="a"]', display),
+      typedB: $$('[data-typed="b"]', display),
+      full: q('[data-full]'),
+      ov: q('[data-ov]'),
+      strip: q('[data-strip]'),
+      stripHint: q('[data-strip-hint]'),
+      segFlow: q('[data-seg-flow]'),
+      segFree: q('[data-seg-free]'),
+      edit: q('[data-edit]'),
+      board: q('[data-board]'),
+      tiles: {},
+      rem: {},
+      remCount: q('[data-rem-count]'),
+      hover: w('[data-hover]'),
+      ring: w('[data-ring]'),
+      refresh: w('[data-refresh]'),
+      flash: w('[data-flash]'),
+      webBody: w('[data-web-body]'),
+      webDim: w('.tile__dim'),
+      values: {},
+      lastBar: null,
+      pdf: q('[data-pdf]'),
+      calNow: q('[data-now]'),
+      pointer: q('[data-pointer]'),
+    };
+    $$('[data-win]', display).forEach((element) => { scene.wins[element.dataset.win] = element; });
+    $$('.dock [data-app]', display).forEach((element) => { scene.dockIcons[element.dataset.app] = element; });
+    $$('[data-tile]', display).forEach((element) => { scene.tiles[element.dataset.tile] = element; });
+    $$('[data-rem]', display).forEach((element) => { scene.rem[element.dataset.rem] = element; });
+    $$('[data-v]', webTile).forEach((element) => { scene.values[element.dataset.v] = element; });
+    scene.lastBar = $$('.w-web__chart i', webTile).pop();
+    scenes.push(scene);
+    return scene;
+  }
+
+  // Writes a style only when it changed since last time.
+  function css(scene, element, property, value) {
+    if (!element) return;
+    let memo = scene.cache.get(element);
+    if (!memo) scene.cache.set(element, (memo = {}));
+    if (memo[property] === value) return;
+    memo[property] = value;
+    element.style.setProperty(property, value);
+  }
+  function flag(element, name, on) {
+    if (element && element.classList.contains(name) !== on) element.classList.toggle(name, on);
+  }
+  function text(element, value) {
+    if (element && element.textContent !== value) element.textContent = value;
+  }
+  const px = (v) => `${Math.round(v * 10) / 10}px`;
+
+  function frontAt(T) {
+    const order = ['web', 'cal', 'mail', 'writer'];
+    for (const [t, app] of FRONT) {
+      if (T < t) break;
+      order.splice(order.indexOf(app), 1);
+      order.push(app);
+    }
+    return order;
+  }
+
+  // Draw the scene at moment T. `user` (0 to 1) is Blink opened by the
+  // visitor; `pinned` means they tapped and it stays.
+  function render(scene, T, { user = 0, pinned = false, still = false } = {}) {
+    // Windows: stacking order, and which one is in front.
+    const order = frontAt(T);
+    const front = order[order.length - 1];
+    order.forEach((app, index) => {
+      css(scene, scene.wins[app], 'z-index', String(index + 1));
+      flag(scene.wins[app], 'is-key', app === front);
+    });
+    text(scene.appName, APP_NAME[front]);
+    for (const [app, element] of Object.entries(scene.dockIcons)) {
+      const t = { cal: 1.18, mail: 1.43, web: 1.67, writer: 1.92 }[app];
+      flag(element, 'is-click', t != null && Math.abs(T - t) < 0.012);
+    }
+
+    // The sentence being written.
+    const a = Math.round(track(TYPE_A, T, linear));
+    const b = Math.round(track(TYPE_B, T, linear));
+    scene.typedA.forEach((element) => text(element, TEXT_A.slice(0, a)));
+    scene.typedB.forEach((element) => text(element, TEXT_B.slice(0, b)));
+
+    // Full screen.
+    const fullP = track([[9.12, 0], [9.42, 1]], T);
+    const fullO = track([[9.12, 0], [9.2, 1]], T, linear);
+    css(scene, scene.full, 'visibility', fullO > 0 ? 'visible' : 'hidden');
+    css(scene, scene.full, 'opacity', fullO.toFixed(3));
+    const inset = [62, 410, 126, 170].map((v) => lerp(v, 0, fullP));
+    css(scene, scene.full, 'clip-path', `inset(${inset.map(px).join(' ')} round ${px(lerp(12, 0, fullP))})`);
+    const chrome = track([[9.12, 0], [9.26, 1]], T);
+    css(scene, scene.menubar, 'transform', `translateY(${px(-30 * chrome)})`);
+    css(scene, scene.dock, 'transform', `translateX(-50%) translateY(${px(90 * chrome)})`);
+
+    // Blink.
+    const sceneOverlay = track(OVERLAY, T, linear);
+    const overlay = Math.max(sceneOverlay, user);
+    css(scene, scene.ov, 'opacity', overlay.toFixed(3));
+    css(scene, scene.ov, 'visibility', overlay > 0.001 ? 'visible' : 'hidden');
+    flag(scene.ov, 'is-live', pinned);
+    flag(scene.mbBlink, 'is-on', overlay > 0.5);
+    if (still) flag(scene.desk, 'is-blurred', overlay > 0.5);
+    const bloom = T > 2 && T < 2.6 ? track([[2.12, 0.965], [2.42, 1]], T) : 0.985 + 0.015 * overlay;
+    css(scene, scene.board, 'transform', `scale(${(user > sceneOverlay ? 0.985 + 0.015 * user : bloom).toFixed(4)})`);
+    css(scene, scene.strip, 'opacity', Math.max(track(STRIP, T, linear), pinned ? 1 : 0).toFixed(3));
+
+    // Arranging.
+    const freeform = T >= 8.09 && T < 8.77;
+    const editing = T >= 8.16 && T < 8.71;
+    flag(scene.segFlow, 'is-on', !freeform);
+    flag(scene.segFree, 'is-on', freeform);
+    flag(scene.board, 'is-editing', editing);
+    flag(scene.edit, 'is-on', editing);
+    text(scene.edit, editing ? 'Done' : 'Edit');
+    text(scene.stripHint, editing ? 'Drag a tile to move it, or its edge to resize' : 'fn or esc to close');
+
+    // Tiles.
+    TILE_ORDER.forEach((kind, index) => {
+      const element = scene.tiles[kind];
+      if (!element) return;
+      const [x, y, w, h] = track(FRAMES[kind], T);
+      let opacity = 1;
+      let lift = 0;
+      if (T > 2.05 && T < 2.5 && user <= sceneOverlay) {
+        const o = seg(T, 2.14 + index * 0.035, 2.28 + index * 0.035);
+        opacity = o;
+        lift = (1 - o) * 12;
+      }
+      if (kind === 'pdf') opacity = track([[6.14, 0], [6.24, 1]], T, linear);
+      css(scene, element, 'transform', `translate(${px(x)}, ${px(y + lift)})`);
+      css(scene, element, 'width', px(w));
+      css(scene, element, 'height', px(h));
+      css(scene, element, 'opacity', opacity.toFixed(3));
+      css(scene, element, 'visibility', opacity > 0.001 ? 'visible' : 'hidden');
+      const held = HELD[kind];
+      flag(element, 'is-held', !!held && T >= held[0] && T < held[1]);
+    });
+    // While the widgets have their turn, the page steps back.
+    css(scene, scene.webDim, 'opacity', track([[5.08, 0], [5.2, 1], [5.86, 1], [5.98, 0]], T, linear).toFixed(3));
+
+    // Reminders that get done.
+    const done = { plants: T >= 5.42, room: T >= 7.45 };
+    for (const [key, element] of Object.entries(scene.rem)) {
+      if (key in done && !element.dataset.user) flag(element, 'is-done', done[key]);
+    }
+    if (scene.remCount) text(scene.remCount, String(Object.values(scene.rem).filter((element) => !element.classList.contains('is-done')).length));
+
+    // The web page: hover bar, refresh timer, and the numbers after.
+    css(scene, scene.hover, 'opacity', track([[4.34, 0], [4.4, 1], [5.0, 1], [5.06, 0]], T, linear).toFixed(3));
+    const refreshed = T >= 4.76;
+    const ring = refreshed ? track([[4.76, 0], [5.1, 0.12]], T, linear) : track([[4.4, 0], [4.74, 1]], T, linear);
+    css(scene, scene.ring, '--ring', ring.toFixed(3));
+    const left = Math.round((1 - ring) * 300);
+    text(scene.refresh, ring >= 0.999 ? 'Refreshing' : `Refresh in ${Math.floor(left / 60)}:${String(left % 60).padStart(2, '0')}`);
+    css(scene, scene.flash, 'opacity', track([[4.74, 0], [4.76, 0.75], [4.84, 0]], T, linear).toFixed(3));
+    const values = refreshed ? WEB_VALUES.after : WEB_VALUES.before;
+    for (const [key, element] of Object.entries(scene.values)) {
+      text(element, values[key]);
+      if (element.tagName === 'B') flag(element, 'is-new', refreshed && T < 4.96);
+    }
+    css(scene, scene.lastBar, 'transform', `scaleY(${track([[4.76, 0.9], [4.86, 1]], T).toFixed(3)})`);
+    const scroll = track([[7.66, 0], [7.78, -120], [7.86, -120], [7.98, 0]], T);
+    css(scene, scene.webBody, 'transform', `translateY(${px(scroll)})`);
+
+    // The file that changes on disk.
+    flag(scene.pdf, 'is-updated', T >= 6.62);
+
+    // Now, on the calendar.
+    if (scene.calNow) {
+      const pulse = T > 5.45 && T < 6 ? ((T - 5.45) / 0.18) % 1 : 1;
+      css(scene, scene.calNow, '--pulse-s', (0.4 + pulse * 1.6).toFixed(3));
+      css(scene, scene.calNow, '--pulse-o', (T > 5.45 && T < 6 ? 0.9 * (1 - pulse) : 0).toFixed(3));
+    }
+
+    // The pointer.
+    if (POINTER.length) {
+      const shown = track(POINTER_SHOWN, T, linear) * (still && !(T > 1 && T < 2.05) && !(T > 7.2 && T < 9) ? 0 : 1);
+      const [x, y] = track(POINTER, T);
+      const click = CLICKS.some((t) => Math.abs(T - t) < 0.012) || Object.values(HELD).some(([a, b]) => T >= a && T < b);
+      css(scene, scene.pointer, 'opacity', shown.toFixed(3));
+      css(scene, scene.pointer, 'transform', `translate(${px(x)}, ${px(y)}) scale(${click ? 0.86 : 1})`);
+    }
+
+    // The camera.
+    const [zoom, cx, cy] = track(CAMERA, T);
+    const dx = -(cx - 640) * scene.fit * zoom;
+    const dy = -(cy - 400) * scene.fit * zoom;
+    css(scene, scene.cam, 'transform', zoom === 1 ? 'none' : `translate(${px(dx)}, ${px(dy)}) scale(${zoom.toFixed(4)})`);
+  }
+
+  // ---------------------------------------------------------------------
+  // The page.
+  // ---------------------------------------------------------------------
+
+  const root = document.documentElement;
+  const bar = $('#bar');
+  const heroMark = $('.hero__mark');
+  const take = $('#take');
+  const stage = $('#stage');
+  const display = $('#display');
+  const stack = $('#stack');
+  const caps = $$('#caps .cap');
+  const index = $('#index');
+  const indexLinks = $$('a', index);
+  const stageKey = $('.foot .fnkey');
+  const floatBox = $('#float');
+  const calm = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  // Build the board in the picture, then the scene that drives it.
+  $('[data-board]', display).innerHTML = TILE_ORDER.map(tileHTML).join('');
+  $('[data-slot="web"]', display).innerHTML = RENDER.web()
+    .replace(/<div class="w-hover"[\s\S]*?<\/span>\s*<\/div>/, '')
+    .replace(/ data-[a-z-]+(="[^"]*")?/g, '');
+  const stageScene = makeScene(display);
+
+  // Captions: one span per word, so they can fill in as you read.
+  const ink4 = [195, 199, 206];
+  const ink = [12, 13, 16];
+  function splitWords(element) {
+    const words = element.textContent.trim().split(/\s+/);
+    element.innerHTML = words.map((word) => `<span class="w">${word}</span>`).join(' ');
+    return $$('.w', element);
+  }
+  const capWords = caps.map(splitWords);
+  function paintWords(words, fill, cache) {
+    const n = words.length;
+    words.forEach((word, i) => {
+      const w = clamp(fill * n - i, 0, 1);
+      const key = Math.round(w * 40);
+      if (cache[i] === key) return;
+      cache[i] = key;
+      const c = ink4.map((v, k) => Math.round(lerp(v, ink[k], key / 40)));
+      word.style.color = `rgb(${c.join(',')})`;
+    });
+  }
+  const capCache = caps.map(() => []);
+
+  let mode = '';
+  let T = -1;
+  const state = { vh: window.innerHeight, preDistance: 1, lengthsPx: [] };
+
+  function isTakeMode() {
+    return window.innerWidth >= 900 && window.innerHeight >= 560 && !calm.matches;
+  }
+
+  // Size the screen to the viewport: as large as fits above the captions.
+  function layout() {
+    const vw = document.documentElement.clientWidth;
+    const vh = window.innerHeight;
+    state.vh = vh;
+    const side = vw >= 1240 ? 168 : 40;
+    let dw = 0;
+    let dh = vh - 60 - 14 - 24 - 40 - 2.3 * 30;
+    for (let i = 0; i < 3; i += 1) {
+      dw = Math.min(dh * 1300 / 820, vw - 2 * side, 1240);
+      dh = dw * 820 / 1300;
+      const cap = clamp(dw * 0.03, 24, 36);
+      const room = vh - 60 - 14 - 24 - 34 - 2.24 * cap;
+      if (dh > room) dh = room;
+    }
+    dw = Math.round(dh * 1300 / 820);
+    dh = Math.round(dw * 820 / 1300);
+    if (mode === 'take') {
+      root.style.setProperty('--dw', `${dw}px`);
+      root.style.setProperty('--dh', `${dh}px`);
+      root.style.setProperty('--f', (dw / 1300).toFixed(5));
+      stageScene.fit = dw / 1300;
+      state.lengthsPx = LENGTHS.map((l) => l * vh);
+      take.style.height = `${vh + state.lengthsPx.reduce((s, v) => s + v, 0)}px`;
+      state.preDistance = Math.max(take.offsetTop, 1);
+    } else {
+      root.style.removeProperty('--dw');
+      root.style.removeProperty('--dh');
+      root.style.removeProperty('--f');
+      take.style.height = '';
+      const width = stack.clientWidth || (vw - 32);
+      const viewWidth = window.innerWidth >= 900 ? (width - 40) * 1.7 / 2.7 : width;
+      stack.style.setProperty('--cf', (viewWidth / 1300).toFixed(5));
+      stills.forEach((still) => { still.scene.fit = viewWidth / 1300; });
+      renderStills();
+    }
+  }
+
+  function setMode() {
+    const next = isTakeMode() ? 'take' : 'stack';
+    if (next === mode) return;
+    mode = next;
+    root.classList.toggle('is-take', mode === 'take');
+    root.classList.toggle('is-stack', mode === 'stack');
+    stack.hidden = mode !== 'stack';
+    if (mode === 'stack') buildStills();
+    measure();
+  }
+
+  // T from where the page is scrolled.
+  function readT() {
+    const top = take.getBoundingClientRect().top;
+    if (top > 0) return clamp(-top / state.preDistance, -1, 0);
+    let rest = -top;
+    for (let k = 0; k < state.lengthsPx.length; k += 1) {
+      const length = state.lengthsPx[k];
+      if (rest < length) return k + rest / length;
+      rest -= length;
+    }
+    return 10;
+  }
+
+  // Scroll position for a given T (used by the step list).
+  function scrollForT(target) {
+    const base = take.getBoundingClientRect().top + window.scrollY;
+    if (target <= 0) return base + target * state.preDistance;
+    let y = base;
+    for (let k = 0; k < state.lengthsPx.length; k += 1) {
+      if (target < k + 1) return y + (target - k) * state.lengthsPx[k];
+      y += state.lengthsPx[k];
+    }
+    return y;
+  }
+
+  function renderCaptions() {
+    const active = clamp(Math.floor(T) + 1, 1, 10);
+    caps.forEach((cap, i) => {
+      const k = i + 1;
+      if (Math.abs(k - active) > 1) {
+        if (cap.style.opacity !== '0') cap.style.opacity = '0';
+        return;
+      }
+      const t = T - (k - 1);
+      const on = k === 1 ? 1 : seg(t, 0, 0.06);
+      const off = k === 10 ? 1 : 1 - seg(t, 0.93, 1);
+      const opacity = on * off;
+      cap.style.opacity = opacity.toFixed(3);
+      cap.style.transform = `translateY(${((1 - on) * 10 - (1 - off) * 10).toFixed(1)}px)`;
+      cap.style.filter = opacity > 0.98 ? 'none' : `blur(${((1 - on) * 6 + (1 - off) * 6).toFixed(1)}px)`;
+      const [a, b] = FILL[i];
+      paintWords(capWords[i], seg(t, a, b), capCache[i]);
+    });
+    indexLinks.forEach((link) => flag(link, 'is-on', Number(link.dataset.go) === active));
+    // The step list joins once the screen has settled, and steps aside for close-ups.
+    const zoom = track(CAMERA, T)[0];
+    const shown = seg(T, -0.2, -0.02) * (1 - seg(zoom, 1, 1.06));
+    index.style.opacity = shown.toFixed(3);
+    index.style.visibility = shown > 0.01 ? 'visible' : 'hidden';
+  }
+
+  function renderStage() {
+    render(stageScene, T, { user: userOverlay.u, pinned: peek.state === 'pinned' && peek.where === 'stage' });
+    const ghost = mode === 'take' && within(T, KEY_DOWN);
+    flag(stageKey, 'is-down', ghost || keyHeld);
+  }
+
+  function onFrame() {
+    frame = 0;
+    const scrolled = window.scrollY;
+    flag(bar, 'is-past', scrolled > heroMark.offsetTop + heroMark.offsetHeight * 0.7 - 60);
+    if (mode === 'take') {
+      T = readT();
+      renderCaptions();
+      renderStage();
+      if (peek.state === 'pinned' && peek.where === 'stage' && stageVisibility() < 0.4) dismiss();
+    } else {
+      renderStillCaptions();
+      const stackRect = stack.getBoundingClientRect();
+      flag(floatBox, 'is-shown', stackRect.top < state.vh * 0.6 && stackRect.bottom > state.vh * 0.5);
+    }
+  }
+  let frame = 0;
+  const requestFrame = () => { if (!frame) frame = requestAnimationFrame(onFrame); };
+  window.addEventListener('scroll', requestFrame, { passive: true });
+
+  // ---- Stills -------------------------------------------------------------
+
+  const stills = [];
+  function buildStills() {
+    if (stills.length) return;
+    const template = display.cloneNode(true);
+    template.removeAttribute('id');
+    stack.innerHTML = '';
+    STILLS.forEach((t, index) => {
+      const item = document.createElement('li');
+      item.className = 'still';
+      const view = document.createElement('div');
+      view.className = 'still__view';
+      view.setAttribute('aria-hidden', 'true');
+      const cam = document.createElement('div');
+      cam.className = 'cam';
+      const copy = template.cloneNode(true);
+      cam.append(copy);
+      view.append(cam);
+      const cap = document.createElement('p');
+      cap.className = 'still__cap';
+      cap.textContent = caps[index].textContent;
+      item.append(view, cap);
+      stack.append(item);
+      const scene = makeScene(copy);
+      stills.push({ index, scene, cap, words: splitWords(cap), cache: [] });
+    });
+    updateClocks();
+    updateCalendar();
+  }
+
+  function renderStills() {
+    stills.forEach((still) => render(still.scene, STILLS[still.index], { still: true }));
+  }
+
+  function renderStillCaptions() {
+    const vh = state.vh;
+    const tops = stills.map((still) => still.cap.getBoundingClientRect().top);
+    stills.forEach((still, i) => {
+      const fill = calm.matches ? 1 : seg(vh * 0.92 - tops[i], 0, vh * 0.42);
+      paintWords(still.words, fill, still.cache);
+    });
+  }
+
+  // ---- Measuring points the pointer goes to --------------------------------
+
+  function measure() {
+    const scene = mode === 'take' ? stageScene : (stills[7] && stills[7].scene);
+    if (!scene) return;
+    render(scene, 7.5);
+    const screenRect = scene.screen.getBoundingClientRect();
+    const k = screenRect.width / 1280;
+    if (!k) return;
+    const centre = (element) => {
+      const r = element.getBoundingClientRect();
+      return [(r.left + r.width / 2 - screenRect.left) / k, (r.top + r.height / 2 - screenRect.top) / k];
+    };
+    const box = $('i', scene.rem.room);
+    P.room = centre(box);
+    P.free = centre(scene.segFree);
+    P.flow = centre(scene.segFlow);
+    P.edit = centre(scene.edit);
+    P.boardMid = [700, 600];
+    P.webMid = [24 + 344 + 300, 46 + 420];
+    P.webEdge = [24 + 344 + 260, 46 + 730];
+    P.pdf = [24 + 878 + 177, 46 + 394 + 150];
+    P.clock = [24 + 190, 46 + 120];
+    buildPointerPath();
   }
 
   // ---------------------------------------------------------------------
   // Hold or tap. The same small state machine the app uses.
   // ---------------------------------------------------------------------
 
-  const overlay = $('#overlay');
-  const hint = $('#hint');
-  const keys = $$('[data-blink-key]'); // the keys drawn on the page
-  const peek = { state: 'hidden', since: 0, uses: 0 };
+  const TAP_THRESHOLD = 300;
+  const SHORTCUT = 'Space';
+  const keys = $$('[data-key]');
+  const pov = $('#pov');
+  const povBoard = $('#pov-board');
+  const peek = { state: 'hidden', since: 0, where: 'stage' };
+  let shortcutHeld = false;
+  let keyHeld = false;
+  const userOverlay = { u: 0, target: 0, raf: 0, last: 0 };
+
+  function isShortcut(event) {
+    return event.code === SHORTCUT && !event.ctrlKey && !event.altKey && !event.shiftKey && !event.metaKey;
+  }
+  function isTyping(target) {
+    return target instanceof HTMLElement
+      && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName));
+  }
 
   function setKeysDown(down) {
-    keys.forEach((key) => key.classList.toggle('is-down', down));
+    keyHeld = down;
+    keys.forEach((key) => { if (key !== stageKey) flag(key, 'is-down', down); });
+    renderStage();
+  }
+
+  function stageVisibility() {
+    if (mode !== 'take') return 0;
+    const r = display.getBoundingClientRect();
+    const visible = Math.min(r.bottom, state.vh) - Math.max(r.top, 0);
+    return clamp(visible / Math.max(r.height, 1), 0, 1);
   }
 
   function shortcutDown() {
-    const now = performance.now();
     setKeysDown(true);
-    retireAttract();
     if (peek.state === 'hidden' || peek.state === 'releasing') {
       peek.state = 'holding';
-      peek.since = now;
+      peek.since = performance.now();
+      peek.where = stageVisibility() > 0.5 ? 'stage' : 'page';
       showOverlay();
     } else if (peek.state === 'pinned') {
       peek.state = 'releasing';
@@ -52,11 +808,9 @@
   }
 
   function shortcutUp() {
-    const now = performance.now();
     setKeysDown(false);
     if (peek.state === 'holding') {
-      const held = now - peek.since;
-      if (held <= TAP_THRESHOLD) {
+      if (performance.now() - peek.since <= TAP_THRESHOLD) {
         peek.state = 'pinned';
         setPinned(true);
       } else {
@@ -69,58 +823,66 @@
   }
 
   function dismiss() {
-    if (peek.state === 'pinned') {
-      peek.state = 'hidden';
-      hideOverlay();
-    } else if (peek.state === 'holding') {
-      peek.state = 'releasing';
-      hideOverlay();
-    }
+    if (peek.state === 'pinned') { peek.state = 'hidden'; hideOverlay(); }
+    else if (peek.state === 'holding') { peek.state = 'releasing'; hideOverlay(); }
+  }
+
+  function tweenUser(target) {
+    userOverlay.target = target;
+    if (calm.matches) { userOverlay.u = target; renderStage(); return; }
+    if (userOverlay.raf) return;
+    userOverlay.last = performance.now();
+    const step = (now) => {
+      const d = (now - userOverlay.last) / 140;
+      userOverlay.last = now;
+      userOverlay.u = userOverlay.target > userOverlay.u ? Math.min(userOverlay.target, userOverlay.u + d) : Math.max(userOverlay.target, userOverlay.u - d);
+      renderStage();
+      userOverlay.raf = userOverlay.u === userOverlay.target ? 0 : requestAnimationFrame(step);
+    };
+    userOverlay.raf = requestAnimationFrame(step);
   }
 
   function showOverlay() {
-    peek.uses += 1;
-    board.layout(false);
-    overlay.classList.add('is-open');
-    overlay.setAttribute('aria-hidden', 'false');
-    hint.classList.remove('is-on');
+    floatBox.classList.add('is-used');
+    if (peek.where === 'stage') {
+      tweenUser(1);
+    } else {
+      layoutPov();
+      pov.classList.add('is-open');
+      pov.setAttribute('aria-hidden', 'false');
+    }
   }
 
   function hideOverlay() {
     setPinned(false);
-    overlay.classList.remove('is-open');
-    overlay.setAttribute('aria-hidden', 'true');
+    tweenUser(0);
+    pov.classList.remove('is-open');
+    pov.setAttribute('aria-hidden', 'true');
   }
 
   let restoreFocus = null;
-
   function setPinned(pinned) {
-    overlay.classList.toggle('is-pinned', pinned);
-    // While Blink is open the page behind it is out of reach, as your
-    // desktop would be.
-    $$('main, .top, .footer').forEach((element) => { element.inert = pinned; });
-    if (pinned) {
-      restoreFocus = document.activeElement;
-      overlay.focus({ preventScroll: true });
-    } else {
-      board.setEditing(false);
-      closePalette();
-      if (restoreFocus && document.contains(restoreFocus)) restoreFocus.focus({ preventScroll: true });
-      restoreFocus = null;
+    if (peek.where === 'page') {
+      pov.classList.toggle('is-pinned', pinned);
+      $$('main, .bar, .footer').forEach((element) => { element.inert = pinned; });
+      if (pinned) {
+        restoreFocus = document.activeElement;
+        pov.focus({ preventScroll: true });
+      } else if (restoreFocus && document.contains(restoreFocus)) {
+        restoreFocus.focus({ preventScroll: true });
+        restoreFocus = null;
+      }
     }
+    renderStage();
   }
 
   window.addEventListener('keydown', (event) => {
     if (event.key === 'Escape' && peek.state !== 'hidden') {
       event.preventDefault();
-      if (!$('#palette').hidden) closePalette();
-      else if (board.isEditing) board.setEditing(false);
-      else dismiss();
+      dismiss();
       return;
     }
-    if (!$('#palette').hidden && handlePaletteKey(event)) return;
     if (isTyping(event.target)) return;
-
     if (isShortcut(event)) {
       event.preventDefault(); // Space would otherwise scroll the page
       if (!event.repeat && !shortcutHeld) { shortcutHeld = true; shortcutDown(); }
@@ -129,7 +891,7 @@
 
   window.addEventListener('keyup', (event) => {
     if (!shortcutHeld || event.code !== SHORTCUT) return;
-    event.preventDefault(); // or a focused button would be "clicked"
+    event.preventDefault(); // or a focused button would be pressed
     shortcutHeld = false;
     shortcutUp();
   }, true);
@@ -138,7 +900,7 @@
   window.addEventListener('blur', () => {
     if (!shortcutHeld) return;
     shortcutHeld = false;
-    if (peek.state === 'holding') { peek.since = -Infinity; }
+    if (peek.state === 'holding') peek.since = -Infinity;
     shortcutUp();
   });
 
@@ -147,6 +909,7 @@
   keys.forEach((key) => {
     key.addEventListener('pointerdown', (event) => {
       if (event.button !== 0 || pressedKey) return;
+      event.preventDefault();
       key.setPointerCapture(event.pointerId);
       pressedKey = key;
       shortcutDown();
@@ -163,644 +926,108 @@
     key.addEventListener('contextmenu', (event) => event.preventDefault());
   });
 
-  overlay.addEventListener('pointerdown', (event) => {
-    if (event.target === overlay || event.target === $('#board')) {
-      if (!$('#palette').hidden) closePalette();
-      else if (!board.isEditing) dismiss();
-    }
-  });
-  $('#board-close').addEventListener('click', dismiss);
-
-  // ---------------------------------------------------------------------
-  // The board: tiles, the two layout modes, and arranging.
-  // ---------------------------------------------------------------------
-
-  const GAP = 14;
-  const boardElement = $('#board');
-
-  // Flow layout, as in the app: tiles are packed in order into full-height
-  // columns; short tiles stack and the last one in a column stretches.
-  function flowColumns(items, height) {
-    const columns = [];
-    let used = 0;
-    let fills = false;
-    for (const item of items) {
-      if (item.h == null) {
-        columns.push([item]); fills = true; used = height;
-        continue;
-      }
-      const h = Math.min(Math.max(item.h, 80), height);
-      if (columns.length && !fills && used + GAP + h <= height + 0.5) {
-        columns[columns.length - 1].push(item); used += GAP + h;
-      } else {
-        columns.push([item]); fills = false; used = h;
-      }
-    }
-    return columns;
-  }
-
-  function flowLayout(items, width, height) {
-    const frames = new Map();
-    if (!items.length) return frames;
-    const columns = flowColumns(items, height);
-    let widths = columns.map((column) => Math.max(...column.map((item) => item.w)));
-    const gaps = GAP * (columns.length - 1);
-    const natural = widths.reduce((a, b) => a + b, 0);
-    const room = Math.max(width - gaps, 1);
-    if (natural > room) widths = widths.map((w) => w * room / natural);
-    const total = widths.reduce((a, b) => a + b, 0) + gaps;
-    let x = Math.max(0, (width - total) / 2);
-    columns.forEach((column, index) => {
-      let y = 0;
-      column.forEach((item, row) => {
-        const last = row === column.length - 1;
-        const h = last ? Math.max(height - y, 0) : Math.min(Math.max(item.h ?? height, 80), height);
-        frames.set(item.id, { x: Math.round(x), y: Math.round(y), w: Math.round(widths[index]), h: Math.round(h) });
-        y += h + GAP;
-      });
-      x += widths[index] + GAP;
-    });
-    return frames;
-  }
-
-  // Where a dragged tile would land: an index into the list without it.
-  function insertionIndex(point, movingID, items, width, height) {
-    const others = items.filter((item) => item.id !== movingID);
-    if (!others.length) return 0;
-    const frames = flowLayout(others, width, height);
-    const columns = flowColumns(others, height);
-    let best = 0;
-    let bestDistance = Infinity;
-    others.forEach((item, index) => {
-      const f = frames.get(item.id);
-      const dx = Math.max(f.x - point.x, 0, point.x - (f.x + f.w));
-      const dy = Math.max(f.y - point.y, 0, point.y - (f.y + f.h));
-      const distance = Math.hypot(dx, dy);
-      if (distance < bestDistance) { bestDistance = distance; best = index; }
-    });
-    const f = frames.get(others[best].id);
-    const stacked = columns.find((column) => column.includes(others[best])).length > 1;
-    const after = stacked ? point.y > f.y + f.h / 2 : point.x > f.x + f.w / 2;
-    return best + (after ? 1 : 0);
-  }
-
-  // Small line icons, drawn here so the page needs no icon font.
-  const icon = (paths) => `<svg viewBox="0 0 16 16" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths}</svg>`;
-  const ICONS = {
-    clock: icon('<circle cx="8" cy="8" r="6"/><path d="M8 4.6V8l2.3 1.5"/>'),
-    reminders: icon('<circle cx="3.6" cy="4.5" r="1.4"/><circle cx="3.6" cy="11.5" r="1.4"/><path d="M7.4 4.5h6M7.4 11.5h6"/>'),
-    web: icon('<circle cx="8" cy="8" r="6"/><path d="M2 8h12M8 2c2 2 2 10 0 12M8 2c-2 2-2 10 0 12"/>'),
-    calendar: icon('<rect x="2.2" y="3" width="11.6" height="10.8" rx="2"/><path d="M2.2 6.6h11.6M5.4 1.8v2.4M10.6 1.8v2.4"/>'),
-    notes: icon('<rect x="2.6" y="2.2" width="10.8" height="11.6" rx="2"/><path d="M5.2 5.6h5.6M5.2 8h5.6M5.2 10.4h3.2"/>'),
-    sun: '<svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true"><circle cx="8" cy="8" r="3.1" fill="currentColor"/><path stroke="currentColor" stroke-width="1.4" stroke-linecap="round" d="M8 1.3v1.5M8 13.2v1.5M1.3 8h1.5M13.2 8h1.5M3.3 3.3l1 1M11.7 11.7l1 1M3.3 12.7l1-1M11.7 4.3l1-1"/></svg>',
-    moon: '<svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path fill="currentColor" d="M13.4 10A5.7 5.7 0 0 1 6 2.6a5.7 5.7 0 1 0 7.4 7.4z"/></svg>',
-  };
-
-  const CATALOG = {
-    clock: { title: 'Clock', note: 'The time in the places you care about', w: 290, h: 220 },
-    reminders: { title: 'Reminders', note: 'What is due, ready to tick off', w: 300, h: 330 },
-    web: { title: 'Example dashboard', note: 'Any website, already loaded', w: 420, h: null },
-    calendar: { title: 'Calendar', note: "Today's events", w: 300, h: null },
-    notes: { title: 'Notes', note: 'A scratchpad that is always there', w: 280, h: 240 },
-  };
-
-  const board = {
-    mode: 'flow',
-    isEditing: false,
-    tiles: [], // { id, kind, w, h, frame, element }
-
-    add(kind) {
-      const spec = CATALOG[kind];
-      const element = document.createElement('section');
-      element.className = 'tile';
-      element.setAttribute('aria-label', spec.title);
-      element.append(renderers[kind]());
-
-      const cover = document.createElement('div');
-      cover.className = 'tile__cover';
-      cover.innerHTML = `${ICONS[kind]}<span>${spec.title}</span>`;
-      const remove = document.createElement('button');
-      remove.type = 'button';
-      remove.className = 'tile__remove';
-      remove.setAttribute('aria-label', `Remove ${spec.title}`);
-      remove.innerHTML = '<svg viewBox="0 0 10 10" aria-hidden="true"><path d="M2 2l6 6M8 2l-6 6"/></svg>';
-      cover.append(remove);
-      element.append(cover);
-
-      const tile = { id: kind, kind, w: spec.w, h: spec.h, frame: null, element };
-      remove.addEventListener('pointerdown', (event) => event.stopPropagation());
-      remove.addEventListener('click', () => this.remove(tile));
-      cover.addEventListener('pointerdown', (event) => this.beginDrag(tile, event));
-      this.tiles.push(tile);
-      boardElement.append(element);
-      return tile;
-    },
-
-    remove(tile) {
-      tile.element.classList.add('is-leaving');
-      this.tiles = this.tiles.filter((other) => other !== tile);
-      setTimeout(() => tile.element.remove(), 200);
-      this.layout(true);
-    },
-
-    size() {
-      return { width: boardElement.clientWidth, height: boardElement.clientHeight };
-    },
-
-    get isStacked() {
-      return window.innerWidth < 760;
-    },
-
-    // Positions every tile. Freeform frames are remembered per tile; flow
-    // frames are worked out from the order.
-    layout(animated, skip = null) {
-      boardElement.classList.toggle('is-stacked', this.isStacked);
-      if (this.isStacked) {
-        // Too narrow for columns: a simple scrolling list.
-        const heights = { clock: 190, reminders: 300, web: 520, calendar: 420, notes: 200 };
-        this.tiles.forEach((tile) => { tile.element.style.height = `${heights[tile.kind]}px`; });
-        return;
-      }
-      const { width, height } = this.size();
-      const frames = this.mode === 'flow' ? flowLayout(this.tiles, width, height) : null;
-      for (const tile of this.tiles) {
-        if (frames) tile.frame = frames.get(tile.id);
-        if (!tile.frame || tile === skip) continue;
-        const f = tile.frame;
-        tile.element.style.transitionDuration = animated ? '' : '0s';
-        Object.assign(tile.element.style, { left: `${f.x}px`, top: `${f.y}px`, width: `${f.w}px`, height: `${f.h}px` });
-      }
-      if (!animated) {
-        void boardElement.offsetWidth; // apply without animating, then restore
-        this.tiles.forEach((tile) => { tile.element.style.transitionDuration = ''; });
-      }
-    },
-
-    setMode(mode) {
-      if (mode === this.mode) return;
-      if (mode === 'flow') {
-        // Read the canvas left to right, then top to bottom.
-        this.tiles.sort((a, b) => (a.frame.x - b.frame.x) || (a.frame.y - b.frame.y));
-      }
-      this.mode = mode; // freeform simply starts from where flow left things
-      $$('[data-board-mode]').forEach((button) => button.classList.toggle('is-on', button.dataset.boardMode === mode));
-      this.layout(true);
-    },
-
-    setEditing(editing) {
-      this.isEditing = editing;
-      boardElement.classList.toggle('is-editing', editing);
-      const button = $('#board-edit');
-      button.textContent = editing ? 'Done' : 'Edit';
-      button.classList.toggle('is-on', editing);
-      $('#overlay-hint').textContent = editing ? 'Drag a tile to move it' : 'Space or esc to close';
-    },
-
-    beginDrag(tile, event) {
-      if (!this.isEditing || this.isStacked || event.button !== 0) return;
-      event.preventDefault();
-      const cover = event.currentTarget;
-      cover.setPointerCapture(event.pointerId);
-      const start = { x: event.clientX, y: event.clientY };
-      const origin = { ...tile.frame };
-      tile.element.classList.add('is-dragging');
-
-      const move = (moveEvent) => {
-        const { width, height } = this.size();
-        const dx = moveEvent.clientX - start.x;
-        const dy = moveEvent.clientY - start.y;
-        const x = this.mode === 'freeform' ? Math.min(Math.max(origin.x + dx, 0), width - origin.w) : origin.x + dx;
-        const y = this.mode === 'freeform' ? Math.min(Math.max(origin.y + dy, 0), height - origin.h) : origin.y + dy;
-        tile.element.style.left = `${x}px`;
-        tile.element.style.top = `${y}px`;
-        if (this.mode === 'freeform') {
-          tile.frame = { ...origin, x, y };
-          return;
-        }
-        const bounds = boardElement.getBoundingClientRect();
-        const point = { x: moveEvent.clientX - bounds.left, y: moveEvent.clientY - bounds.top };
-        const index = insertionIndex(point, tile.id, this.tiles, width, height);
-        const others = this.tiles.filter((other) => other !== tile);
-        others.splice(index, 0, tile);
-        if (others.some((other, i) => other !== this.tiles[i])) {
-          this.tiles = others;
-          this.layout(true, tile); // the others make room; this one follows the pointer
-        }
-      };
-      const end = () => {
-        cover.removeEventListener('pointermove', move);
-        cover.removeEventListener('pointerup', end);
-        cover.removeEventListener('pointercancel', end);
-        tile.element.classList.remove('is-dragging');
-        this.layout(true);
-      };
-      cover.addEventListener('pointermove', move);
-      cover.addEventListener('pointerup', end);
-      cover.addEventListener('pointercancel', end);
-    },
-  };
-
-  $$('[data-board-mode]').forEach((button) => {
-    button.addEventListener('click', () => board.setMode(button.dataset.boardMode));
-  });
-  $('#board-edit').addEventListener('click', () => board.setEditing(!board.isEditing));
-  window.addEventListener('resize', () => {
-    if (board.mode === 'freeform') {
-      // Keep freeform tiles on the canvas when the window shrinks.
-      const { width, height } = board.size();
-      board.tiles.forEach((tile) => {
-        if (!tile.frame) return;
-        tile.frame.x = Math.max(0, Math.min(tile.frame.x, width - tile.frame.w));
-        tile.frame.y = Math.max(0, Math.min(tile.frame.y, height - tile.frame.h));
-      });
-    }
-    board.layout(false);
-  });
-
-  // ---- Tile contents ----------------------------------------------------
-
-  const ZONES = [
-    { zone: undefined, name: 'Local' },
-    { zone: 'Europe/London', name: 'London' },
-    { zone: 'Asia/Tokyo', name: 'Tokyo' },
-  ];
-
-  function hourIn(zone, date) {
-    return Number(new Intl.DateTimeFormat('en-GB', { hour: 'numeric', hourCycle: 'h23', timeZone: zone }).format(date));
-  }
-
-  function dayDifference(zone, date) {
-    const format = (timeZone) => new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
-    const there = Date.parse(format(zone));
-    const here = Date.parse(format(undefined));
-    return Math.round((there - here) / 86400000);
-  }
-
-  function offsetHours(zone, date) {
-    const local = new Date(date.toLocaleString('en-US'));
-    const remote = new Date(date.toLocaleString('en-US', { timeZone: zone }));
-    return Math.round((remote - local) / 360000) / 10;
-  }
-
-  const renderers = {
-    clock() {
-      const root = document.createElement('div');
-      root.className = 'w-clock';
-      root.innerHTML = ZONES.map((entry, index) => `
-        <div class="w-clock__row" data-zone-row="${index}">
-          <span class="w-clock__glyph"></span>
-          <span class="w-clock__place"><b>${entry.name}</b><span></span></span>
-          <span class="w-clock__time"></span>
-        </div>`).join('');
-      return root;
-    },
-
-    reminders() {
-      const root = document.createElement('div');
-      root.className = 'w-rem';
-      root.innerHTML = `
-        <div class="w-rem__head">
-          <div class="segmented segmented--small" aria-hidden="true"><button type="button" class="is-on" tabindex="-1">Today</button><button type="button" tabindex="-1">All</button></div>
-          <span class="w-rem__count">3</span>
-        </div>
-        <div class="w-rem__list">
-          <p class="w-label">Overdue</p>
-          <button type="button" class="w-rem__item"><i></i><span><b>Send the invoice</b><small class="is-late">Yesterday</small></span></button>
-          <p class="w-label">Today</p>
-          <button type="button" class="w-rem__item"><i></i><span><b>Water the plants</b><small>Today</small></span></button>
-          <button type="button" class="w-rem__item"><i></i><span><b>Try holding the key a little longer</b><small>Today, any time</small></span></button>
-        </div>
-        <label class="w-rem__new"><span aria-hidden="true">＋</span><input type="text" placeholder="New Reminder" aria-label="New reminder"></label>`;
-      const list = $('.w-rem__list', root);
-      const count = $('.w-rem__count', root);
-      const recount = () => { count.textContent = $$('.w-rem__item:not(.is-done)', list).length; };
-      list.addEventListener('click', (event) => {
-        const item = event.target.closest('.w-rem__item');
-        if (!item) return;
-        item.classList.toggle('is-done');
-        recount();
-      });
-      $('input', root).addEventListener('keydown', (event) => {
-        const input = event.currentTarget;
-        if (event.key !== 'Enter' || !input.value.trim()) return;
-        const item = document.createElement('button');
-        item.type = 'button';
-        item.className = 'w-rem__item';
-        item.innerHTML = '<i></i><span><b></b><small>Today</small></span>';
-        $('b', item).textContent = input.value.trim();
-        list.append(item);
-        input.value = '';
-        recount();
-        list.scrollTop = list.scrollHeight;
-      });
-      return root;
-    },
-
-    web() {
-      const root = document.createElement('div');
-      root.className = 'w-web';
-      root.innerHTML = `
-        <div class="w-web__body">
-          <h5>Example dashboard</h5>
-          <p class="w-web__sub">Last 7 days</p>
-          <div class="w-web__stats">
-            <div class="w-web__card"><small>Visitors</small><b>12,480</b><em class="up">▲ 8.2%</em></div>
-            <div class="w-web__card"><small>Sign-ups</small><b>342</b><em class="up">▲ 3.1%</em></div>
-            <div class="w-web__card"><small>Bounce rate</small><b>38%</b><em class="down">▼ 1.4%</em></div>
-            <div class="w-web__card"><small>Avg. visit</small><b>2m 41s</b><em class="up">▲ 12s</em></div>
-          </div>
-          <div class="w-web__card" style="margin-top:10px"><small>Visitors per day</small>
-            <div class="w-web__chart"><i style="height:46%"></i><i style="height:58%"></i><i style="height:52%"></i><i style="height:71%"></i><i style="height:88%"></i><i style="height:64%"></i><i style="height:97%"></i></div>
-          </div>
-          <div class="w-web__card" style="margin-top:10px"><small>Top pages</small>
-            <div class="w-web__rows"><div><span>/</span><span>5,210</span></div><div><span>/pricing</span><span>2,034</span></div><div><span>/docs/getting-started</span><span>1,377</span></div><div><span>/blog/launch</span><span>962</span></div></div>
-          </div>
-        </div>`;
-      return root;
-    },
-
-    calendar() {
-      const root = document.createElement('div');
-      root.className = 'w-cal';
-      root.innerHTML = `
-        <div class="w-cal__head">
-          <span class="w-cal__day"></span>
-          <span class="w-cal__date"><b></b><span></span></span>
-        </div>
-        <div class="w-cal__grid"></div>`;
-      return root;
-    },
-
-    notes() {
-      const area = document.createElement('textarea');
-      area.className = 'w-notes';
-      area.placeholder = 'Jot something down…';
-      area.setAttribute('aria-label', 'Notes');
-      return area;
-    },
-  };
-
-  function updateClocks() {
-    const now = new Date();
-    const time = now.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
-    $$('[data-live-time]').forEach((element) => { element.textContent = time.replace(/\s?[AP]M/i, ''); });
-    const date = now.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).replace(',', '');
-    $$('[data-live-date]').forEach((element) => { element.textContent = date; });
-
-    $$('[data-zone-row]').forEach((row) => {
-      const entry = ZONES[Number(row.dataset.zoneRow)];
-      const parts = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', timeZone: entry.zone }).formatToParts(now);
-      const digits = parts.filter((part) => ['hour', 'literal', 'minute'].includes(part.type)).map((part) => part.value).join('').trim();
-      const period = (parts.find((part) => part.type === 'dayPeriod') || {}).value || '';
-      const hour = hourIn(entry.zone, now);
-      const day = hour >= 6 && hour < 18;
-      const glyph = $('.w-clock__glyph', row);
-      const glyphClass = `w-clock__glyph ${day ? 'is-day' : 'is-night'}`;
-      if (glyph.className !== glyphClass) {
-        glyph.className = glyphClass;
-        glyph.innerHTML = day ? ICONS.sun : ICONS.moon;
-      }
-      $('.w-clock__time', row).innerHTML = `${digits}<small>${period}</small>`;
-
-      let detail = Intl.DateTimeFormat().resolvedOptions().timeZone.split('/').pop().replace(/_/g, ' ');
-      if (entry.zone) {
-        const difference = dayDifference(entry.zone, now);
-        const offset = offsetHours(entry.zone, now);
-        const dayName = difference > 0 ? 'Tomorrow' : difference < 0 ? 'Yesterday' : 'Today';
-        detail = offset === 0 ? dayName : `${dayName}, ${offset > 0 ? '+' : '−'}${Math.abs(offset)} ${Math.abs(offset) === 1 ? 'hr' : 'hrs'}`;
-      }
-      $('.w-clock__place span', row).textContent = detail;
-    });
-  }
-
-  // A day that always has something going on around now.
-  function updateCalendar() {
-    const now = new Date();
-    $$('.w-cal').forEach((root) => {
-      $('.w-cal__day', root).textContent = now.getDate();
-      $('.w-cal__date b', root).textContent = now.toLocaleDateString([], { weekday: 'long' });
-      $('.w-cal__date span', root).textContent = now.toLocaleDateString([], { month: 'long' });
-
-      const grid = $('.w-cal__grid', root);
-      const anchor = Math.min(Math.max(now.getHours(), 2), 19);
-      const first = anchor - 2;
-      const hours = 9;
-      const scale = 100 / hours; // percent per hour
-      const position = (hour) => (hour - first) * scale;
-      const events = [
-        { title: 'Design review', start: anchor, end: anchor + 1, color: '#5b9dff', column: 0, of: 2 },
-        { title: '1:1 with Sam', start: anchor + 0.5, end: anchor + 1.5, color: '#b98cff', column: 1, of: 2 },
-        { title: 'Lunch', start: anchor + 2, end: anchor + 2.75, color: '#5fd0c2', column: 0, of: 1 },
-        { title: 'Ship it', start: anchor + 3.5, end: anchor + 4.5, color: '#ffc761', column: 0, of: 1 },
-      ];
-      const label = (hour) => new Date(2000, 0, 1, Math.floor(hour), (hour % 1) * 60)
-        .toLocaleTimeString([], { hour: 'numeric', minute: hour % 1 ? '2-digit' : undefined });
-
-      let html = '';
-      for (let i = 1; i < hours; i += 1) {
-        html += `<div class="w-cal__hour" style="top:${i * scale}%"><span>${label(first + i)}</span></div>`;
-      }
-      for (const event of events) {
-        const width = `calc((100% - 54px) / ${event.of} - 3px)`;
-        const left = `calc(44px + (100% - 54px) / ${event.of} * ${event.column})`;
-        html += `<div class="w-cal__event" style="--c:${event.color};background:${event.color}3d;top:calc(${position(event.start)}% + 1px);height:calc(${(event.end - event.start) * scale}% - 3px);left:${left};width:${width}"><b>${event.title}</b><span>${label(event.start)}</span></div>`;
-      }
-      const nowHour = now.getHours() + now.getMinutes() / 60;
-      if (nowHour >= first && nowHour <= first + hours) {
-        html += `<div class="w-cal__now" style="top:${position(nowHour)}%"></div>`;
-      }
-      grid.innerHTML = html;
-    });
-  }
-
-  // ---- The "add a tile" palette -----------------------------------------
-
-  const palette = $('#palette');
-  const paletteList = $('#palette-list');
-  let paletteIndex = 0;
-
-  function openPalette() {
-    board.setEditing(false);
-    const missing = Object.keys(CATALOG).filter((kind) => !board.tiles.some((tile) => tile.kind === kind));
-    paletteIndex = 0;
-    paletteList.innerHTML = missing.length
-      ? missing.map((kind, index) => `
-          <li><button type="button" data-kind="${kind}" class="${index === 0 ? 'is-on' : ''}">
-            <i>${ICONS[kind]}</i>
-            <span>${CATALOG[kind].title}<small>${CATALOG[kind].note}</small></span>
-          </button></li>`).join('')
-      : '<li class="palette__empty">Everything is already on the board. In the app, this is where you would type any address.</li>';
-    palette.hidden = false;
-    const first = $('button', paletteList);
-    if (first) first.focus({ preventScroll: true });
-  }
-
-  function closePalette() {
-    palette.hidden = true;
-  }
-
-  function handlePaletteKey(event) {
-    const buttons = $$('button', paletteList);
-    if (!buttons.length) return false;
-    if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
-      event.preventDefault();
-      paletteIndex = (paletteIndex + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length;
-      buttons.forEach((button, index) => button.classList.toggle('is-on', index === paletteIndex));
-      buttons[paletteIndex].focus({ preventScroll: true });
-      return true;
-    }
-    return false;
-  }
-
-  paletteList.addEventListener('click', (event) => {
-    const button = event.target.closest('button[data-kind]');
-    if (!button) return;
-    const tile = board.add(button.dataset.kind);
-    if (board.mode === 'freeform') {
-      const { width, height } = board.size();
-      const h = tile.h ?? Math.round(height * 0.8);
-      tile.frame = { x: Math.round((width - tile.w) / 2), y: Math.round((height - h) / 2), w: tile.w, h };
-    }
-    closePalette();
-    updateClocks();
-    updateCalendar();
-    board.layout(false);
-    $('#board-add').focus({ preventScroll: true });
-  });
-  $('#board-add').addEventListener('click', () => (palette.hidden ? openPalette() : closePalette()));
-
-  // ---------------------------------------------------------------------
-  // The story at the top. The section is several screens tall and its
-  // contents stay pinned; how far the page has scrolled picks the step.
-  // ---------------------------------------------------------------------
-
-  const story = $('#story');
-  const screen = $('#screen');
-  const steps = $$('.step', story);
-  const heroKey = $('#hero-key');
-  const topBar = $('#top-bar');
-  const running = $('#running');
-  const sections = $$('[data-title]');
-  const calm = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const tale = { step: 0, attract: true, attractTimer: 0, pressTimer: 0 };
-
-  // The key pressing itself, to show what the picture is showing.
-  function setGhost(down) {
-    heroKey.classList.toggle('is-ghost', down);
-  }
-
-  // Until someone tries it, the picture on the cover holds and lets go by
-  // itself every few seconds.
-  function startAttract() {
-    clearTimeout(tale.attractTimer);
-    if (!tale.attract || calm) {
-      screen.dataset.attract = 'on';
+  // While Blink is pinned on the screen, its reminders can be ticked and a
+  // click outside the tiles closes it.
+  stageScene.ov.addEventListener('click', (event) => {
+    if (peek.state !== 'pinned') return;
+    const item = event.target.closest('.w-rem__item');
+    if (item) {
+      item.dataset.user = '1';
+      item.classList.toggle('is-done');
+      renderStage();
       return;
     }
-    let on = true;
-    const turn = () => {
-      screen.dataset.attract = on ? 'on' : 'off';
-      setGhost(on);
-      tale.attractTimer = setTimeout(() => { on = !on; turn(); }, on ? 3600 : 1700);
-    };
-    turn();
-  }
+    if (!event.target.closest('.tile, .toolbar')) dismiss();
+  });
 
-  // Once they have, it stays put.
-  function retireAttract() {
-    if (!tale.attract) return;
-    tale.attract = false;
-    clearTimeout(tale.attractTimer);
-    screen.dataset.attract = 'on';
-    if (tale.step === 0) setGhost(false);
-  }
+  // ---- Blink over the page --------------------------------------------------
 
-  function setStep(step) {
-    if (step === tale.step) return;
-    tale.step = step;
-    screen.dataset.step = step;
-    steps.forEach((element) => {
-      const on = Number(element.dataset.step) === step;
-      element.classList.toggle('is-on', on);
-      if (element.classList.contains('step--intro')) element.inert = !on; // its link should not take focus unseen
-    });
-    clearTimeout(tale.attractTimer);
-    clearTimeout(tale.pressTimer);
-    setGhost(false);
-    if (step === 0) startAttract();
-    // "Or hold one key": the windows clear, then the key goes down.
-    if (step === 4) tale.pressTimer = setTimeout(() => setGhost(true), calm ? 0 : 500);
-  }
+  povBoard.innerHTML = TILE_ORDER.map(tileHTML).join('');
+  if (window.matchMedia('(hover: none)').matches) $('#pov-hint').textContent = 'Tap fn again to close';
+  const povTiles = $$('.tile', povBoard);
+  povBoard.addEventListener('click', (event) => {
+    const item = event.target.closest('.w-rem__item');
+    if (!item) return;
+    item.classList.toggle('is-done');
+    const count = $('[data-rem-count]', povBoard);
+    count.textContent = $$('.w-rem__item:not(.is-done)', povBoard).length;
+  });
+  $$('.w-rem__item', povBoard).forEach((item) => { item.tabIndex = 0; });
+  pov.addEventListener('pointerdown', (event) => {
+    if (event.target === pov || event.target === povBoard) dismiss();
+  });
+  $('#pov-close').addEventListener('click', dismiss);
 
-  function readScroll() {
-    const bounds = story.getBoundingClientRect();
-    const span = Math.max(story.offsetHeight - window.innerHeight, 1);
-    const scrolled = Math.min(Math.max(-bounds.top, 0), span);
-    const unit = span / (steps.length - 0.4); // the last step gets a full unit to itself
-    setStep(Math.min(steps.length - 1, Math.floor(scrolled / unit + 0.4)));
-
-    const past = bounds.bottom < 90;
-    topBar.classList.toggle('is-past', past);
-    // The running head: the last section to have come up past the middle.
-    const line = window.innerHeight * 0.4;
-    let current = 0;
-    sections.forEach((section, index) => { if (section.getBoundingClientRect().top <= line) current = index; });
-    const head = `${String(current + 1).padStart(2, '0')} — ${sections[current].dataset.title}`;
-    if (running.textContent !== head) running.textContent = head;
-    // Further down, remind people the page is live until they have tried it.
-    const page = document.documentElement;
-    const atEnd = window.scrollY + window.innerHeight > page.scrollHeight - 240; // leave the footer alone
-    hint.classList.toggle('is-on', past && !atEnd && peek.uses < 2 && peek.state === 'hidden');
-  }
-
-  let scrollFrame = 0;
-  const onScroll = () => {
-    if (scrollFrame) return;
-    scrollFrame = requestAnimationFrame(() => { scrollFrame = 0; readScroll(); });
-  };
-  window.addEventListener('scroll', onScroll, { passive: true });
-  window.addEventListener('resize', onScroll);
-
-  // The picture is drawn at one size and scaled to fit its place.
-  const displayWrap = $('#display-wrap');
-  const display = $('.display', displayWrap);
-  const fitDisplay = () => display.style.setProperty('--s', (displayWrap.clientWidth / 1304).toFixed(4));
-  if ('ResizeObserver' in window) new ResizeObserver(fitDisplay).observe(displayWrap);
-  window.addEventListener('resize', fitDisplay);
-
-  // Inside it, one of the windows shows the same dashboard as the web tile,
-  // and Blink shows the same four tiles as the real demo, laid out the same way.
-  function buildScreen() {
-    $('#screen-web').append(renderers.web());
-    const canvas = $('#screen-board');
-    const widths = { clock: 320, reminders: 320, web: 524, calendar: 352 }; // sized to fill this canvas
-    const items = Object.keys(widths).map((kind) => ({ id: kind, w: widths[kind], h: CATALOG[kind].h }));
-    const frames = flowLayout(items, 1280 - 56, 800 - 78);
-    for (const item of items) {
-      const f = frames.get(item.id);
-      const element = document.createElement('div');
-      element.className = 'tile';
-      element.append(renderers[item.id]());
-      Object.assign(element.style, { left: `${f.x}px`, top: `${f.y}px`, width: `${f.w}px`, height: `${f.h}px` });
-      canvas.append(element);
+  function layoutPov() {
+    const width = povBoard.clientWidth || window.innerWidth - 48;
+    const height = povBoard.clientHeight || window.innerHeight - 76;
+    const list = window.innerWidth < 760;
+    povBoard.classList.toggle('is-list', list);
+    if (list) {
+      const heights = { clock: 212, reminders: 370, web: 560, calendar: 420, pdf: 420 };
+      povTiles.forEach((tile) => { tile.style.height = `${heights[tile.dataset.tile]}px`; tile.style.width = ''; tile.style.transform = ''; });
+      return;
     }
+    // Flow, as in the app: tiles packed in order into full-height columns.
+    const gap = 14;
+    const columns = [['clock', 'reminders'], ['web'], ['calendar', 'pdf']];
+    const natural = [330, 520, 354];
+    const room = width - gap * 2;
+    const total = natural.reduce((a, b) => a + b, 0);
+    const widths = total > room ? natural.map((w) => w * room / total) : natural;
+    let x = Math.max(0, (width - widths.reduce((a, b) => a + b, 0) - gap * 2) / 2);
+    const tops = { clock: 212, calendar: Math.min(420, height * 0.52) };
+    columns.forEach((column, c) => {
+      let y = 0;
+      column.forEach((kind, row) => {
+        const last = row === column.length - 1;
+        const h = last ? height - y : tops[kind];
+        const tile = povTiles.find((element) => element.dataset.tile === kind);
+        Object.assign(tile.style, { transform: `translate(${Math.round(x)}px, ${Math.round(y)}px)`, width: `${Math.round(widths[c])}px`, height: `${Math.round(h)}px` });
+        y += h + gap;
+      });
+      x += widths[c] + gap;
+    });
   }
+
+  // ---- The step list ----------------------------------------------------------
+
+  indexLinks.forEach((link) => link.addEventListener('click', (event) => {
+    event.preventDefault();
+    const k = Number(link.dataset.go);
+    const target = k === 1 ? 0.3 : k - 1 + 0.5;
+    window.scrollTo({ top: scrollForT(target), behavior: 'smooth' });
+  }));
 
   // ---------------------------------------------------------------------
   // Start.
   // ---------------------------------------------------------------------
 
-  ['clock', 'reminders', 'web', 'calendar'].forEach((kind) => board.add(kind));
-  buildScreen();
-  fitDisplay();
+  function refresh() {
+    setMode();
+    layout();
+    onFrame();
+  }
+
   updateClocks();
   updateCalendar();
-  board.layout(false);
-  startAttract();
-  readScroll();
+  setMode();
+  layout();
+  measure();
+  refresh();
   setInterval(updateClocks, 1000);
   setInterval(updateCalendar, 60000);
 
-  // For the tests.
-  window.__blink = { peek, board, tale, shortcutDown, shortcutUp };
+  const afterFonts = () => { layout(); measure(); refresh(); };
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(afterFonts);
+
+  let resizeTimer = 0;
+  window.addEventListener('resize', () => {
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(() => { refresh(); if (pov.classList.contains('is-open')) layoutPov(); }, 80);
+  });
+  calm.addEventListener('change', refresh);
+
+  // For checking the page by script.
+  window.__blink = { peek, scrollForT, get user() { return userOverlay.u; }, get T() { return T; }, get mode() { return mode; }, render: () => onFrame() };
 })();
