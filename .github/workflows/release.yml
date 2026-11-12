@@ -3,25 +3,49 @@ name: Release
 # Publishes a version: the file people download from the website, and the one
 # installed copies of Blink update themselves to.
 #
-#   On GitHub: Actions → Release → Run workflow, and type a version (0.2.0).
-#   Or from a terminal: git tag v0.2.0 && git push origin v0.2.0
+# It runs by itself whenever a change to the app lands on the default branch
+# (a merged pull request, say), and publishes the next patch version: 0.1.0,
+# then 0.1.1. Changes to the website, tests or docs alone publish nothing.
 #
-# Use a higher number each time. Blink only offers an update when the
-# published version is newer than the one that is running.
+# To choose the number yourself, for a bigger step such as 0.2.0:
+#   On GitHub: Actions → Release → Run workflow, and type the version.
+#   Or from a terminal: git tag v0.2.0 && git push origin v0.2.0
+# The automatic ones carry on from there.
+#
+# Blink only offers an update when the published version is newer than the
+# one that is running.
 on:
   push:
     tags: ['v*']
+    branches: ['**']
+    # Only for branch pushes; GitHub ignores paths for tags.
+    paths:
+      - 'Sources/**'
+      - 'Resources/**'
+      - 'Package.swift'
+      - 'Package.resolved'
+      - 'Scripts/build-app.sh'
+      - 'Scripts/package.sh'
+      - 'Scripts/notarize.sh'
   workflow_dispatch:
     inputs:
       version:
-        description: Version to publish, for example 0.2.0
-        required: true
+        description: Version to publish, for example 0.2.0. Leave empty for the next patch version.
+        required: false
 
 permissions:
   contents: write
 
+# One release at a time, each waiting for the last, so two changes landing
+# together do not both claim the same number.
+concurrency:
+  group: release
+  cancel-in-progress: false
+
 jobs:
   release:
+    # Pushes to other branches stop here.
+    if: github.ref_type == 'tag' || github.ref_name == github.event.repository.default_branch
     runs-on: macos-15
     # Long enough for Apple's notary service to answer, twice.
     timeout-minutes: 75
@@ -34,8 +58,23 @@ jobs:
         env:
           TYPED: ${{ inputs.version }}
         run: |
-          version="${TYPED:-$GITHUB_REF_NAME}"
+          if [ -n "$TYPED" ]; then
+            version="$TYPED"
+          elif [ "$GITHUB_REF_TYPE" = tag ]; then
+            version="$GITHUB_REF_NAME"
+          else
+            # One past the highest version tagged so far.
+            last="$(git tag -l 'v*' --sort=-v:refname | grep -E '^v[0-9]+(\.[0-9]+){1,2}$' | head -1 || true)"
+            last="${last#v}"
+            IFS=. read -r major minor patch <<< "${last:-0.0.0}"
+            version="${major:-0}.${minor:-0}.$(( ${patch:-0} + 1 ))"
+            echo "Last release: ${last:-none}. Publishing $version."
+          fi
           version="${version#v}"
+          if [ "$GITHUB_REF_TYPE" != tag ] && git rev-parse -q --verify "refs/tags/v$version" > /dev/null; then
+            echo "::error::v$version has already been published. Use a higher version."
+            exit 1
+          fi
           if ! [[ "$version" =~ ^[0-9]+(\.[0-9]+){1,2}$ ]]; then
             echo "::error::\"$version\" is not a version like 0.2.0"
             exit 1
