@@ -1228,11 +1228,11 @@
   }
 
   function menuFocusRect() {
-    const m = localRect(menuElement);
     const sub = $('.menu__sub', menuElement);
-    const rects = [m];
-    if (sub && !sub.hidden) rects.push(localRect(sub));
-    if (menu.tile) rects.push({ ...localRect($('.tbar', menu.tile.element)) });
+    // With the submenu open, show it and the line it came from.
+    const rects = sub && !sub.hidden
+      ? [localRect(sub), localRect($('[data-act="refresh"]', menuElement))]
+      : [localRect(menuElement), ...(menu.tile ? [localRect($('.tbar', menu.tile.element))] : [])];
     const x = Math.min(...rects.map((r) => r.x));
     const y = Math.min(...rects.map((r) => r.y));
     const right = Math.max(...rects.map((r) => r.x + r.w));
@@ -1436,7 +1436,7 @@
     if (step === 0) return { text: coarse ? 'Press and hold the space key.' : 'Hold Space, or press and hold the key.', kind: 'turn', nudge: true };
     if (tried.has(name)) {
       if (step === 5) return refreshHint() || { text: 'Tried. Scroll on for the next one.', kind: 'done' };
-      return { text: step === 7 ? 'All seven shown. Scroll on for the rest.' : 'Tried. Scroll on for the next one.', kind: 'done' };
+      return { text: step === 7 ? (tried.size === NAMES.length ? 'All seven tried. Scroll on for the rest.' : 'Tried. Scroll on for the rest.') : 'Tried. Scroll on for the next one.', kind: 'done' };
     }
     const closed = { text: `Blink is closed. Tap ${spaceWord} to open it.`, kind: 'turn', nudge: true };
     switch (step) {
@@ -1506,6 +1506,7 @@
   function renderStatus() {
     let hint;
     if (toastState.text) hint = { text: toastState.text, kind: 'note' };
+    else if (tour.resting) hint = { text: 'This is how it ends up. Have a go whenever you like.', kind: 'demo' };
     else if (tour.running && tour.step >= 0) hint = { text: tour.step === 0 ? 'Showing you. Hold Space yourself any time.' : 'Showing you. Have a go whenever you like.', kind: 'demo' };
     else hint = stepHint(tour.step);
     if (tour.step === 5 && !toastState.text) hint = refreshHint() || hint;
@@ -1532,7 +1533,7 @@
     keyEsc.classList.toggle('is-nudge', Boolean(hint.escNudge) && !tour.running);
     $$('.tile.show-bar').forEach((element) => { if (!menu.tile || menu.tile.element !== element) element.classList.remove('show-bar'); });
     if (hint.showBar && !tour.running) hint.showBar.element.classList.add('show-bar');
-    const target = !tour.running && hint.spot && hint.spot.getClientRects().length ? hint.spot : null;
+    const target = !tour.running && !tour.resting && hint.spot && hint.spot.getClientRects().length ? hint.spot : null;
     if (target) {
       const r = localRect(target);
       const wide = hint.wide;
@@ -1627,7 +1628,7 @@
   // demonstration that plays when the visitor only watches.
   // ---------------------------------------------------------------------
 
-  const tour = { step: -1, token: 0, timers: [], undo: [], running: false, lastInput: -1e9, restart: 0, retired: false };
+  const tour = { step: -1, token: 0, timers: [], undo: [], running: false, resting: false, lastInput: -1e9, restart: 0, retired: false };
   const REST = { rest: true };
 
   function sleep(ms) {
@@ -1665,6 +1666,7 @@
     ghostKey('esc', false);
     $$('.palette__list .is-pressed').forEach((button) => button.classList.remove('is-pressed'));
     tour.running = false;
+    tour.resting = false;
     refreshHints();
   }
 
@@ -1680,7 +1682,8 @@
         await sleep(200);
       }
     } catch (error) {
-      if (error !== REST) console.error(error);
+      if (error === REST) tour.resting = true;
+      else console.error(error);
     }
     if (token === tour.token) {
       tour.running = false;

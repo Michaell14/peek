@@ -1278,8 +1278,8 @@ button.ffile:hover { background: rgba(0, 0, 0, 0.05); }
 .noise__cookie b.o { background: none; color: #ddd; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.3); }
 .noise figcaption { position: relative; height: 20px; margin-top: 10px; color: var(--ink-3); font-size: 13px; }
 .noise figcaption span { position: absolute; left: 0; top: 0; }
-.noise__before { opacity: calc(1 - var(--c)); }
-.noise__after { opacity: var(--c); color: var(--ink); }
+.noise__before { opacity: clamp(0, 1 - var(--c) * 2, 1); }
+.noise__after { opacity: clamp(0, var(--c) * 2 - 1, 1); color: var(--ink); }
 
 .get {
   margin: 0 var(--gutter);
@@ -1448,7 +1448,8 @@ button.ffile:hover { background: rgba(0, 0, 0, 0.05); }
   .card__head { position: relative; }
   .todo { min-height: 62vh; padding-bottom: 28px; }
   .todo .t-short { display: none; }
-  .todo .t-long { display: block; font: 400 24px/1.15 var(--display); font-variation-settings: "opsz" 48; letter-spacing: -0.012em; }
+  .todo .t-long { display: inline; font: 400 24px/1.15 var(--display); font-variation-settings: "opsz" 48; letter-spacing: -0.012em; }
+  .todo__title { line-height: 1.15; }
   .todo .t-long kbd { font-size: 0.6em; vertical-align: 0.24em; }
   .todo__row { align-items: start; padding-top: 18px; padding-bottom: 6px; cursor: default; }
   .todo__row .box { margin-top: 6px; }
@@ -1456,7 +1457,7 @@ button.ffile:hover { background: rgba(0, 0, 0, 0.05); }
   .todo__leader { display: none; }
   .todo__verb { margin-top: 8px; }
   .todo__body { padding-top: 10px; }
-  .todo.is-on .todo__row .t-long { box-shadow: inset 0 -0.42em 0 var(--hilite); }
+  .todo.is-on .todo__row .t-long { background: linear-gradient(transparent 58%, var(--hilite) 58%, var(--hilite) 92%, transparent 92%); -webkit-box-decoration-break: clone; box-decoration-break: clone; }
   .todo__modes { display: flex; gap: 0; width: max-content; margin-top: 14px; padding: 3px; border-radius: 999px; background: var(--ground-deep); }
   .todo__modes button { height: 34px; padding: 0 16px; border: 0; border-radius: 999px; background: none; color: var(--ink-2); font-size: 14px; font-weight: 550; cursor: pointer; }
   .todo__modes button.is-on { background: #fff; color: var(--ink); box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12); }
@@ -1464,9 +1465,9 @@ button.ffile:hover { background: rgba(0, 0, 0, 0.05); }
 
   .also, .faq { grid-template-columns: minmax(0, 1fr); }
   .also__head .label, .fill, .spec { grid-column: 1; }
-  .also__head .label { grid-row: auto; margin-bottom: 18px; }
+  .also__head .label { position: static; grid-row: auto; margin-bottom: 18px; }
   .fill { grid-row: auto; }
-  .faq .label { margin-bottom: 18px; }
+  .faq .label { position: static; margin-bottom: 18px; }
   .footer__notes { grid-template-columns: minmax(0, 1fr); }
   .footer__notes p:last-child { text-align: left; }
 }
