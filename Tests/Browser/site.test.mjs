@@ -75,6 +75,9 @@ async function tap(page, key = 'Space') {
 async function goToBeat(page, T) {
   const y = await page.evaluate((target) => window.__blink.scrollForT(target), T);
   await page.evaluate((top) => window.scrollTo({ top, behavior: 'instant' }), y);
+  // Draw from the new position now rather than wait for the scroll event,
+  // which a slow machine can deliver late.
+  await page.evaluate(() => window.__blink.render());
   await page.waitForTimeout(250);
 }
 
