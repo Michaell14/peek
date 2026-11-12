@@ -1,0 +1,403 @@
+<!doctype html>
+<html lang="en" class="no-js">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Blink · Try it on this page</title>
+  <meta name="description" content="Blink is a free, open-source Mac app. Hold a key to see the websites, files and widgets you check all day. Let go and you are back where you were. Try it here.">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#e6ebf0">
+  <link rel="icon" href="icon.png">
+  <link rel="preload" href="fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/archivo.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="styles.css">
+  <script>document.documentElement.className = 'js';</script>
+</head>
+<body>
+  <a class="skip" href="#also">Skip the tour</a>
+
+  <header class="top" id="top-bar">
+    <a class="top__brand" href="#start" aria-label="Blink, back to the top">
+      <span class="wordmark" aria-hidden="true">Bl<span class="wordmark__i">ı<i></i></span>nk</span>
+    </a>
+    <nav class="top__links" aria-label="Site">
+      <a class="top__source" href="https://github.com/Michaell14/peek" rel="noopener">Source</a>
+      <a class="btn btn--small" href="https://github.com/Michaell14/peek/releases/latest/download/Blink.dmg">Download</a>
+    </nav>
+  </header>
+
+  <main id="start">
+    <div class="tour" id="tour">
+
+      <!-- What Blink is, in two sentences. -->
+      <header class="intro">
+        <h1 class="wordmark wordmark--cover" aria-label="Blink">
+          <span aria-hidden="true">Bl<span class="wordmark__i">ı<i></i></span>nk</span>
+        </h1>
+        <p class="intro__lede">Hold a key to see the things you check all day. Let go and you are back where you were.</p>
+        <p class="intro__how">
+          Blink is a Mac app. The screen on this page works like it does, so the quickest way to learn it is to
+          use it: seven things to try, a couple of minutes. If you would rather watch, keep scrolling and each one
+          shows itself.
+        </p>
+        <p class="intro__get">
+          <a class="btn" href="https://github.com/Michaell14/peek/releases/latest/download/Blink.dmg">Download for Mac</a>
+          <span>Free and open source.<br>macOS 14 or later.</span>
+        </p>
+      </header>
+
+      <!-- The Mac. Drawn in HTML; the overlay on it is the real demo. -->
+      <div class="stage" id="stage">
+       <div class="stage__inner" id="stage-inner">
+        <div class="monitor" id="monitor">
+          <div class="viewport" id="viewport">
+            <div class="screen" id="screen" data-step="0">
+              <div class="menubar">
+                <svg class="menubar__apple" viewBox="0 0 14 16" aria-hidden="true"><path d="M11.6 8.5c0-1.9 1.6-2.8 1.6-2.9-.9-1.3-2.2-1.5-2.7-1.5-1.1-.1-2.2.7-2.8.7s-1.5-.7-2.4-.6C4.1 4.2 3 4.9 2.4 6c-1.3 2.2-.3 5.5.9 7.3.6.9 1.3 1.8 2.3 1.8.9 0 1.2-.6 2.3-.6s1.4.6 2.3.6c1 0 1.6-.9 2.2-1.8.7-1 1-2 1-2.1 0 0-1.8-.7-1.8-2.7zM9.8 2.9c.5-.6.8-1.4.7-2.2-.7 0-1.6.5-2.1 1.1-.5.5-.9 1.4-.8 2.2.8.1 1.7-.4 2.2-1.1z"/></svg>
+                <b>Writer</b><span>File</span><span>Edit</span><span>View</span><span>Format</span><span>Window</span><span>Help</span>
+                <span class="menubar__right">
+                  <span class="mark mark--bar" aria-hidden="true"><i></i><i></i><i></i></span>
+                  <span data-live-date>Thu 12 Nov</span><span data-live-time>10:42</span>
+                </span>
+              </div>
+
+              <div class="win win--writer">
+                <div class="win__bar"><span class="lights"><i></i><i></i><i></i></span><span class="win__title">Notes for Thursday</span></div>
+                <div class="doc">
+                  <p class="doc__kicker">Draft</p>
+                  <p class="doc__title">Notes for Thursday</p>
+                  <p>Before we decide on the new rota, it is worth looking at how the last one went. Most weeks were fine. The two that were not had the same cause.</p>
+                  <p>When the train times changed in October, nobody checked the timetable again, and<span class="caret" id="caret"><span class="caret__ring"></span><span class="caret__note">Still here</span></span></p>
+                </div>
+              </div>
+
+              <div class="win win--finder" id="finder">
+                <div class="win__bar"><span class="lights"><i></i><i></i><i></i></span><span class="win__title">Downloads</span></div>
+                <div class="finder">
+                  <div class="finder__side">
+                    <p>Favourites</p>
+                    <span>Desktop</span><span>Documents</span><span class="is-on">Downloads</span>
+                  </div>
+                  <div class="finder__files">
+                    <div class="finder__head"><span>Name</span><span>Size</span><span>Kind</span></div>
+                    <button type="button" class="ffile" data-file="trains"><i class="fico fico--pdf"></i><span>Train times.pdf</span><span>84 KB</span><span>PDF</span></button>
+                    <button type="button" class="ffile" data-file="plan"><i class="fico fico--pdf"></i><span>Floor plan.pdf</span><span>212 KB</span><span>PDF</span></button>
+                    <button type="button" class="ffile" data-file="notes"><i class="fico fico--html"></i><span>Handbook.html</span><span>36 KB</span><span>HTML</span></button>
+                    <div class="ffile ffile--still"><i class="fico fico--folder"></i><span>Photos</span><span>--</span><span>Folder</span></div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="fmenu" id="fmenu" hidden>
+                <button type="button" data-fmenu="open">Open</button>
+                <button type="button" data-fmenu="with" class="has-sub">Open With</button>
+                <span class="fmenu__sep"></span>
+                <button type="button" data-fmenu="look">Quick Look</button>
+                <div class="fmenu__sub" id="fmenu-sub" hidden>
+                  <button type="button" data-fmenu="preview">Preview <small>(default)</small></button>
+                  <button type="button" data-fmenu="blink"><span class="mark" aria-hidden="true"><i></i><i></i><i></i></span>Blink</button>
+                </div>
+              </div>
+
+              <div class="dock">
+                <i data-c="k"><svg viewBox="0 0 16 16"><path d="M4 4.5h8M4 8h8M4 11.5h5"/></svg></i>
+                <i data-c="f"><svg viewBox="0 0 16 16"><rect x="2.5" y="2.5" width="11" height="11" rx="2.4"/><path d="M8 2.5v11M5.2 6.2v1M10.8 6.2v1M5.4 10.4c1.6 1.2 3.6 1.2 5.2 0"/></svg></i>
+                <i data-c="b"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.6"/><path d="M2.4 8h11.2M8 2.4c2 2 2 9.2 0 11.2M8 2.4c-2 2-2 9.2 0 11.2"/></svg></i>
+                <i data-c="r"><svg viewBox="0 0 16 16"><rect x="2.5" y="3.2" width="11" height="10.3" rx="2"/><path d="M2.5 6.6h11"/></svg></i>
+                <i data-c="o"><svg viewBox="0 0 16 16"><circle cx="4" cy="5" r="1.2"/><circle cx="4" cy="11" r="1.2"/><path d="M7.4 5h5.6M7.4 11h5.6"/></svg></i>
+                <i data-c="g"><svg viewBox="0 0 16 16"><rect x="2.2" y="3.6" width="11.6" height="8.8" rx="1.8"/><path d="M2.6 4.6 8 8.8l5.4-4.2"/></svg></i>
+                <i data-c="s"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.2"/><path d="M8 2.2v1.8M8 12v1.8M2.2 8H4M12 8h1.8M3.9 3.9l1.3 1.3M10.8 10.8l1.3 1.3M3.9 12.1l1.3-1.3M10.8 5.2l1.3-1.3"/></svg></i>
+              </div>
+
+              <!-- Blink -->
+              <div class="ov" id="overlay" aria-hidden="true" aria-label="Blink">
+                <div class="ov__strip">
+                  <div class="ov__brand">
+                    <span class="mark" aria-hidden="true"><i></i><i></i><i></i></span>
+                    <b>Blink</b>
+                    <span id="ov-hint">Space or esc to close</span>
+                  </div>
+                  <div class="toolbar">
+                    <div class="segmented" role="group" aria-label="Layout">
+                      <button type="button" class="is-on" data-board-mode="flow">Flow</button>
+                      <button type="button" data-board-mode="freeform">Freeform</button>
+                    </div>
+                    <button type="button" class="toolbar__icon" id="board-add" aria-label="Add a website, file or widget" title="Add a website, file or widget">
+                      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg>
+                    </button>
+                    <button type="button" class="toolbar__text" id="board-edit">Edit</button>
+                    <button type="button" class="toolbar__icon" id="board-close" aria-label="Close Blink" title="Close">
+                      <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+                    </button>
+                  </div>
+                </div>
+                <div class="board" id="board"></div>
+
+                <div class="palette" id="palette" hidden>
+                  <label class="palette__field">
+                    <svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="4.6"/><path d="m10.4 10.4 3.4 3.4"/></svg>
+                    <input id="palette-input" type="text" autocomplete="off" spellcheck="false" placeholder="Type an address, or weather" aria-label="Address or name" aria-controls="palette-list">
+                  </label>
+                  <ul class="palette__list" id="palette-list" role="listbox" aria-label="Suggestions"></ul>
+                  <p class="palette__foot"><kbd>↑</kbd><kbd>↓</kbd> choose <kbd>↩</kbd> add <kbd>esc</kbd> close</p>
+                </div>
+
+                <div class="menu" id="menu" role="menu" hidden></div>
+              </div>
+
+              <div class="hotspot" id="hotspot" aria-hidden="true"></div>
+              <div class="ghost" id="ghost" aria-hidden="true">
+                <svg viewBox="0 0 20 26" width="20" height="26"><path d="M2 1.5v19.2l4.7-4.4 3 7.1 3.1-1.3-3-7h6.6z" fill="#111" stroke="#fff" stroke-width="1.5" stroke-linejoin="round"/></svg>
+                <i class="ghost__ring"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="deck">
+          <p class="deck__status" id="status" aria-live="polite"><span class="deck__glyph" aria-hidden="true"></span><span class="deck__text">Hold Space, or press and hold the key.</span></p>
+          <div class="deck__keys">
+            <button type="button" class="key key--esc" id="key-esc" aria-label="Esc: close Blink"><span>esc</span></button>
+            <button type="button" class="key key--space" id="key-space" data-blink-key aria-label="Space: hold to look, tap to keep Blink open"><span>space</span><i class="key__led" aria-hidden="true"></i></button>
+          </div>
+        </div>
+       </div>
+      </div>
+
+      <!-- The checklist. On a wide screen it stays put while you scroll and the open line moves down. -->
+      <div class="tour__list">
+        <section class="card" id="card" aria-labelledby="card-title">
+          <i class="card__tab" id="card-tab" aria-hidden="true"></i>
+          <header class="card__head">
+            <h2 id="card-title">Things to try</h2>
+            <p class="card__count" aria-live="polite"><b id="count">0</b> of 7 tried</p>
+          </header>
+
+          <ol class="card__list" id="todos">
+            <li class="todo" data-step="1" data-name="hold">
+              <button class="todo__row" type="button">
+                <span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4.5 12.8c1.6 1.2 2.9 2.7 4 4.6C11 11.7 15 6.6 21 2.6"/></svg></span>
+                <span class="todo__title"><span class="t-short">Hold Space to look</span><span class="t-long">Hold <kbd class="k-only">Space</kbd><span class="t-only">the space key</span> to look. Let go to come back.</span></span>
+                <span class="todo__leader" aria-hidden="true"></span>
+                <span class="todo__verb">hold</span>
+                <span class="sr" data-sr></span>
+              </button>
+              <div class="todo__body">
+                <p class="todo__why">Someone is halfway through a sentence. Hold the key and Blink covers the screen with what they check. Let go and the cursor is still blinking where they left it. Nothing behind Blink moved.</p>
+                <p class="todo__state"><span class="todo__wait">Hold <kbd class="k-only">Space</kbd><span class="t-only">the key under the screen</span> for a second, then let go.</span><span class="todo__ok">Tried. <button type="button" class="todo__next">Next: keep it open</button></span></p>
+              </div>
+            </li>
+
+            <li class="todo" data-step="2" data-name="tap">
+              <button class="todo__row" type="button">
+                <span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4.5 12.8c1.6 1.2 2.9 2.7 4 4.6C11 11.7 15 6.6 21 2.6"/></svg></span>
+                <span class="todo__title"><span class="t-short">Tap to keep it open</span><span class="t-long">Tap <kbd class="k-only">Space</kbd><span class="t-only">the space key</span> to keep it open. <kbd>esc</kbd> closes it.</span></span>
+                <span class="todo__leader" aria-hidden="true"></span>
+                <span class="todo__verb">tap</span>
+                <span class="sr" data-sr></span>
+              </button>
+              <div class="todo__body">
+                <p class="todo__why">A quick tap leaves Blink on screen, so you can click, scroll and type in it. Tap again or press esc and it goes away. The shortcut is <kbd>fn</kbd> in the app; you can change it.</p>
+                <p class="todo__parts" data-parts="tap"><span data-part="tap">Tap</span><span data-part="close">Close</span></p>
+                <p class="todo__state"><span class="todo__wait">A short tap, then esc.</span><span class="todo__ok">Tried. <button type="button" class="todo__next">Next: a reminder</button></span></p>
+              </div>
+            </li>
+
+            <li class="todo" data-step="3" data-name="tick">
+              <button class="todo__row" type="button">
+                <span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4.5 12.8c1.6 1.2 2.9 2.7 4 4.6C11 11.7 15 6.6 21 2.6"/></svg></span>
+                <span class="todo__title"><span class="t-short">Tick off a reminder</span><span class="t-long">Tick off a reminder.</span></span>
+                <span class="todo__leader" aria-hidden="true"></span>
+                <span class="todo__verb">click</span>
+                <span class="sr" data-sr></span>
+              </button>
+              <div class="todo__body">
+                <p class="todo__why">While Blink is open its tiles work like small apps. The Reminders tile shows your own reminders from the Reminders app: what is late and what is due today. Click a circle, or type a new one at the bottom.</p>
+                <p class="todo__state"><span class="todo__wait">Click one of the circles.</span><span class="todo__ok">Tried. <button type="button" class="todo__next">Next: a website</button></span></p>
+              </div>
+            </li>
+
+            <li class="todo" data-step="4" data-name="site">
+              <button class="todo__row" type="button">
+                <span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4.5 12.8c1.6 1.2 2.9 2.7 4 4.6C11 11.7 15 6.6 21 2.6"/></svg></span>
+                <span class="todo__title"><span class="t-short">Add a website</span><span class="t-long">Add a website. Click +, type <i>weather</i>, press <kbd>↩</kbd>.</span></span>
+                <span class="todo__leader" aria-hidden="true"></span>
+                <span class="todo__verb">type</span>
+                <span class="sr" data-sr></span>
+              </button>
+              <div class="todo__body">
+                <p class="todo__why">Any site works. It stays signed in and loaded in the background, so it is ready the moment you look. The pages here are stand-ins; in Blink they are the real sites.</p>
+                <p class="todo__state"><span class="todo__wait">Try <i>weather</i> or <i>status</i>, or any address.</span><span class="todo__ok">Tried. <button type="button" class="todo__next">Next: keep it current</button></span></p>
+              </div>
+            </li>
+
+            <li class="todo" data-step="5" data-name="refresh">
+              <button class="todo__row" type="button">
+                <span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4.5 12.8c1.6 1.2 2.9 2.7 4 4.6C11 11.7 15 6.6 21 2.6"/></svg></span>
+                <span class="todo__title"><span class="t-short">Make it refresh itself</span><span class="t-long">Make it refresh itself every few minutes.</span></span>
+                <span class="todo__leader" aria-hidden="true"></span>
+                <span class="todo__verb">set</span>
+                <span class="sr" data-sr></span>
+              </button>
+              <div class="todo__body">
+                <p class="todo__why">Open the tile's <b>⋯</b> menu and choose Auto-Refresh. Blink reloads the page in the background on that schedule, so it is current when you look. Here a minute passes in about a second.</p>
+                <p class="todo__state"><span class="todo__wait">⋯, then Auto-Refresh, then 5 minutes.</span><span class="todo__ok">Tried. <button type="button" class="todo__next">Next: rearrange</button></span></p>
+              </div>
+            </li>
+
+            <li class="todo" data-step="6" data-name="arrange">
+              <button class="todo__row" type="button">
+                <span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4.5 12.8c1.6 1.2 2.9 2.7 4 4.6C11 11.7 15 6.6 21 2.6"/></svg></span>
+                <span class="todo__title"><span class="t-short">Move the tiles around</span><span class="t-long">Drag a tile to a new place. Then try Freeform.</span></span>
+                <span class="todo__leader" aria-hidden="true"></span>
+                <span class="todo__verb">drag</span>
+                <span class="sr" data-sr></span>
+              </button>
+              <div class="todo__body">
+                <p class="todo__why">In Flow the tiles stay in tidy columns and the others make room. In Freeform a tile goes wherever you put it. Edit is on for you here; in the app it is <kbd>⌘E</kbd>.</p>
+                <p class="todo__parts" data-parts="arrange"><span data-part="flow">Flow</span><span data-part="freeform">Freeform</span></p>
+                <p class="todo__modes" role="group" aria-label="Layout"><button type="button" data-board-mode="flow" class="is-on">Flow</button><button type="button" data-board-mode="freeform">Freeform</button></p>
+                <p class="todo__state"><span class="todo__wait">Drag one tile, switch, drag again.</span><span class="todo__ok">Tried. <button type="button" class="todo__next">Next: a file</button></span></p>
+              </div>
+            </li>
+
+            <li class="todo" data-step="7" data-name="file">
+              <button class="todo__row" type="button">
+                <span class="box" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4.5 12.8c1.6 1.2 2.9 2.7 4 4.6C11 11.7 15 6.6 21 2.6"/></svg></span>
+                <span class="todo__title"><span class="t-short">Keep a PDF at hand</span><span class="t-long">Open a PDF with Blink.</span></span>
+                <span class="todo__leader" aria-hidden="true"></span>
+                <span class="todo__verb">open</span>
+                <span class="sr" data-sr></span>
+              </button>
+              <div class="todo__body">
+                <p class="todo__why">Click <i>Train times.pdf</i> in the Finder window, choose Open With, then Blink. It becomes a tile, and when the file changes on disk the tile reloads. The + menu adds files too.</p>
+                <p class="todo__state"><span class="todo__wait">Click the file, then Open With.</span><span class="todo__ok">Tried. <button type="button" class="todo__next" data-next="also">Next: the rest</button></span></p>
+              </div>
+            </li>
+          </ol>
+
+          <footer class="card__foot">
+            <p><span class="k-only">On this page <kbd>Space</kbd> stands in for <kbd>fn</kbd>.</span><span class="t-only">On a Mac you hold a key; here, the one under the screen.</span></p>
+          </footer>
+        </section>
+        <div class="tour__runway" id="runway" aria-hidden="true"></div>
+      </div>
+    </div>
+
+    <!-- Everything else, briefly. -->
+    <section class="also" id="also" aria-labelledby="also-title">
+      <div class="also__head">
+        <h2 id="also-title" class="label">The rest, in short</h2>
+        <p class="fill" id="fill">Blink opens on the screen you are using, answers to whatever shortcut you choose, keeps pages free of ads and cookie banners, and hands any tile to your browser. It works over full-screen apps. It keeps everything on your Mac, and it is free.</p>
+      </div>
+
+      <dl class="spec">
+        <div class="spec__row">
+          <dt>Displays</dt>
+          <dd>Opens on the display with the pointer, the one with the active window, or one you pick. One layout everywhere, or one for each display.
+            <svg class="spec__art spec__art--displays" viewBox="0 0 220 84" aria-hidden="true">
+              <rect x="6" y="10" width="104" height="64" rx="5"/><rect x="122" y="18" width="92" height="56" rx="5"/>
+              <rect class="fillin" x="128" y="24" width="80" height="44" rx="3"/>
+              <path class="ptr" d="M160 40v13l3.2-3 2 4.8 2-.9-2-4.7h4.4z"/>
+            </svg>
+          </dd>
+        </div>
+        <div class="spec__row">
+          <dt>Any shortcut</dt>
+          <dd><kbd class="cap">fn</kbd> by default. Any key combination, or modifier keys on their own, down to a specific left or right one: <kbd class="cap">Right ⌘</kbd> <kbd class="cap">Left ⌥</kbd> <kbd class="cap">⌃ ⌥ B</kbd></dd>
+        </div>
+        <div class="spec__row spec__row--noise">
+          <dt>Less noise</dt>
+          <dd>Blocks third-party ads and trackers and hides cookie banners. Click anything on a page to hide it for good.
+            <figure class="noise" id="noise" aria-label="A page with an advert and a cookie banner. As you scroll, Blink removes both.">
+              <div class="noise__page">
+                <div class="noise__top"><b>The Harbour Times</b><span>Local · Weather · Trains</span></div>
+                <div class="noise__ad noise__ad--wide"><span>Advert</span></div>
+                <div class="noise__cols">
+                  <div class="noise__text">
+                    <p class="noise__h">Evening trains run later from Monday</p>
+                    <i></i><i></i><i></i><i class="s"></i>
+                  </div>
+                </div>
+                <div class="noise__ad noise__ad--inline"><span>Advert</span></div>
+                <div class="noise__more"><i></i><i></i><i class="s"></i><i></i><i></i><i></i><i class="s"></i></div>
+                <div class="noise__cookie"><span>We value your privacy. Choose your cookie settings.</span><b>Accept all</b><b class="o">Settings</b></div>
+              </div>
+              <figcaption><span class="noise__before">As it loads elsewhere</span><span class="noise__after">As it loads in Blink</span></figcaption>
+            </figure>
+          </dd>
+        </div>
+        <div class="spec__row">
+          <dt>Hand off</dt>
+          <dd>Any tile opens in your browser, or a file in its usual app, from the tile's ⋯ menu.</dd>
+        </div>
+        <div class="spec__row">
+          <dt>Over full-screen apps</dt>
+          <dd>Blink appears over whatever is in front, full-screen spaces included, and you stay in the app and the text field you were in.</dd>
+        </div>
+        <div class="spec__row">
+          <dt>Private</dt>
+          <dd>No account, no analytics, no server. Your layouts and browsing data stay on your Mac.</dd>
+        </div>
+        <div class="spec__row">
+          <dt>Free and open source</dt>
+          <dd>MIT licence. Read the code, or build it yourself with one command.</dd>
+        </div>
+      </dl>
+    </section>
+
+    <!-- The end of the tour. -->
+    <section class="get" id="get" aria-labelledby="get-title">
+      <p class="get__tally" id="tally"><span class="get__boxes" id="tally-boxes" aria-hidden="true"></span><span id="tally-text">Seven things to try on this page.</span></p>
+      <h2 class="get__title" id="get-title">You already know how to use it.</h2>
+      <p class="get__row">
+        <a class="btn btn--big" href="https://github.com/Michaell14/peek/releases/latest/download/Blink.dmg">Download Blink for Mac</a>
+        <span>Free. macOS 14 or later.<br><a href="https://github.com/Michaell14/peek" rel="noopener">Source on GitHub</a></span>
+      </p>
+    </section>
+
+    <section class="faq" id="faq" aria-labelledby="faq-title">
+      <h2 class="label" id="faq-title">Questions</h2>
+      <div class="faq__list">
+        <details>
+          <summary>How do I install it?</summary>
+          <p>Download the disk image, open it, and drag Blink into Applications. Blink is not notarized by Apple yet, so the first time you open it macOS will stop you. Open System Settings, go to Privacy &amp; Security, and choose Open Anyway. You only do that once.</p>
+        </details>
+        <details>
+          <summary>Why does it ask for Input Monitoring?</summary>
+          <p>For the <kbd>fn</kbd> key. macOS only shows <kbd>fn</kbd>, and shortcuts made of modifier keys alone, to apps you have allowed under Input Monitoring. Blink looks for the shortcut and does not record what you type. Choose an ordinary combination in Settings and it needs no permission at all. Calendar and Reminders ask for access when you add those tiles.</p>
+        </details>
+        <details>
+          <summary>How do updates arrive?</summary>
+          <p>Once a day Blink asks GitHub whether there is a newer version, and offers to install it and start again. The request carries nothing about you or your Mac, and you can turn it off in Settings. After an update macOS may ask for Input Monitoring again.</p>
+        </details>
+        <details>
+          <summary>What does Blink know about me?</summary>
+          <p>Nothing leaves your Mac. There is no account, no analytics and no server. Your layout, and the cookies and logins of the sites in your tiles, are stored on your Mac.</p>
+        </details>
+        <details>
+          <summary>Is it really free?</summary>
+          <p>Yes. The whole app is on GitHub under the MIT licence. There is no paid version, and you can build it yourself from the source.</p>
+        </details>
+        <details>
+          <summary>Is this page the app?</summary>
+          <p>No. The screen above is drawn in HTML so you can try the ideas. The websites on it are stand-ins and nothing you do here is saved. The app itself uses the real sites, your own calendar and reminders, and real files.</p>
+        </details>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="footer__notes">
+      <p>Open source under the MIT licence. This page loads nothing from anywhere else and counts no one.</p>
+      <p>Set in Fraunces and Archivo. The sea on the screen is drawn, not photographed.</p>
+      <p><a href="https://github.com/Michaell14/peek" rel="noopener">Source on GitHub</a> · <a href="https://github.com/Michaell14/peek/releases/latest/download/Blink.dmg">Download</a></p>
+    </div>
+    <a class="footer__mark" href="#start" aria-label="Blink, back to the top">
+      <span class="wordmark" aria-hidden="true">Bl<span class="wordmark__i">ı<i></i></span>nk</span>
+    </a>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
