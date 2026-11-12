@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 800" preserveAspectRatio="xMidYMid slice">
+  <!-- A hazy range of hills in daylight. Drawn for this page. -->
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#bccbdd"/>
+      <stop offset="0.42" stop-color="#dde5ee"/>
+      <stop offset="0.7" stop-color="#eef1f5"/>
+    </linearGradient>
+    <radialGradient id="sun" cx="0.74" cy="0.22" r="0.42">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.95"/>
+      <stop offset="0.35" stop-color="#ffffff" stop-opacity="0.45"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="r1" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#cbd6e2"/>
+      <stop offset="1" stop-color="#e3e9f0"/>
+    </linearGradient>
+    <linearGradient id="r2" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#adbfd2"/>
+      <stop offset="1" stop-color="#cfdae5"/>
+    </linearGradient>
+    <linearGradient id="r3" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#8ea6bf"/>
+      <stop offset="1" stop-color="#b4c4d5"/>
+    </linearGradient>
+    <linearGradient id="r4" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#6f8baa"/>
+      <stop offset="1" stop-color="#93a9c0"/>
+    </linearGradient>
+    <linearGradient id="r5" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#55718f"/>
+      <stop offset="1" stop-color="#7690ad"/>
+    </linearGradient>
+  </defs>
+  <rect width="1280" height="800" fill="url(#sky)"/>
+  <rect width="1280" height="800" fill="url(#sun)"/>
+  <path fill="url(#r1)" d="M0 430 C 90 410 150 372 238 380 C 320 388 360 420 452 412 C 560 402 610 346 712 350 C 806 354 850 400 948 398 C 1046 396 1110 360 1186 366 C 1230 370 1258 384 1280 392 L1280 800 L0 800 Z"/>
+  <path fill="url(#r2)" d="M0 512 C 70 494 128 470 206 474 C 300 480 346 520 444 514 C 540 508 588 466 676 468 C 770 470 812 512 900 516 C 1000 520 1062 482 1150 480 C 1210 479 1252 494 1280 502 L1280 800 L0 800 Z"/>
+  <path fill="url(#r3)" d="M0 590 C 102 572 168 548 262 556 C 352 564 410 600 512 598 C 612 596 672 562 770 566 C 868 570 920 604 1020 604 C 1116 604 1176 580 1280 576 L1280 800 L0 800 Z"/>
+  <path fill="url(#r4)" d="M0 668 C 120 650 214 630 316 640 C 420 650 486 684 598 682 C 708 680 780 650 886 652 C 990 654 1060 684 1160 680 C 1214 678 1252 670 1280 664 L1280 800 L0 800 Z"/>
+  <path fill="url(#r5)" d="M0 742 C 140 724 252 714 380 722 C 520 730 600 756 760 752 C 900 748 1000 724 1130 726 C 1200 727 1250 734 1280 740 L1280 800 L0 800 Z"/>
+</svg>
