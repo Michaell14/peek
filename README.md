@@ -92,8 +92,9 @@ Blink asks only for what a feature needs, and only when you use it.
 | Input Monitoring | The default shortcut, `fn`, and any other made of modifier keys alone or a specific left/right key. Blink looks for the shortcut and does not record what you type. |
 
 macOS only shows `fn` to apps allowed under Input Monitoring, so Blink explains this and asks when
-it first opens. If you would rather not allow it, choose *Use ⌥` Instead* there, or record any
-ordinary combination in Settings: those need no permission.
+it first opens. If you would rather not allow it, record an ordinary combination in Settings, such
+as `⌥` + `` ` ``: those need no permission. (Settings saved by earlier versions with `⌥` + `` ` ``,
+the old default, move to `fn` once.)
 
 With `fn` as the shortcut, set *System Settings → Keyboard → Press 🌐 key to* **Do Nothing**, or
 macOS will also run its own action (the emoji picker, by default) each time. Blink waits a moment

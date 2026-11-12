@@ -134,9 +134,9 @@ public struct Shortcut: Codable, Hashable, Sendable {
     /// macOS only shows it to apps that have been allowed Input Monitoring.
     public static let `default` = Shortcut(keyCode: nil, modifiers: [ModifierKey(.function)])
 
-    /// ⌥` — for anyone who would rather not grant that. An ordinary
-    /// combination needs no permission, and few other apps claim this one.
-    public static let withoutPermission = Shortcut(keyCode: 50, modifiers: [ModifierKey(.option)])
+    /// ⌥`, the default before fn, which the permission prompt also used to
+    /// offer instead of fn. Settings saved with it are moved to fn once.
+    public static let previousDefault = Shortcut(keyCode: 50, modifiers: [ModifierKey(.option)])
 
     /// True for fn by itself, which macOS may also use to show the emoji
     /// picker, switch input source or start dictation.

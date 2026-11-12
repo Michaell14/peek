@@ -60,6 +60,10 @@ public struct AppSettings: Codable, Hashable, Sendable {
     /// Ask GitHub once a day whether there is a newer Blink.
     public var checksForUpdates: Bool
 
+    /// True once a saved ⌥` (the old default) has been moved to fn, so that
+    /// someone who picks ⌥` in Settings afterwards keeps it.
+    public var shortcutMovedToFn: Bool
+
     public init() {
         shortcut = .default
         tapThreshold = 0.3
@@ -79,6 +83,7 @@ public struct AppSettings: Codable, Hashable, Sendable {
         webColorScheme = .system
         searchTemplate = URLInput.defaultSearchTemplate
         checksForUpdates = true
+        shortcutMovedToFn = true
     }
 
     public init(from decoder: Decoder) throws {
@@ -86,6 +91,13 @@ public struct AppSettings: Codable, Hashable, Sendable {
         let d = AppSettings()
         shortcut = c.value(.shortcut, default: d.shortcut)
         if !shortcut.isValid { shortcut = d.shortcut }
+        // ⌥` was the default, and the permission prompt's way out, before
+        // fn became the shortcut. Move it to fn once; a choice made after
+        // that is kept.
+        if !c.value(.shortcutMovedToFn, default: false), shortcut == .previousDefault {
+            shortcut = d.shortcut
+        }
+        shortcutMovedToFn = true
         tapThreshold = min(max(c.value(.tapThreshold, default: d.tapThreshold), 0.1), 1)
         syncAcrossDisplays = c.value(.syncAcrossDisplays, default: d.syncAcrossDisplays)
         displayTarget = c.value(.displayTarget, default: d.displayTarget)

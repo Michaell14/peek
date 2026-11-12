@@ -12,11 +12,40 @@ final class ShortcutTests: XCTestCase {
         XCTAssertTrue(Shortcut.default.requiresEventTap, "macOS shows fn only to apps allowed Input Monitoring")
     }
 
-    func testTheAlternativeNeedsNoPermission() {
-        XCTAssertFalse(Shortcut.withoutPermission.requiresEventTap)
-        XCTAssertEqual(Shortcut.withoutPermission.carbonModifiers, 0x0800)
-        XCTAssertEqual(Shortcut.withoutPermission.displayString, "⌥`")
-        XCTAssertFalse(Shortcut.withoutPermission.isFunctionKeyAlone)
+    func testThePreviousDefaultNeedsNoPermission() {
+        XCTAssertFalse(Shortcut.previousDefault.requiresEventTap)
+        XCTAssertEqual(Shortcut.previousDefault.carbonModifiers, 0x0800)
+        XCTAssertEqual(Shortcut.previousDefault.displayString, "⌥`")
+        XCTAssertFalse(Shortcut.previousDefault.isFunctionKeyAlone)
+    }
+
+    // Settings as earlier versions saved them: everything but the new flag.
+    private func savedSettings(shortcut: Shortcut, movedToFn: Bool?) throws -> AppSettings {
+        var settings = AppSettings()
+        settings.shortcut = shortcut
+        var object = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(settings)) as? [String: Any])
+        object["shortcutMovedToFn"] = movedToFn
+        return try JSONDecoder().decode(AppSettings.self, from: JSONSerialization.data(withJSONObject: object))
+    }
+
+    func testTheOldDefaultSavedByEarlierVersionsMovesToFn() throws {
+        let loaded = try savedSettings(shortcut: .previousDefault, movedToFn: nil)
+        XCTAssertEqual(loaded.shortcut, .default)
+        XCTAssertTrue(loaded.shortcutMovedToFn)
+    }
+
+    func testOptionBacktickChosenAfterTheMoveIsKept() throws {
+        XCTAssertEqual(try savedSettings(shortcut: .previousDefault, movedToFn: true).shortcut, .previousDefault)
+    }
+
+    func testOtherSavedShortcutsAreLeftAlone() throws {
+        let rightCommand = Shortcut(keyCode: nil, modifiers: [ModifierKey(.command, side: .right)])
+        XCTAssertEqual(try savedSettings(shortcut: rightCommand, movedToFn: nil).shortcut, rightCommand)
+    }
+
+    func testNewSettingsStartOnFnWithNothingToMove() {
+        XCTAssertEqual(AppSettings().shortcut, .default)
+        XCTAssertTrue(AppSettings().shortcutMovedToFn)
     }
 
     func testOnlyFnByItselfCountsAsTheFnKeyAlone() {

@@ -209,33 +209,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     // MARK: - The shortcut's permission
 
-    /// Says why Blink is about to ask for Input Monitoring, and offers a
-    /// shortcut that needs none. Returns true if the system prompt follows.
+    /// Says why Blink is about to ask for Input Monitoring. Returns true if
+    /// the system prompt follows.
     private func explainShortcutPermission() -> Bool {
-        guard let hotkeys, let model, hotkeys.status == .needsInputMonitoring else { return false }
+        guard let hotkeys, hotkeys.status == .needsInputMonitoring else { return false }
         let wanted = hotkeys.shortcut.displayString
-        let plain = Shortcut.withoutPermission.displayString
 
         let alert = NSAlert()
         alert.messageText = "Let Blink see \(wanted)"
         alert.informativeText = "Blink appears while you hold \(wanted). macOS only shows that key to apps "
             + "you have allowed under Input Monitoring.\n\n"
             + "Blink looks for the shortcut and nothing else. It does not record what you type. "
-            + "If you would rather not allow it, Blink can use \(plain) instead, which needs no permission."
+            + "If you would rather not allow it, choose a different shortcut in Blink's Settings: "
+            + "an ordinary key combination needs no permission."
         alert.addButton(withTitle: "Allow…")
-        alert.addButton(withTitle: "Use \(plain) Instead")
         alert.addButton(withTitle: "Not Now")
         NSApp.activate(ignoringOtherApps: true)
-        switch alert.runModal() {
-        case .alertFirstButtonReturn:
-            hotkeys.requestInputMonitoring()
-            return true
-        case .alertSecondButtonReturn:
-            model.updateSettings { $0.shortcut = .withoutPermission }
-            return false
-        default:
-            return false
-        }
+        guard alert.runModal() == .alertFirstButtonReturn else { return false }
+        hotkeys.requestInputMonitoring()
+        return true
     }
 
     // MARK: - Updates
