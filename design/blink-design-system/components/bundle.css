@@ -571,6 +571,20 @@
 .bk-skel i { display: block; height: 9px; border-radius: 5px; background: #eceef2; }
 .bk-skel i:nth-child(3n) { width: 72%; } .bk-skel i:nth-child(3n + 1) { width: 90%; }
 
+/* ---- The desktop behind the board (previews only) ------------------------------ */
+/* Windows and a Dock, so the glass has something real to blur. */
+.bk-desk { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+.bk-desk__win { position: absolute; overflow: hidden; border-radius: 12px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35); }
+.bk-desk__win--doc { left: 4%; top: 16%; width: 40%; height: 60%; background: var(--web-ground); }
+.bk-desk__win--doc b { display: block; height: 40%; background: linear-gradient(135deg, var(--wall-2), var(--wall-3)); }
+.bk-desk__win--doc i { display: block; height: 11px; margin: 16px 24px 0; border-radius: 6px; background: #d9dee6; }
+.bk-desk__win--doc i:nth-of-type(2n) { width: 55%; }
+.bk-desk__win--code { right: 4%; top: 8%; width: 36%; height: 52%; display: grid; align-content: start; gap: 12px; padding: 22px; background: #15171c; }
+.bk-desk__win--code i { display: block; width: var(--w); height: 9px; border-radius: 5px; background: var(--c); }
+.bk-desk__dock { position: absolute; left: 50%; bottom: 12px; display: flex; gap: 10px; padding: 8px 10px; border-radius: 20px; background: rgba(255, 255, 255, 0.28); transform: translateX(-50%); }
+.bk-desk__dock i { width: 42px; height: 42px; border-radius: 11px; background: var(--c); }
+.bk-desk__scrim { position: absolute; inset: 0; background: var(--scrim); }
+
 /* ---- Reduce motion ------------------------------------------------------------ */
 @media (prefers-reduced-motion: reduce) {
   .bk-ground *, .bk-ground *::before, .bk-ground *::after { transition-duration: 1ms !important; transition-delay: 0s !important; animation: none !important; }

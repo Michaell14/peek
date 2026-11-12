@@ -22,6 +22,7 @@ The drafts of the redesigned overlay are the **Overlay**, **First run** and **Ho
 ## Colour
 
 - Ground: the board sits on the person's own desktop under `scrim` and a `vignette` toward the edges. Previews paint a dusk wallpaper from `wall-1` to `wall-4` over `desktop`; `wall-3`, the warm glow, is the brightest ground glass ever meets, so every text colour is checked on glass over it. Never put text straight on the desktop except the command bar's hint, in `ink-2`, with `shadow-text`.
+- Dimming: `scrim` is part of legibility. At its value, every text colour passes 4.5:1 on glass even with a white or black window behind Blink; the Appearance setting may make it darker, never lighter.
 - Surfaces: every surface is glass (see Principles). `tile` and `tile-raised` are flat stand-ins for places glass cannot be drawn. Web pages sit `web-inset` inside their glass, so the glass frames the page; before it paints, `web-ground`.
 - Text: `ink` for titles and values, `ink-2` for details and hints, `section` for `caption` labels, `ink-3` only for placeholders and disabled labels.
 - Controls: rest on `control`, `control-hover` under the pointer, `control-selected` when chosen. The selected layout segment is the one control that may use `accent` text.

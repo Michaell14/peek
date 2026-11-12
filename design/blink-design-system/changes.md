@@ -4,6 +4,10 @@
 
 **Draft:** every surface becomes the same liquid glass: the desktop behind blurred and lifted in colour, a faint white body, a dark shade inside so text always reads, a sheen across the top and a lit rim that catches light at two corners. Corners grow (26px tiles) and stay concentric; web pages sit framed inside their glass. Text colours are checked on glass over the brightest part of the wallpaper, and floating glass (the command bar, the Add list) over a white page, which is why it is tinted deeper. Geist and Lucide stay. Graphite, Champagne and Porcelain remain on **Directions**.
 
+## Graphite, Champagne and Porcelain go frosted
+
+**Draft:** the other three looks drop their solid surfaces for frosted glass too, each in its own key: smoked and cool (Graphite), warm and bronze (Champagne), light and milky (Porcelain), with a quieter edge than Liquid. Each has its own wallpaper and its own dimming, and the previews put windows and a Dock behind the board so the blur shows. Every text colour is checked on each glass over its wallpaper, over white and black windows, and, for floating glass, over pages and tiles.
+
 ## Templates instead of an empty board
 
 **Now:** a new board is empty.
