@@ -257,11 +257,7 @@ await test('space with another key held is some other shortcut', async (page) =>
   assert.equal(await page.locator('#recorder').count(), 0);
 });
 
-await test('the layout switch and the questions respond', async (page) => {
-  await page.locator('#layout-stage').scrollIntoViewIfNeeded();
-  await page.click('[data-layout="freeform"]');
-  assert.equal(await page.getAttribute('#layout-stage', 'data-mode'), 'freeform');
-
+await test('the questions respond', async (page) => {
   await page.locator('#faq').scrollIntoViewIfNeeded();
   await page.click('.faq summary >> nth=0');
   assert.equal(await page.locator('.faq details >> nth=0').getAttribute('open'), '');
@@ -353,9 +349,9 @@ await test('with reduced motion the cover stays still', async (page) => {
 
 await test('past the story: the bar names the section, and the key still works', async (page) => {
   assert.equal(await page.locator('#top-bar').evaluate((el) => el.classList.contains('is-past')), false);
-  await scrollTo(page, await page.evaluate(() => document.getElementById('inside').offsetTop));
+  await scrollTo(page, await page.evaluate(() => document.getElementById('faq').offsetTop));
   assert.equal(await page.locator('#top-bar').evaluate((el) => el.classList.contains('is-past')), true);
-  assert.equal(await page.textContent('#running'), '02 — What goes in');
+  assert.equal(await page.textContent('#running'), '02 — Questions');
   assert.equal(await page.locator('#hint').evaluate((el) => el.classList.contains('is-on')), true);
 
   const before = await page.evaluate(() => window.scrollY);
@@ -368,10 +364,7 @@ await test('past the story: the bar names the section, and the key still works',
   assert.equal(await isOpen(page), false);
   assert.equal(await page.evaluate(() => window.scrollY), before, 'holding Space scrolled the page');
 
-  assert.deepEqual(await page.locator('.sec__label').allInnerTexts(),
-    ['02 What goes in', '03 Arrange', '04 Yours', '05 Questions']);
-  await scrollTo(page, await page.evaluate(() => document.getElementById('faq').offsetTop));
-  assert.equal(await page.textContent('#running'), '05 — Questions');
+  assert.deepEqual(await page.locator('.sec__label').allInnerTexts(), ['02 Questions']);
 });
 
 await test('the page loads nothing from anywhere else, and its typefaces arrive', async (page) => {

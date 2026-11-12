@@ -670,17 +670,6 @@
   $('#board-add').addEventListener('click', () => (palette.hidden ? openPalette() : closePalette()));
 
   // ---------------------------------------------------------------------
-  // Layout modes illustration.
-  // ---------------------------------------------------------------------
-
-  $$('[data-layout]').forEach((button) => {
-    button.addEventListener('click', () => {
-      $('#layout-stage').dataset.mode = button.dataset.layout;
-      $$('[data-layout]').forEach((other) => other.classList.toggle('is-on', other === button));
-    });
-  });
-
-  // ---------------------------------------------------------------------
   // The story at the top. The section is several screens tall and its
   // contents stay pinned; how far the page has scrolled picks the step.
   // ---------------------------------------------------------------------
