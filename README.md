@@ -189,16 +189,24 @@ branch* in the repository's Pages settings and pick the `/docs` folder.
 
 A release is what the website's download button serves and what installed copies update to.
 
-On GitHub, open *Actions → Release → Run workflow* and type a version such as `0.2.0`. Or, from a
-terminal:
+Releases happen by themselves: whenever a change to the app (`Sources`, `Resources`, the package
+manifest or the build scripts) lands on the default branch, the Release workflow publishes the next
+patch version, so `0.1.0` is followed by `0.1.1`. A pull request that only touches the website,
+tests or docs publishes nothing. Releases run one at a time, so two merges in quick succession get
+two numbers.
+
+To pick the number yourself, for a bigger step, open *Actions → Release → Run workflow* and type a
+version such as `0.2.0`, or from a terminal:
 
 ```bash
 git tag v0.2.0 && git push origin v0.2.0
 ```
 
+Automatic releases carry on from the highest version published.
+
 The workflow tests and builds a universal app, packs it with `Scripts/package.sh`, and publishes
-`Blink.dmg` (for people), `Blink.zip` (for the app's own updates) and their checksums. Use a higher
-version each time: a copy of Blink only offers an update that is newer than itself.
+`Blink.dmg` (for people), `Blink.zip` (for the app's own updates) and their checksums. A copy of
+Blink only offers an update that is newer than itself.
 
 ### Signing and notarizing
 
