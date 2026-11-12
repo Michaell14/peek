@@ -6,7 +6,8 @@
 #   Scripts/self-check.sh [output directory]
 #
 # Expects build/Blink.app (run Scripts/build-app.sh first). The report and
-# screenshots land in the output directory.
+# screenshots land in the output directory. Set SIGN_IDENTITY to the identity
+# the app was built with, if it was not signed ad hoc.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -41,7 +42,10 @@ publish() {
     if [ "$name" = impostor ]; then
         /usr/libexec/PlistBuddy -c "Set :CFBundleIdentifier org.example.Impostor" "$stage/Blink.app/Contents/Info.plist"
     fi
-    codesign --force --sign - "$stage/Blink.app"
+    # Signed like the build: a copy signed by a named developer only accepts
+    # updates signed by the same one, so with SIGN_IDENTITY (a release build)
+    # the stand-ins are signed with it too.
+    codesign --force --sign "${SIGN_IDENTITY:--}" "$stage/Blink.app"
     if [ "$name" = altered ]; then
         echo "added after signing" > "$stage/Blink.app/Contents/Resources/extra.txt"
     fi

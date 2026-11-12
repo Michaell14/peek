@@ -141,6 +141,15 @@ jobs:
       - name: Build
         run: UNIVERSAL=1 Scripts/build-app.sh
 
+      # The end-to-end check CI runs, on the very app about to be published:
+      # nothing is released unless it passes. See Sources/Blink/App/SmokeTest.swift.
+      - name: Self-check
+        run: Scripts/self-check.sh "$RUNNER_TEMP/smoke"
+
+      - name: Self-check report
+        if: always()
+        run: cat "$RUNNER_TEMP/smoke/smoke.json" 2>/dev/null || echo "no report was written"
+
       - name: Package
         run: Scripts/package.sh dist
 

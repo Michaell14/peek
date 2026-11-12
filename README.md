@@ -205,9 +205,10 @@ git tag v0.2.0 && git push origin v0.2.0
 
 Automatic releases carry on from the highest version published.
 
-The workflow tests and builds a universal app, packs it with `Scripts/package.sh`, and publishes
-`Blink.dmg` (for people), `Blink.zip` (for the app's own updates) and their checksums. A copy of
-Blink only offers an update that is newer than itself.
+The workflow tests and builds a universal app, runs the same end-to-end self-check as CI on it
+(`Scripts/self-check.sh`), packs it with `Scripts/package.sh`, and publishes `Blink.dmg` (for
+people), `Blink.zip` (for the app's own updates) and their checksums. If the self-check fails,
+nothing is published. A copy of Blink only offers an update that is newer than itself.
 
 ### Signing and notarizing
 
