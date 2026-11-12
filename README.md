@@ -165,10 +165,11 @@ keeps layouts somewhere other than `~/Library/Application Support/Blink`.
 
 ## The website
 
-`docs/` holds Blink's website. One Mac screen, drawn in HTML, stays pinned while you scroll, and
-the scroll plays Blink's story on it: someone mid-sentence, the overlay coming up while fn is held,
-a website refreshing, widgets, a PDF, arranging tiles, and a full-screen app. Each step has a
-caption that fills in as you go. The page is also its own demo: hold Space at any point and the
+`docs/` holds Blink's website. One Mac screen, drawn in HTML, stays pinned while Blink's story
+plays on it: someone mid-sentence, the overlay coming up while fn is held, a website refreshing,
+widgets, a PDF, arranging tiles, and a full-screen app. Each scroll gesture (or arrow key) plays the
+next step through at its own pace and rests there, with a caption that fills in as it plays; after
+the last step the page scrolls normally. The page is also its own demo: hold Space at any point and the
 overlay opens on the screen, or over the page itself further down. On phones, and with reduced
 motion, the story is a list of stills instead.
 

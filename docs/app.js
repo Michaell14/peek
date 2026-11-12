@@ -1,7 +1,8 @@
-// Blink, "Daylight" draft.
-// One screen stays pinned while the page scrolls, and the distance scrolled
-// plays Blink's story on it. Hold Space (or press the fn key on screen) at any
-// point to open Blink yourself.
+// Blink's website.
+// One screen stays pinned while the story plays on it, one step per scroll:
+// each scroll gesture plays the next step through and rests there, and the
+// page scrolls freely again after the last one. Hold Space (or press the fn
+// key on screen) at any point to open Blink yourself.
 (() => {
   'use strict';
 
@@ -990,13 +991,151 @@
     });
   }
 
+  // ---- One step per scroll ----------------------------------------------------
+  // While the story is on screen, a scroll gesture does not scrub it. It plays
+  // the next step through at that step's own pace, and the page waits there.
+  // Further scrolling is held back until the step has finished and the
+  // gesture has ended. After the last step the page scrolls freely again.
+
+  // Where the story comes to rest: the opening, then the end of each step.
+  const REST = [-1, 0.9, 1.93, 2.9, 3.9, 4.9, 5.9, 6.9, 7.9, 8.93, 9.97];
+  // How long one whole unit of T takes to play, in ms: the opening, then each step.
+  const PACE = [1300, 1700, 2600, 1500, 1700, 2400, 2000, 2000, 2600, 3600, 2800];
+  const BACK = 0.5; // stepping back plays at twice the speed
+  const JUMP = 1100; // a jump across several steps takes at most this long
+  const GAP = 160; // ms without scrolling that ends a gesture
+
+  const lock = { raf: 0, from: 0, to: 0, start: 0, total: 0, parts: [], armed: true, lastAt: 0, lastSize: 0, touchY: null };
+
+  const inStory = () => mode === 'take';
+  const nextRest = (now, direction) => (direction > 0
+    ? REST.find((r) => r > now + 0.005)
+    : [...REST].reverse().find((r) => r < now - 0.005));
+
+  // The pieces of T between two points, each with how long it takes to play.
+  function parts(from, to) {
+    const lo = Math.min(from, to);
+    const hi = Math.max(from, to);
+    const list = [];
+    for (let k = -1; k < 10; k += 1) {
+      const a = Math.max(lo, k);
+      const b = Math.min(hi, k + 1);
+      if (b > a) list.push({ a, b, ms: (b - a) * PACE[k + 1] });
+    }
+    if (from > to) list.reverse().forEach((part) => { [part.a, part.b] = [part.b, part.a]; });
+    return list;
+  }
+
+  const settle = (x) => 0.6 * x + 0.4 * x * x * (3 - 2 * x);
+
+  function playTo(target, { fast = false } = {}) {
+    cancelAnimationFrame(lock.raf);
+    lock.from = readT();
+    lock.to = target;
+    lock.parts = parts(lock.from, target);
+    let total = lock.parts.reduce((sum, part) => sum + part.ms, 0);
+    if (target < lock.from) total *= BACK;
+    if (fast) total = Math.min(total, JUMP);
+    const scale = total / Math.max(lock.parts.reduce((sum, part) => sum + part.ms, 0), 1);
+    lock.parts.forEach((part) => { part.span = part.ms * scale; });
+    lock.total = Math.max(total, 1);
+    lock.start = performance.now();
+    lock.raf = requestAnimationFrame(playFrame);
+  }
+
+  function playFrame(now) {
+    const p = settle(clamp((now - lock.start) / lock.total, 0, 1));
+    let left = p * lock.total;
+    let at = lock.to;
+    for (const part of lock.parts) {
+      if (left <= part.span) { at = part.a + (part.b - part.a) * (part.span ? left / part.span : 1); break; }
+      left -= part.span;
+    }
+    window.scrollTo(0, scrollForT(at));
+    onFrame();
+    lock.raf = p < 1 ? requestAnimationFrame(playFrame) : 0;
+  }
+
+  const playing = () => lock.raf !== 0;
+
+  // Moves one step in a direction. Returns false when the page should scroll
+  // on its own instead: before the story, after it, or outside it.
+  function step(direction) {
+    if (!inStory()) return false;
+    const now = readT();
+    if (direction < 0 && window.scrollY > scrollForT(10) + 2) return false; // below the story
+    if (direction > 0 && now >= 10) return false;
+    const target = nextRest(now, direction);
+    if (target === undefined) return false;
+    playTo(target);
+    return true;
+  }
+
+  // Would a gesture in this direction be the story's, rather than the page's?
+  function owns(direction) {
+    if (!inStory()) return false;
+    if (playing()) return true;
+    const now = readT();
+    if (direction < 0 && window.scrollY > scrollForT(10) + 2) return false;
+    if (direction > 0 && now >= 10) return false;
+    return nextRest(now, direction) !== undefined;
+  }
+
+  window.addEventListener('wheel', (event) => {
+    if (event.ctrlKey || Math.abs(event.deltaX) > Math.abs(event.deltaY) || !event.deltaY) return;
+    const direction = Math.sign(event.deltaY);
+    if (!owns(direction)) return;
+    event.preventDefault();
+    const now = performance.now();
+    const size = Math.abs(event.deltaY);
+    // A new gesture: after a pause, or a fresh push while momentum is fading.
+    const fresh = now - lock.lastAt > GAP || (size > lock.lastSize * 1.6 && size > 12);
+    lock.lastAt = now;
+    lock.lastSize = size;
+    if (playing()) return;
+    if (!lock.armed && !fresh) return;
+    lock.armed = false;
+    step(direction);
+  }, { passive: false });
+
+  // Once a step has finished, the next gesture is welcome.
+  setInterval(() => {
+    if (!playing() && performance.now() - lock.lastAt > GAP) lock.armed = true;
+  }, 60);
+
+  window.addEventListener('keydown', (event) => {
+    if (event.altKey || event.ctrlKey || event.metaKey || isTyping(event.target)) return;
+    const direction = { ArrowDown: 1, PageDown: 1, ArrowUp: -1, PageUp: -1 }[event.key];
+    if (!direction || !owns(direction)) return;
+    event.preventDefault();
+    if (!playing() && !event.repeat) step(direction);
+  });
+
+  // Large touch screens get the same steps: one swipe, one step.
+  window.addEventListener('touchstart', (event) => {
+    lock.touchY = event.touches.length === 1 ? event.touches[0].clientY : null;
+    lock.armed = !playing();
+  }, { passive: true });
+  window.addEventListener('touchmove', (event) => {
+    if (lock.touchY === null) return;
+    const dy = lock.touchY - event.touches[0].clientY;
+    const direction = Math.sign(dy);
+    if (!direction || !owns(direction)) return;
+    event.preventDefault();
+    if (lock.armed && !playing() && Math.abs(dy) > 30) {
+      lock.armed = false;
+      step(direction);
+    }
+  }, { passive: false });
+
   // ---- The step list ----------------------------------------------------------
 
   indexLinks.forEach((link) => link.addEventListener('click', (event) => {
     event.preventDefault();
     const k = Number(link.dataset.go);
-    const target = k === 1 ? 0.3 : k - 1 + 0.5;
-    window.scrollTo({ top: scrollForT(target), behavior: 'smooth' });
+    const target = REST[k];
+    const far = Math.abs(target - readT()) > 1.2;
+    playTo(target, { fast: far });
   }));
 
   // ---------------------------------------------------------------------
@@ -1029,5 +1168,5 @@
   calm.addEventListener('change', refresh);
 
   // For checking the page by script.
-  window.__blink = { peek, scrollForT, get user() { return userOverlay.u; }, get T() { return T; }, get mode() { return mode; }, render: () => onFrame() };
+  window.__blink = { peek, scrollForT, REST, get playing() { return playing(); }, get user() { return userOverlay.u; }, get T() { return T; }, get mode() { return mode; }, render: () => onFrame() };
 })();

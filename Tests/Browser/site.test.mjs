@@ -81,6 +81,12 @@ async function goToBeat(page, T) {
   await page.waitForTimeout(250);
 }
 
+// Wait for a step to finish playing.
+async function settled(page) {
+  await page.waitForFunction(() => !window.__blink.playing, null, { timeout: 8000 });
+  await page.evaluate(() => window.__blink.render());
+}
+
 async function centre(page, selector) {
   const box = await page.locator(selector).boundingBox();
   return [box.x + box.width / 2, box.y + box.height / 2];
@@ -119,9 +125,67 @@ await test('scrolling plays the walkthrough on the pinned screen', async (page) 
 await test('the step list jumps to a beat', async (page) => {
   await goToBeat(page, 1.5);
   await page.click('#index a[data-go="7"]');
-  await page.waitForFunction(() => Math.abs(window.__blink.T - 6.5) < 0.1, null, { timeout: 4000 });
-  await page.waitForTimeout(200);
+  await settled(page);
+  assert.ok(Math.abs(await blink(page, 'T') - 6.9) < 0.02);
   assert.deepEqual(await shownCaption(page), [7]);
+});
+
+await test('one scroll plays one step through, and holds there', async (page) => {
+  await page.mouse.move(640, 400);
+  await page.mouse.wheel(0, 120);
+  await page.waitForTimeout(300);
+  assert.equal(await blink(page, 'playing'), true, 'the first step should be playing');
+  for (let i = 0; i < 4; i += 1) { await page.mouse.wheel(0, 120); await page.waitForTimeout(60); }
+  await settled(page);
+  assert.ok(Math.abs(await blink(page, 'T') - 0.9) < 0.02, 'more scrolling while a step played skipped ahead');
+  assert.deepEqual(await shownCaption(page), [1]);
+
+  // A fresh gesture after it has finished plays the next one.
+  await page.waitForTimeout(250);
+  await page.mouse.wheel(0, 120);
+  await settled(page);
+  assert.ok(Math.abs(await blink(page, 'T') - 1.93) < 0.02);
+  assert.deepEqual(await shownCaption(page), [2]);
+});
+
+await test('a trackpad swipe, momentum and all, is one step', async (page) => {
+  await goToBeat(page, 0.9);
+  await page.mouse.move(640, 400);
+  const swipe = async () => {
+    for (let i = 0; i < 45; i += 1) {
+      await page.mouse.wheel(0, Math.max(1, Math.round(70 * Math.exp(-i / 9))));
+      await page.waitForTimeout(16);
+    }
+  };
+  await swipe();
+  await settled(page);
+  assert.ok(Math.abs(await blink(page, 'T') - 1.93) < 0.02);
+  await page.waitForTimeout(250);
+  await swipe();
+  await settled(page);
+  assert.ok(Math.abs(await blink(page, 'T') - 2.9) < 0.02);
+});
+
+await test('scrolling up steps back, and the arrow keys step too', async (page) => {
+  await goToBeat(page, 2.9);
+  await page.mouse.move(640, 400);
+  await page.mouse.wheel(0, -120);
+  await settled(page);
+  assert.ok(Math.abs(await blink(page, 'T') - 1.93) < 0.02);
+  await page.waitForTimeout(250);
+  await page.keyboard.press('ArrowDown');
+  await settled(page);
+  assert.ok(Math.abs(await blink(page, 'T') - 2.9) < 0.02);
+});
+
+await test('after the last step the page scrolls freely again', async (page) => {
+  await goToBeat(page, 9.97);
+  const before = await page.evaluate(() => window.scrollY);
+  await page.mouse.move(640, 400);
+  await page.mouse.wheel(0, 400);
+  await page.waitForTimeout(400);
+  assert.equal(await blink(page, 'playing'), false);
+  assert.ok(await page.evaluate(() => window.scrollY) > before + 100, 'the page did not scroll on');
 });
 
 await test('holding Space over the screen opens Blink on it, only while held', async (page) => {
