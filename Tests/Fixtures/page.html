@@ -26,7 +26,20 @@
        self-check blocks. Only the first may load. -->
   <img id="allowed" src="pixel.gif" alt="">
   <img id="blocked" alt="">
+  <!-- Signs in the way "Sign in with Google" does: a pop-up that reports
+       back to this page and then closes itself. -->
+  <button id="signin" type="button">Sign in</button>
+
   <script>
+    document.getElementById('signin').addEventListener('click', function () {
+      window.signinOpened = Boolean(window.open('signin.html', 'signin', 'width=460,height=560'));
+    });
+    window.addEventListener('message', function (event) {
+      if (event.origin === location.origin && event.data && event.data.signedIn) {
+        document.documentElement.dataset.signedIn = event.data.signedIn;
+      }
+    });
+
     document.getElementById('blocked').src = 'http://localhost:' + location.port + '/pixel.gif';
 
     // Lets the self-check see whether pointer movement reaches the page.

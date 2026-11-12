@@ -41,6 +41,8 @@ final class WebTileContentView: TileContentView {
     private var errorView: NSView?
     private var isOverlayVisible = false
     private var isInteractive = false
+    /// Windows the page opened for itself, such as a sign-in pop-up.
+    private(set) var popups: [PopupWindow] = []
 
     /// True while the page is in "click an element to hide it" mode.
     private(set) var isPicking = false {
@@ -61,6 +63,8 @@ final class WebTileContentView: TileContentView {
         // Tiles stay loaded while the overlay is hidden; nothing should start
         // making noise from behind the scenes.
         configuration.mediaTypesRequiringUserActionForPlayback = [.audio]
+        // Pages may open a window only in answer to a click, never by themselves.
+        configuration.preferences.javaScriptCanOpenWindowsAutomatically = false
         webView = TileWebView(frame: .zero, configuration: configuration)
         super.init(tile: tile, settings: settings, context: context)
 
@@ -140,16 +144,20 @@ final class WebTileContentView: TileContentView {
     override func overlayWillShow() {
         isOverlayVisible = true
         applyAppearance()
+        popups.forEach { $0.show(focus: false) }
     }
 
     override func overlayDidHide() {
         isOverlayVisible = false
         stopPicker()
+        popups.forEach { $0.hide() }
     }
 
     override func interactivityDidChange(_ isInteractive: Bool) {
         self.isInteractive = isInteractive
         if !isInteractive { stopPicker() }
+        // Back to a half-finished sign-in: it gets the keyboard again.
+        if isInteractive { popups.last?.show(focus: true) }
     }
 
     override func openExternally() {
@@ -158,6 +166,7 @@ final class WebTileContentView: TileContentView {
     }
 
     override func tearDown() {
+        popups.forEach { $0.close() }
         refreshTimer?.invalidate()
         refreshTimer = nil
         observations.removeAll()
@@ -597,11 +606,38 @@ extension WebTileContentView: WKUIDelegate {
         for navigationAction: WKNavigationAction,
         windowFeatures: WKWindowFeatures
     ) -> WKWebView? {
-        // A tile is a single page: links that ask for a new window open here.
-        if navigationAction.targetFrame == nil {
-            webView.load(navigationAction.request)
+        let choice = NewWindowPolicy.choice(
+            isLinkClick: navigationAction.navigationType == .linkActivated,
+            isInUse: dialogWindow != nil
+        )
+        switch choice {
+        case .ignore:
+            return nil
+        case .sameTile:
+            // A tile is a single page: links that ask for a new tab open here.
+            if navigationAction.targetFrame == nil {
+                webView.load(navigationAction.request)
+            }
+            return nil
+        case .popup:
+            // The page opened a window itself, the way "Sign in with…"
+            // buttons do. It gets a real one, linked to the page, so the
+            // page hears back from it when signing in is done.
+            guard let parent = window else { return nil }
+            let anchor = parent.convertToScreen(convert(bounds, to: nil))
+            let popup = PopupWindow(
+                configuration: configuration,
+                features: windowFeatures,
+                userAgent: self.webView.customUserAgent,
+                appearance: self.webView.appearance,
+                over: parent,
+                centeredOn: anchor
+            ) { [weak self] closed in
+                self?.popups.removeAll { $0 === closed }
+            }
+            popups.append(popup)
+            return popup.webView
         }
-        return nil
     }
 
     func webView(

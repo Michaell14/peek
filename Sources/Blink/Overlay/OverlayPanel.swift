@@ -32,11 +32,18 @@ final class OverlayPanel: NSPanel {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { false }
 
-    /// The app has no visible menu bar of its own while the overlay is up, so
-    /// make sure the standard editing shortcuts still reach text fields and
-    /// web pages.
     override func performKeyEquivalent(with event: NSEvent) -> Bool {
         if super.performKeyEquivalent(with: event) { return true }
+        return EditingShortcuts.perform(event, from: self)
+    }
+}
+
+/// The app has no visible menu bar of its own while the overlay is up, so its
+/// windows pass the standard editing shortcuts to text fields and web pages
+/// themselves.
+enum EditingShortcuts {
+    @MainActor
+    static func perform(_ event: NSEvent, from sender: NSWindow) -> Bool {
         guard event.type == .keyDown else { return false }
 
         let flags = event.modifierFlags.intersection([.command, .shift, .option, .control])
@@ -52,6 +59,6 @@ final class OverlayPanel: NSPanel {
         default: action = nil
         }
         guard let action else { return false }
-        return NSApp.sendAction(action, to: nil, from: self)
+        return NSApp.sendAction(action, to: nil, from: sender)
     }
 }

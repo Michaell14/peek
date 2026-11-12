@@ -15,7 +15,7 @@ full-screen ones — and disappears when you release it.
 
 | | |
 |---|---|
-| **Websites** | Any site, in WebKit. Logins persist. Back/forward/reload, zoom, mobile-site mode, auto-refresh. |
+| **Websites** | Any site, in WebKit. Logins persist, and sign-in pop-ups ("Sign in with Google") open in a window of their own that reports back to the page. Back/forward/reload, zoom, mobile-site mode, auto-refresh. |
 | **Local files** | PDF and HTML. Add from the launcher or Finder's *Open With → Blink*. Reloads when the file changes. |
 | **Widgets** | Clock (multiple time zones), Calendar (day timeline or next 7 days), Reminders (today / scheduled / overdue / all, tick off, add), Notes. |
 | **Less noise** | Blocks third-party ads and trackers, hides cookie banners, and lets you click page elements to hide them for good. Accepts your own Adblock Plus-style filters. |
@@ -246,8 +246,6 @@ This path has not yet been run with a real certificate.
 - A stocks widget.
 - Releases signed with an Apple developer certificate and notarized. Until then macOS asks you to
   confirm the first launch, and may ask for Input Monitoring again after an update.
-- Sign-in flows that depend on a pop-up window talking back to the page that opened it; links that
-  ask for a new window open in the same tile.
 
 ## Origin
 

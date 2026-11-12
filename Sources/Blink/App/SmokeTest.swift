@@ -366,6 +366,43 @@ enum SmokeTest {
                 expect("typing", [("keys typed into a page field arrive", typed == "go")])
                 snapshots["typed"] = typed
 
+                // Signing in through a pop-up, as "Sign in with Google" does:
+                // the page opens a window, which reports back and closes.
+                _ = await js("document.getElementById('signin').click(), 'clicked'")
+                var popup: PopupWindow?
+                for _ in 0..<20 where popup == nil {
+                    await pause(0.25)
+                    popup = web.popups.first
+                }
+                var popupTitle = ""
+                for _ in 0..<40 {
+                    popupTitle = await popup?.evaluate("document.readyState === 'complete' ? document.title : ''") ?? ""
+                    if !popupTitle.isEmpty { break }
+                    await pause(0.25)
+                }
+                let overlayLevel = overlay.snapshot()["panelLevel"] as? Int ?? 0
+                let opened: [(String, Bool)] = [
+                    ("the page's pop-up opens in a window of its own", popup != nil),
+                    ("it shows above the overlay", (popup?.panel.isVisible ?? false) && (popup?.panel.level.rawValue ?? 0) > overlayLevel),
+                    ("it has the keyboard", popup?.panel.isKeyWindow ?? false),
+                    ("its title names the site", popup?.panel.title == "127.0.0.1"),
+                    ("it loads the sign-in page", popupTitle == "Sign in"),
+                    ("the tile stays on its own page", await js("document.title") == pageTitle),
+                ]
+                await capture("popup")
+                _ = await popup?.evaluate("document.getElementById('done').click(), 'done'")
+                for _ in 0..<20 where !web.popups.isEmpty {
+                    await pause(0.25)
+                }
+                await pause(0.3)
+                let signedIn = await js("document.documentElement.dataset.signedIn")
+                expect("popup", opened + [
+                    ("the page hears back from it", signedIn == "yes"),
+                    ("it closes when the page closes it", web.popups.isEmpty && !(popup?.panel.isVisible ?? false)),
+                    ("the overlay has the keyboard again", flag("panelIsKey")),
+                ])
+                snapshots["popupValues"] = ["title": popupTitle, "signedIn": signedIn]
+
                 // Hovering a tile brings up its controls. Blink samples where
                 // the pointer is, so put the real pointer there.
                 // (The web tile is the last one on the board at this point.)
