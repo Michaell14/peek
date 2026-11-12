@@ -1,0 +1,332 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Blink: hold fn to see what you check all day</title>
+  <meta name="description" content="Blink is a free, open-source Mac app. Hold fn to see the websites, widgets and files you check all day, over whatever you are doing. Let go and carry on.">
+  <meta name="color-scheme" content="light">
+  <meta name="theme-color" content="#e8edf4">
+  <link rel="preload" href="fonts/schibsted-grotesk.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="fonts/fraunces.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="styles.css">
+  <script>document.documentElement.classList.add('js');</script>
+</head>
+<body>
+  <!-- The light of the day, behind everything. Scrolling moves it from morning to evening. -->
+  <div class="ground" id="ground" aria-hidden="true"><i class="ground__noon"></i><i class="ground__late"></i><i class="ground__dusk"></i></div>
+
+  <a class="skip" href="#after">Skip the walkthrough</a>
+
+  <header class="bar" id="bar">
+    <div class="bar__in">
+      <a class="bar__mark" href="#top" aria-label="Blink, back to top">
+        <span class="wordmark" aria-hidden="true">Bl<span class="wordmark__i">ı<i></i></span>nk</span>
+      </a>
+      <nav class="bar__nav" aria-label="Site">
+        <a class="bar__link" href="https://github.com/Michaell14/peek" rel="noopener">Source</a>
+        <a class="btn btn--small" href="https://github.com/Michaell14/peek/releases/latest/download/Blink.dmg">Download</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <!-- Opening ----------------------------------------------------------- -->
+    <section class="hero" aria-labelledby="hero-title">
+      <h1 class="hero__mark" id="hero-title">
+        <span class="wordmark" aria-hidden="true">Bl<span class="wordmark__i">ı<i></i></span>nk</span>
+        <span class="sr">Blink</span>
+      </h1>
+      <div class="hero__text">
+        <p class="hero__line">Hold <span class="fn">fn</span> to see the things you check all&nbsp;day. Let go and carry&nbsp;on.</p>
+        <p class="hero__get">
+          <a class="btn" href="https://github.com/Michaell14/peek/releases/latest/download/Blink.dmg">Download for Mac</a>
+          <span class="hero__note">macOS 14 or later, free</span>
+        </p>
+      </div>
+      <p class="hero__day">One working Thursday, from eight in the morning to half past six.</p>
+    </section>
+
+    <!-- The take: one screen, pinned, and a working day plays on it -------- -->
+    <section class="take" id="take" aria-label="One working day with Blink, step by step">
+      <div class="stage" id="stage">
+        <div class="lens" id="lens">
+          <div class="cam" id="cam">
+            <div class="display" id="display" aria-hidden="true">
+              <div class="screen">
+                <div class="desk">
+                  <!-- The wallpaper. Its colours follow the time of day. -->
+                  <div class="wall" data-wall>
+                    <div class="wall__sun" data-sun></div>
+                    <div class="wall__stars" data-stars></div>
+                    <svg class="wall__hills" viewBox="0 0 1280 800" preserveAspectRatio="none">
+                      <path class="h1" d="M0 430 C 90 410 150 372 238 380 C 320 388 360 420 452 412 C 560 402 610 346 712 350 C 806 354 850 400 948 398 C 1046 396 1110 360 1186 366 C 1230 370 1258 384 1280 392 L1280 800 L0 800 Z"/>
+                      <path class="h2" d="M0 512 C 70 494 128 470 206 474 C 300 480 346 520 444 514 C 540 508 588 466 676 468 C 770 470 812 512 900 516 C 1000 520 1062 482 1150 480 C 1210 479 1252 494 1280 502 L1280 800 L0 800 Z"/>
+                      <path class="h3" d="M0 590 C 102 572 168 548 262 556 C 352 564 410 600 512 598 C 612 596 672 562 770 566 C 868 570 920 604 1020 604 C 1116 604 1176 580 1280 576 L1280 800 L0 800 Z"/>
+                      <path class="h4" d="M0 668 C 120 650 214 630 316 640 C 420 650 486 684 598 682 C 708 680 780 650 886 652 C 990 654 1060 684 1160 680 C 1214 678 1252 670 1280 664 L1280 800 L0 800 Z"/>
+                      <path class="h5" d="M0 742 C 140 724 252 714 380 722 C 520 730 600 756 760 752 C 900 748 1000 724 1130 726 C 1200 727 1250 734 1280 740 L1280 800 L0 800 Z"/>
+                    </svg>
+                  </div>
+
+                  <div class="menubar">
+                    <span class="mb-app" data-app-name>Writer</span><span>File</span><span>Edit</span><span>View</span><span>Format</span><span>Window</span><span>Help</span>
+                    <span class="mb-right">
+                      <span class="mb-blink" data-mb-blink><i></i><i></i><i></i></span>
+                      <svg class="mb-ico" viewBox="0 0 18 14" aria-hidden="true"><path d="M1.6 5.2a10.4 10.4 0 0 1 14.8 0M4.2 7.9a6.6 6.6 0 0 1 9.6 0M6.8 10.6a2.9 2.9 0 0 1 4.4 0"/></svg>
+                      <span>Thu 12 Nov</span><span class="mb-time" data-scene-time>8:00</span>
+                    </span>
+                  </div>
+
+                  <!-- Behind: the things you keep going to look at. -->
+                  <div class="win win--web" data-win="web">
+                    <div class="win__bar win__bar--tabs">
+                      <span class="lights"><i></i><i></i><i></i></span>
+                      <span class="tabs"><i class="is-on">Example dashboard</i><i>Inbox (4)</i><i>Pull requests</i><i>Train times</i><i>Docs</i></span>
+                    </div>
+                    <div class="urlbar"><span>metrics.example.com</span></div>
+                    <div class="win__body" data-slot="web"></div>
+                  </div>
+
+                  <div class="win win--cal" data-win="cal">
+                    <div class="win__bar"><span class="lights"><i></i><i></i><i></i></span><span class="win__title">Calendar</span><span class="win__seg"><i>Day</i><i class="is-on">Week</i><i>Month</i></span></div>
+                    <div class="cal">
+                      <div class="cal__days"><span></span><span>Mon <b>9</b></span><span>Tue <b>10</b></span><span>Wed <b>11</b></span><span class="is-today">Thu <b>12</b></span><span>Fri <b>13</b></span></div>
+                      <div class="cal__grid">
+                        <div class="cal__hours"><span>8</span><span>9</span><span>10</span><span>11</span><span>12</span><span>1</span><span>2</span><span>3</span><span>4</span><span>5</span><span>6</span></div>
+                        <div class="cal__col"><i style="top:13.6%;height:4.5%" data-c="b">Standup</i><i style="top:45.5%;height:13.6%" data-c="g">Planning</i></div>
+                        <div class="cal__col"><i style="top:13.6%;height:4.5%" data-c="b">Standup</i><i style="top:63.6%;height:13.6%" data-c="g">Workshop</i></div>
+                        <div class="cal__col"><i style="top:13.6%;height:4.5%" data-c="b">Standup</i><i style="top:31.8%;height:9.1%" data-c="p">Interview</i></div>
+                        <div class="cal__col is-today"><i style="top:13.6%;height:4.5%" data-c="b">Standup</i><i style="top:27.3%;height:9.1%" data-c="g">Design review</i><i style="top:40.9%;height:6.8%" data-c="o">Lunch</i><i style="top:54.5%;height:4.5%" data-c="p">Sam, 1:1</i><i style="top:72.7%;height:9.1%" data-c="b">Thursday review</i><u data-cal-now></u></div>
+                        <div class="cal__col"><i style="top:13.6%;height:4.5%" data-c="b">Standup</i><i style="top:54.5%;height:9.1%" data-c="o">Demo</i></div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div class="win win--mail" data-win="mail">
+                    <div class="win__bar"><span class="lights"><i></i><i></i><i></i></span><span class="win__title">Inbox, 4 unread</span></div>
+                    <ul class="mail">
+                      <li class="is-new"><b>Sam Okafor</b><span>Numbers for the review this afternoon?</span><time>8:31</time></li>
+                      <li class="is-new"><b>Build bot</b><span>main is green again</span><time>8:22</time></li>
+                      <li class="is-new"><b>Priya N.</b><span>Review: the new sign-up page</span><time>8:05</time></li>
+                      <li class="is-new"><b>Accounts</b><span>Invoice 0042 is due today</span><time>7:48</time></li>
+                      <li><b>Lena Fischer</b><span>Lunch at half twelve?</span><time>Wed</time></li>
+                      <li><b>The Weekly Example</b><span>Five small things worth reading</span><time>Wed</time></li>
+                    </ul>
+                  </div>
+
+                  <!-- In front: what you were doing. -->
+                  <div class="win win--writer" data-win="writer">
+                    <div class="win__bar"><span class="lights"><i></i><i></i><i></i></span><span class="win__title">Notes for Thursday</span></div>
+                    <div class="doc">
+                      <p class="doc__kicker">Draft 2</p>
+                      <p class="doc__title">Notes for Thursday</p>
+                      <p>Sam, thanks for the new page. A few things before we meet.</p>
+                      <p>First, sign-ups. Last week we averaged 342 a day. <span data-typed="a"></span><span data-typed="b"></span><span class="caret"></span></p>
+                      <p>Second, the pricing page. Priya has notes on the copy and I agree with most of them. The table reads better without the footnotes.</p>
+                      <p>Third, hiring. If we open the second designer role this month, we could have someone by spring.</p>
+                    </div>
+                  </div>
+
+                  <div class="dock" data-dock>
+                    <i data-app="files"><svg viewBox="0 0 24 24"><path d="M3.5 7.5v10a1.5 1.5 0 0 0 1.5 1.5h14a1.5 1.5 0 0 0 1.5-1.5V9a1.5 1.5 0 0 0-1.5-1.5h-7L10 5.5H5A1.5 1.5 0 0 0 3.5 7v.5Z"/></svg></i>
+                    <i data-app="writer"><svg viewBox="0 0 24 24"><path d="M7 6.5h10M7 10h10M7 13.5h10M7 17h6"/></svg><b></b></i>
+                    <i data-app="cal"><span class="dock__cal"><em>Thu</em><strong>12</strong></span><b></b></i>
+                    <i data-app="mail"><svg viewBox="0 0 24 24"><rect x="4" y="6" width="16" height="12" rx="2"/><path d="m4.6 7 7.4 5.6L19.4 7"/></svg><b></b></i>
+                    <i data-app="web"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="m14.8 9.2-1.6 4-4 1.6 1.6-4z"/></svg><b></b></i>
+                    <i data-app="player"><svg viewBox="0 0 24 24"><rect x="3.5" y="5.5" width="17" height="13" rx="2.5"/><path d="m10.2 9.4 4.6 2.6-4.6 2.6z"/></svg></i>
+                    <i data-app="settings"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3.5v2.2M12 18.3v2.2M3.5 12h2.2M18.3 12h2.2M6 6l1.6 1.6M16.4 16.4 18 18M6 18l1.6-1.6M16.4 7.6 18 6"/></svg></i>
+                  </div>
+                </div>
+
+                <!-- Evening: a film, full screen. -->
+                <div class="full" data-full>
+                  <div class="film" data-film></div>
+                  <div class="film__ui" data-film-ui>
+                    <p class="film__title">Low Tide <span>Chapter 4</span></p>
+                    <div class="film__bar">
+                      <svg class="film__play" viewBox="0 0 16 16" aria-hidden="true"><rect x="3.5" y="2.5" width="3" height="11" rx="1"/><rect x="9.5" y="2.5" width="3" height="11" rx="1"/></svg>
+                      <span data-film-at>41:12</span>
+                      <span class="film__track"><i data-film-head></i></span>
+                      <span>1:48:00</span>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- Blink, over all of it. -->
+                <div class="ov" data-ov>
+                  <div class="ov__strip" data-strip>
+                    <span class="ov__brand"><span class="mark"><i></i><i></i><i></i></span><b>Blink</b><span data-strip-hint>fn or esc to close</span></span>
+                    <span class="toolbar">
+                      <span class="seg" data-seg><i class="is-on" data-seg-flow><svg viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="10" rx="2"/><path d="M6.5 3v10M10 3v10"/></svg>Flow</i><i data-seg-free><svg viewBox="0 0 16 16"><rect x="2" y="5" width="8" height="8" rx="1.6"/><path d="M6 3h6.4A1.6 1.6 0 0 1 14 4.6V10"/></svg>Freeform</i></span>
+                      <i class="tb-icon"><svg viewBox="0 0 16 16"><path d="M8 3.5v9M3.5 8h9"/></svg></i>
+                      <i class="tb-text" data-edit>Edit</i>
+                      <i class="tb-icon"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.2"/><path d="M8 2v1.6M8 12.4V14M2 8h1.6M12.4 8H14M3.8 3.8l1.1 1.1M11.1 11.1l1.1 1.1M3.8 12.2l1.1-1.1M11.1 4.9l1.1-1.1"/></svg></i>
+                    </span>
+                  </div>
+                  <div class="board" data-board></div>
+                </div>
+
+                <div class="pointer" data-pointer><svg viewBox="0 0 20 28"><path d="M2 2v20.5l5-4.6 3.4 7.9 3.4-1.5-3.4-7.7H17L2 2Z"/></svg></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <ol class="caps" id="caps">
+          <li class="cap" data-beat="1">You are halfway through a sentence, and you need one number.</li>
+          <li class="cap" data-beat="2">So you switch apps to look, and lose your place on the way back.</li>
+          <li class="cap" data-beat="3">Or hold fn. The things you check appear over what you are doing.</li>
+          <li class="cap" data-beat="4">Let go. Same sentence, same cursor, and now you know the number.</li>
+          <li class="cap" data-beat="5">Websites stay signed in and refresh themselves while you work.</li>
+          <li class="cap" data-beat="6">Your calendar, clocks for other cities, and reminders to tick off.</li>
+          <li class="cap" data-beat="7">Sam changes the agenda at three. The PDF tile already shows it.</li>
+          <li class="cap" data-beat="8">Tap fn instead and it stays open, so you can click and scroll.</li>
+          <li class="cap" data-beat="9">Flow keeps tiles in tidy columns. Freeform puts them anywhere.</li>
+          <li class="cap" data-beat="10">It opens over a full-screen film too. Let go and you are back in it.</li>
+        </ol>
+
+        <!-- The day, at the edge of the page: the time, and its moments. -->
+        <aside class="day" id="day" aria-label="The day so far">
+          <p class="day__part" data-daypart>Thursday, early morning</p>
+          <p class="day__time" aria-hidden="true"><span data-daytime>8:00</span></p>
+          <nav class="index" id="index" aria-label="Moments in the day">
+            <ol>
+              <li><a href="#take" data-go="1"><time>8:40</time>Writing</a></li>
+              <li><a href="#take" data-go="2"><time>8:45</time>Switching apps</a></li>
+              <li><a href="#take" data-go="3"><time>8:52</time>Hold fn</a></li>
+              <li><a href="#take" data-go="4"><time>8:53</time>Let go</a></li>
+              <li><a href="#take" data-go="5"><time>10:15</time>Sign-ups again</a></li>
+              <li><a href="#take" data-go="6"><time>12:30</time>Lunch</a></li>
+              <li><a href="#take" data-go="7"><time>15:00</time>A new agenda</a></li>
+              <li><a href="#take" data-go="8"><time>15:40</time>Reply to Sam</a></li>
+              <li><a href="#take" data-go="9"><time>17:45</time>Tidy up</a></li>
+              <li><a href="#take" data-go="10"><time>18:30</time>A film</a></li>
+            </ol>
+            <i class="index__now" id="index-now" aria-hidden="true"></i>
+          </nav>
+          <div class="day__try">
+            <button class="fnkey" type="button" data-key aria-describedby="try-note">
+              <span class="fnkey__fn">fn</span>
+              <svg class="fnkey__globe" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M2 8h12M8 2c2.2 2 2.2 10 0 12M8 2C5.8 4 5.8 12 8 14"/></svg>
+              <span class="fnkey__led" aria-hidden="true"></span>
+              <span class="sr">Hold to open Blink</span>
+            </button>
+            <p class="try" id="try-note">
+              <span class="try__keys">Hold <kbd>Space</kbd> to try&nbsp;it</span>
+              <span class="try__touch">Press and hold <b>fn</b> to try&nbsp;it</span>
+            </p>
+          </div>
+        </aside>
+      </div>
+
+      <!-- On phones, and with reduced motion: the same day as a sequence of stills. -->
+      <ol class="stack" id="stack" hidden></ol>
+    </section>
+
+    <!-- After the take ---------------------------------------------------- -->
+    <section class="own" id="after" aria-labelledby="own-title">
+      <h2 id="own-title">Private, free and open source.</h2>
+      <div class="own__cols">
+        <div>
+          <h3>Private</h3>
+          <p>No account, no analytics, no server. Your layouts and everything you browse in Blink stay on your Mac.</p>
+        </div>
+        <div>
+          <h3>Free</h3>
+          <p>There is no paid version and nothing to buy later. Download it and it is yours.</p>
+        </div>
+        <div>
+          <h3>Open source</h3>
+          <p>The code is on GitHub under the MIT licence. Read it, change it, or build it yourself.</p>
+        </div>
+      </div>
+
+      <div class="more">
+        <h3 class="more__title">Also in Blink</h3>
+        <dl class="more__list">
+          <div><dt>Quieter pages</dt><dd>Third-party ads and trackers are blocked and cookie banners hidden. Click any part of a page to hide it for good.</dd></div>
+          <div><dt>The right display</dt><dd>It opens on the display with your pointer, the one with the active window, or one you pick.</dd></div>
+          <div><dt>Your own shortcut</dt><dd>Keep fn, choose any key combination, or use one modifier on its own, such as the right <kbd>⌘</kbd>.</dd></div>
+          <div><dt>Open it elsewhere</dt><dd>Send any tile to your browser, or a file to the app that usually opens it.</dd></div>
+        </dl>
+      </div>
+    </section>
+
+    <section class="get" aria-labelledby="get-title">
+      <p class="get__time" aria-hidden="true">8:00<span>to</span>18:30</p>
+      <h2 id="get-title">First coffee to evening film. One&nbsp;key.</h2>
+      <div class="get__row">
+        <a class="btn btn--big" href="https://github.com/Michaell14/peek/releases/latest/download/Blink.dmg">Download for Mac</a>
+        <p class="get__note">macOS 14 or later, free.<br><a href="https://github.com/Michaell14/peek" rel="noopener">Source on GitHub</a></p>
+        <div class="get__try">
+          <p class="try" id="get-try"><span class="try__keys">Once more: hold <kbd>Space</kbd> and Blink opens over this page.</span><span class="try__touch">Once more: press and hold this key.</span></p>
+          <button class="fnkey fnkey--small" type="button" data-key aria-describedby="get-try" aria-label="Hold to open Blink over this page">
+            <span class="fnkey__fn">fn</span>
+            <svg class="fnkey__globe" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M2 8h12M8 2c2.2 2 2.2 10 0 12M8 2C5.8 4 5.8 12 8 14"/></svg>
+            <span class="fnkey__led" aria-hidden="true"></span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <section class="faq" id="faq" aria-labelledby="faq-title">
+      <h2 id="faq-title">Questions</h2>
+      <div class="faq__list">
+        <details>
+          <summary>How do I install it?</summary>
+          <p>Download the disk image, open it and drag Blink into Applications. Blink is not notarized by Apple yet, so macOS stops it the first time you open it. Go to System Settings, then Privacy &amp; Security, and choose Open Anyway. You only do this once.</p>
+        </details>
+        <details>
+          <summary>Why does it ask for Input Monitoring?</summary>
+          <p>macOS only shows the <kbd>fn</kbd> key to apps you allow under Input Monitoring. Blink watches for its shortcut and does not record what you type. If you would rather not allow it, pick an ordinary combination such as <kbd>⌥</kbd> <kbd>`</kbd> in Settings, which needs no permission. With fn as the shortcut, set System Settings, Keyboard, “Press globe key to” to Do Nothing.</p>
+        </details>
+        <details>
+          <summary>How does it update?</summary>
+          <p>Once a day Blink asks GitHub for the newest release and offers to install it. The request carries nothing about you or your Mac. Check for Updates in the menu bar asks straight away, and Settings, About turns the daily check off.</p>
+        </details>
+        <details>
+          <summary>What does it know about me?</summary>
+          <p>Nothing it sends anywhere. There is no account, no analytics and no server. Websites you add are stored like a browser stores them, on your Mac, and so are your layouts.</p>
+        </details>
+        <details>
+          <summary>Is it really free?</summary>
+          <p>Yes. Blink is open source under the MIT licence, with no paid tier. You can also build it from the source with Xcode 16.</p>
+        </details>
+        <details>
+          <summary>Which Macs does it run on?</summary>
+          <p>Any Mac with macOS 14 Sonoma or later, Apple silicon or Intel.</p>
+        </details>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <a class="footer__mark" href="#top" aria-label="Blink, back to top"><span class="wordmark" aria-hidden="true">Bl<span class="wordmark__i">ı<i></i></span>nk</span></a>
+    <p>MIT licence. <a href="https://github.com/Michaell14/peek" rel="noopener">Source on GitHub</a>.</p>
+    <p>This page loads nothing from other sites and counts no one. Set in Schibsted Grotesk and Fraunces.</p>
+  </footer>
+
+  <!-- Blink over the page itself, for when the screen above is out of view. -->
+  <div class="pov" id="pov" role="dialog" aria-modal="false" aria-label="Blink demo" aria-hidden="true" tabindex="-1">
+    <div class="pov__strip">
+      <span class="ov__brand"><span class="mark"><i></i><i></i><i></i></span><b>Blink</b><span id="pov-hint">Space or esc to close</span></span>
+      <button type="button" class="pov__close" id="pov-close" aria-label="Close">
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 4l8 8M12 4l-8 8"/></svg>
+      </button>
+    </div>
+    <div class="pov__board" id="pov-board"></div>
+  </div>
+
+  <!-- On phones: the key, always within reach. -->
+  <div class="float" id="float">
+    <button class="fnkey fnkey--float" type="button" data-key id="float-key" aria-label="Hold to open Blink over this page">
+      <span class="fnkey__fn">fn</span>
+      <svg class="fnkey__globe" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M2 8h12M8 2c2.2 2 2.2 10 0 12M8 2C5.8 4 5.8 12 8 14"/></svg>
+      <span class="fnkey__led" aria-hidden="true"></span>
+    </button>
+    <span class="float__hint" aria-hidden="true">Press and hold</span>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

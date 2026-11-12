@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 600" preserveAspectRatio="xMidYMid slice">
+  <!-- A still from an imaginary film: the sea after sunset. Drawn for this page. -->
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#121731"/>
+      <stop offset="0.38" stop-color="#2c3058"/>
+      <stop offset="0.6" stop-color="#6c5677"/>
+      <stop offset="0.7" stop-color="#c47f7b"/>
+      <stop offset="0.74" stop-color="#eaa47f"/>
+    </linearGradient>
+    <linearGradient id="sea" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4b4466"/>
+      <stop offset="0.25" stop-color="#2b2a4a"/>
+      <stop offset="1" stop-color="#0c0e1f"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.66" cy="0.74" r="0.42">
+      <stop offset="0" stop-color="#ffc49a" stop-opacity="0.55"/>
+      <stop offset="0.5" stop-color="#e48a7a" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#e48a7a" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="moon" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#fff6e6" stop-opacity="0.5"/>
+      <stop offset="1" stop-color="#fff6e6" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="1440" height="600" fill="url(#sky)"/>
+  <rect width="1440" height="600" fill="url(#glow)"/>
+  <g fill="#fff" opacity="0.7">
+    <circle cx="140" cy="60" r="1.2"/><circle cx="310" cy="118" r="0.9"/><circle cx="452" cy="44" r="1.1"/>
+    <circle cx="610" cy="96" r="0.8"/><circle cx="782" cy="30" r="1"/><circle cx="1210" cy="70" r="1.1"/>
+    <circle cx="1330" cy="140" r="0.8"/><circle cx="236" cy="190" r="0.8"/><circle cx="1096" cy="48" r="0.9"/>
+  </g>
+  <circle cx="1010" cy="150" r="80" fill="url(#moon)"/>
+  <circle cx="1010" cy="150" r="21" fill="#f6ecd9"/>
+  <path fill="#1d1d38" d="M0 440 L0 404 C 60 396 120 380 190 386 C 250 391 290 410 360 412 C 400 413 430 410 452 418 C 470 425 486 434 510 440 Z"/>
+  <path fill="#262444" d="M560 440 C 620 432 650 420 700 422 C 760 424 790 436 830 440 Z"/>
+  <path fill="#191932" d="M1180 440 C 1230 420 1270 398 1330 396 C 1380 395 1420 410 1440 416 L1440 440 Z"/>
+  <rect y="440" width="1440" height="160" fill="url(#sea)"/>
+  <g fill="#ffd9b8">
+    <rect x="985" y="448" width="52" height="2" rx="1" opacity="0.55"/>
+    <rect x="972" y="462" width="80" height="2" rx="1" opacity="0.4"/>
+    <rect x="994" y="478" width="36" height="2" rx="1" opacity="0.45"/>
+    <rect x="960" y="496" width="104" height="2.5" rx="1.25" opacity="0.28"/>
+    <rect x="990" y="516" width="44" height="2" rx="1" opacity="0.3"/>
+    <rect x="950" y="540" width="124" height="3" rx="1.5" opacity="0.18"/>
+    <rect x="980" y="566" width="64" height="2.5" rx="1.25" opacity="0.2"/>
+  </g>
+  <g fill="#0d0e1e">
+    <path d="M760 452 L 808 452 L 800 460 L 768 460 Z"/>
+    <path d="M784 451 L 784 404 L 806 449 Z"/>
+    <path d="M782 451 L 782 414 L 766 449 Z" opacity="0.85"/>
+  </g>
+</svg>
