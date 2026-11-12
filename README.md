@@ -200,6 +200,34 @@ The workflow tests and builds a universal app, packs it with `Scripts/package.sh
 `Blink.dmg` (for people), `Blink.zip` (for the app's own updates) and their checksums. Use a higher
 version each time: a copy of Blink only offers an update that is newer than itself.
 
+### Signing and notarizing
+
+Without a certificate the release is signed ad hoc and macOS refuses to open the download until it
+is allowed in *Privacy & Security*. The workflow signs with a Developer ID and has Apple notarize
+the app and the disk image when the repository has these five secrets (*Settings → Secrets and
+variables → Actions*). They need a paid Apple Developer Program membership.
+
+| Secret | What it is |
+| --- | --- |
+| `DEVELOPER_ID_P12` | A *Developer ID Application* certificate with its private key, exported from Keychain Access as a `.p12` and base64-encoded (`base64 -i certificate.p12 \| pbcopy`) |
+| `DEVELOPER_ID_P12_PASSWORD` | The password chosen when exporting it |
+| `APPLE_ID` | The Apple ID of the developer account |
+| `APPLE_TEAM_ID` | Its ten-character team ID, from developer.apple.com → Membership |
+| `APPLE_APP_PASSWORD` | An app-specific password for that Apple ID, made at account.apple.com |
+
+To do the same by hand, save the credentials once with `xcrun notarytool store-credentials blink`,
+then:
+
+```bash
+SIGN_IDENTITY="Developer ID Application: …" UNIVERSAL=1 Scripts/build-app.sh
+```
+
+```bash
+SIGN_IDENTITY="Developer ID Application: …" NOTARY_PROFILE=blink Scripts/package.sh
+```
+
+This path has not yet been run with a real certificate.
+
 ## Not there yet
 
 - Passkeys in web tiles. macOS only offers them to apps holding a browser entitlement that Apple
