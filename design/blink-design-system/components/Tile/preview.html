@@ -1,0 +1,29 @@
+<!-- @dsCard group="Tiles" height=360 width=900 subtitle="At rest, and under the pointer (hover to see)" -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Tile — preview</title><style>html,body{margin:0;height:100%;background:var(--desktop);}</style></head>
+<body>
+<div class="bk-ground"><div style="display:grid;grid-template-columns:1fr 1.25fr;gap:var(--tile-gap);height:320px"><article class="bk-tile" style=""><div class="bk-tile__head"><span class="bk-chip"><i class="bk-ico bk-ico--clock" aria-hidden="true"></i>Clock</span></div><div class="bk-tile__clip"><div class="bk-tile__body"><div class="bk-clock">
+<div class="bk-clock__row"><i class="bk-ico bk-ico--sun" aria-hidden="true"></i><span class="bk-clock__place"><b>San Francisco</b><small>Today</small></span><span class="bk-clock__time">9:41<small>AM</small></span></div>
+<div class="bk-clock__row"><i class="bk-ico bk-ico--sun" aria-hidden="true"></i><span class="bk-clock__place"><b>London</b><small>Today, +8 hrs</small></span><span class="bk-clock__time">5:41<small>PM</small></span></div>
+<div class="bk-clock__row"><i class="bk-ico bk-ico--moon is-night" aria-hidden="true"></i><span class="bk-clock__place"><b>Tokyo</b><small>Tomorrow, +17 hrs</small></span><span class="bk-clock__time">2:41<small>AM</small></span></div>
+</div></div></div></article><article class="bk-tile bk-tile--web is-hover" style=""><div class="bk-tile__head"><span class="bk-chip"><i class="bk-ico bk-ico--globe" aria-hidden="true"></i>metrics.example.com</span><span class="bk-chip bk-chip--tools"><button class="bk-iconbtn" type="button" title="Back"><i class="bk-ico bk-ico--back" aria-hidden="true"></i></button><button class="bk-iconbtn" type="button" title="Forward"><i class="bk-ico bk-ico--forward" aria-hidden="true"></i></button><span class="bk-ring"><button class="bk-iconbtn" type="button" title="Reload"><i class="bk-ico bk-ico--reload" aria-hidden="true"></i></button><svg viewBox="0 0 30 28" aria-hidden="true"><circle cx="15" cy="14" r="12" stroke-dasharray="75.4" stroke-dashoffset="22"/></svg></span><button class="bk-iconbtn" type="button" title="More"><i class="bk-ico bk-ico--more" aria-hidden="true"></i></button></span></div><div class="bk-tile__clip"><span class="bk-progress" style="width:0;opacity:0"></span><div class="bk-page"><h4>Example dashboard</h4><p>Last 7 days</p>
+<div class="bk-page__cards"><div class="bk-page__card"><small>Visitors</small><b>12,480</b><em>▲ 8.2%</em></div>
+<div class="bk-page__card"><small>Sign-ups</small><b data-signups>342</b><em>▲ 3.1%</em></div></div>
+<div class="bk-page__bars"><i style="height:44%"></i><i style="height:58%"></i><i style="height:51%"></i><i style="height:66%"></i><i style="height:82%"></i><i style="height:63%"></i><i style="height:94%"></i></div></div></div></article></div></div>
+<script>
+var signups = document.querySelector('[data-signups]');
+var progress = document.querySelector('.bk-progress');
+var circle = document.querySelector('.bk-ring circle');
+var left = 22;
+setInterval(function () {
+  left = left <= 0 ? 75.4 : left - 7.5;
+  if (circle) circle.setAttribute('stroke-dashoffset', String(left));
+  if (left > 70 && progress) {
+    progress.style.opacity = '1'; progress.style.width = '100%';
+    setTimeout(function () { progress.style.opacity = '0'; setTimeout(function () { progress.style.width = '0'; }, 160); if (signups) signups.textContent = String(Number(signups.textContent.replace(/,/g, '')) + 3); }, 420);
+  }
+}, 700);
+</script>
+</body>
+</html>

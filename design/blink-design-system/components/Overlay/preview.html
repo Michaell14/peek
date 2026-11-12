@@ -1,0 +1,116 @@
+<!-- @dsCard group="Drafts" height=800 width=1280 page subtitle="The pinned overlay, redesigned: hover tiles, switch Flow and Freeform, Arrange, Add, tick a reminder" -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Overlay — preview</title><style>html,body{margin:0;height:100%;background:var(--desktop);}</style></head>
+<body>
+<style>
+.ov { position: relative; width: 1280px; height: 800px; overflow: hidden; padding: 0; }
+.ov-desk { position: absolute; inset: 0; background: radial-gradient(120% 110% at 30% 20%, var(--tile-raised), var(--desktop) 60%); }
+.ov-scrim { position: absolute; inset: 0; background: var(--scrim); }
+.ov-top { position: absolute; top: 12px; left: 0; right: 0; z-index: 10; display: flex; justify-content: center; }
+.ov-board { position: absolute; top: 60px; left: 28px; right: 28px; bottom: 28px; }
+.ov-board .bk-tile { position: absolute; transition: left var(--duration-settle) var(--ease-arrive), top var(--duration-settle) var(--ease-arrive), width var(--duration-settle) var(--ease-arrive), height var(--duration-settle) var(--ease-arrive); }
+.ov-launcher { position: absolute; top: 56px; left: 50%; z-index: 12; margin-left: -150px; opacity: 0; pointer-events: none; transform: translateY(-6px) scale(0.96); transform-origin: 140px 0; transition: opacity var(--duration-leave) var(--ease-leave), transform var(--duration-leave) var(--ease-leave); }
+.ov-launcher.is-open { opacity: 1; pointer-events: auto; transform: none; transition: opacity var(--duration-move) var(--ease-arrive), transform var(--duration-move) var(--ease-arrive); }
+.ov-note { position: absolute; left: 28px; bottom: 6px; color: var(--ink-2); font: 400 11px/14px var(--font-sans); }
+</style><div class="bk-ground ov"><div class="ov-desk"></div><div class="ov-scrim"></div><div class="ov-top"><div class="bk-bar" role="toolbar" aria-label="Blink"><span class="bk-bar__brand"><svg class="bk-mark" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><rect class="dim" x="0" y="0" width="6.4" height="4.8" rx="2.2"/><rect class="dim" x="0" y="6.88" width="6.4" height="9.12" rx="2.2"/><rect class="lit" x="8.48" y="0" width="7.52" height="16" rx="2.2"/></svg>Blink</span><span class="bk-bar__sep"></span><div class="bk-seg bk-seg--mode" role="group"><span class="bk-seg__thumb"></span><button class="bk-seg__opt" type="button" data-value="flow" aria-pressed="true"><i class="bk-ico bk-ico--flow" aria-hidden="true"></i>Flow</button><button class="bk-seg__opt" type="button" data-value="freeform" aria-pressed="false"><i class="bk-ico bk-ico--freeform" aria-hidden="true"></i>Freeform</button></div><span class="bk-bar__sep"></span><button class="bk-iconbtn" type="button" title="Add (⌘N)" data-add><i class="bk-ico bk-ico--plus bk-ico--lg" aria-hidden="true"></i></button><button class="bk-btn" type="button" data-arrange><i class="bk-ico bk-ico--arrange" aria-hidden="true"></i>Arrange</button><button class="bk-iconbtn" type="button" title="Settings"><i class="bk-ico bk-ico--gear bk-ico--lg" aria-hidden="true"></i></button><span class="bk-bar__sep"></span><span class="bk-bar__hint"><span class="bk-keycap">esc</span></span></div></div><div class="ov-launcher"><div class="bk-launcher" role="dialog" aria-label="Add to Blink"><div class="bk-launcher__field"><i class="bk-ico bk-ico--search bk-ico--lg" aria-hidden="true"></i><input id="launcher-field" placeholder="Add a website, a widget or a file" aria-label="Search"><span class="bk-keycap">esc</span></div><div class="bk-launcher__list"><span class="bk-launcher__highlight"></span><p class="bk-caption" style="margin:0">Widgets</p><div class="bk-lrow"><span class="bk-lrow__icon"><i class="bk-ico bk-ico--clock bk-ico--lg" aria-hidden="true"></i></span><span class="bk-lrow__text"><b>Clock</b><small>The time in the places you care about</small></span><span class="bk-keycap">↩</span></div><div class="bk-lrow"><span class="bk-lrow__icon"><i class="bk-ico bk-ico--calendar bk-ico--lg" aria-hidden="true"></i></span><span class="bk-lrow__text"><b>Calendar</b><small>Today’s events, or the next seven days</small></span><span class="bk-keycap">↩</span></div><div class="bk-lrow"><span class="bk-lrow__icon"><i class="bk-ico bk-ico--checklist bk-ico--lg" aria-hidden="true"></i></span><span class="bk-lrow__text"><b>Reminders</b><small>What is due, ready to tick off</small></span><span class="bk-keycap">↩</span></div><div class="bk-lrow"><span class="bk-lrow__icon"><i class="bk-ico bk-ico--note bk-ico--lg" aria-hidden="true"></i></span><span class="bk-lrow__text"><b>Notes</b><small>A scratchpad that is always there</small></span><span class="bk-keycap">↩</span></div><p class="bk-caption" style="margin:0">Files</p><div class="bk-lrow"><span class="bk-lrow__icon"><i class="bk-ico bk-ico--doc bk-ico--lg" aria-hidden="true"></i></span><span class="bk-lrow__text"><b>PDF or HTML File…</b><small>Keep a document within reach</small></span><span class="bk-keycap">↩</span></div><p class="bk-caption" style="margin:0">Websites</p><div class="bk-lrow"><span class="bk-lrow__icon bk-lrow__icon--web"><i class="bk-ico bk-ico--globe bk-ico--lg" aria-hidden="true"></i></span><span class="bk-lrow__text"><b>GitHub</b><small>github.com</small></span><span class="bk-keycap">↩</span></div></div><div class="bk-launcher__foot"><span class="bk-keycap">↑</span><span class="bk-keycap">↓</span>to choose<span class="gap"></span><span class="bk-keycap">↩</span>to add</div></div></div><div class="ov-board"><article id="t-clock" class="bk-tile" style=""><span class="bk-handle bk-handle--n"></span><span class="bk-handle bk-handle--s"></span><span class="bk-handle bk-handle--e"></span><span class="bk-handle bk-handle--w"></span><span class="bk-grip"></span><button class="bk-remove" type="button" aria-label="Remove"><i class="bk-ico bk-ico--close" aria-hidden="true"></i></button><div class="bk-tile__head"><span class="bk-chip"><i class="bk-ico bk-ico--clock" aria-hidden="true"></i>Clock</span></div><div class="bk-tile__clip"><div class="bk-tile__body"><div class="bk-clock">
+<div class="bk-clock__row"><i class="bk-ico bk-ico--sun" aria-hidden="true"></i><span class="bk-clock__place"><b>San Francisco</b><small>Today</small></span><span class="bk-clock__time">9:41<small>AM</small></span></div>
+<div class="bk-clock__row"><i class="bk-ico bk-ico--sun" aria-hidden="true"></i><span class="bk-clock__place"><b>London</b><small>Today, +8 hrs</small></span><span class="bk-clock__time">5:41<small>PM</small></span></div>
+<div class="bk-clock__row"><i class="bk-ico bk-ico--moon is-night" aria-hidden="true"></i><span class="bk-clock__place"><b>Tokyo</b><small>Tomorrow, +17 hrs</small></span><span class="bk-clock__time">2:41<small>AM</small></span></div>
+</div></div></div></article><article id="t-rem" class="bk-tile" style=""><span class="bk-handle bk-handle--n"></span><span class="bk-handle bk-handle--s"></span><span class="bk-handle bk-handle--e"></span><span class="bk-handle bk-handle--w"></span><span class="bk-grip"></span><button class="bk-remove" type="button" aria-label="Remove"><i class="bk-ico bk-ico--close" aria-hidden="true"></i></button><div class="bk-tile__head"><span class="bk-chip"><i class="bk-ico bk-ico--checklist" aria-hidden="true"></i>Reminders</span></div><div class="bk-tile__clip"><div class="bk-tile__body"><div class="bk-rem">
+<div class="bk-rem__top"><div class="bk-seg bk-seg--plain" role="group"><span class="bk-seg__thumb"></span><button class="bk-seg__opt" type="button" data-value="today" aria-pressed="true">Today</button><button class="bk-seg__opt" type="button" data-value="later" aria-pressed="false">Later</button><button class="bk-seg__opt" type="button" data-value="all" aria-pressed="false">All</button></div><span class="bk-rem__count" data-count>4</span></div>
+<p class="bk-caption bk-rem__group">Overdue</p>
+<div class="bk-rem__item"><button class="bk-rem__check" type="button" aria-label="Done"></button><span><b>Send the invoice</b><small class="is-late">Yesterday</small></span></div>
+<p class="bk-caption bk-rem__group">Today</p>
+<div class="bk-rem__item"><button class="bk-rem__check" type="button" aria-label="Done"></button><span><b>Book a room for Thursday</b><small>10:00 AM</small></span></div>
+<div class="bk-rem__item"><button class="bk-rem__check" type="button" aria-label="Done"></button><span><b>Water the plants</b><small>Today</small></span></div>
+<div class="bk-rem__item"><button class="bk-rem__check" type="button" aria-label="Done"></button><span><b>Call the dentist</b><small>Today, 5:30 PM</small></span></div>
+<div class="bk-rem__new"><i class="bk-ico bk-ico--plus" aria-hidden="true"></i>New Reminder</div>
+</div></div></div></article><article id="t-web" class="bk-tile bk-tile--web" style=""><span class="bk-handle bk-handle--n"></span><span class="bk-handle bk-handle--s"></span><span class="bk-handle bk-handle--e"></span><span class="bk-handle bk-handle--w"></span><span class="bk-grip"></span><button class="bk-remove" type="button" aria-label="Remove"><i class="bk-ico bk-ico--close" aria-hidden="true"></i></button><div class="bk-tile__head"><span class="bk-chip"><i class="bk-ico bk-ico--globe" aria-hidden="true"></i>metrics.example.com</span><span class="bk-chip bk-chip--tools"><button class="bk-iconbtn" type="button" title="Back"><i class="bk-ico bk-ico--back" aria-hidden="true"></i></button><button class="bk-iconbtn" type="button" title="Forward"><i class="bk-ico bk-ico--forward" aria-hidden="true"></i></button><span class="bk-ring"><button class="bk-iconbtn" type="button" title="Reload"><i class="bk-ico bk-ico--reload" aria-hidden="true"></i></button><svg viewBox="0 0 30 28" aria-hidden="true"><circle cx="15" cy="14" r="12" stroke-dasharray="75.4" stroke-dashoffset="22"/></svg></span><button class="bk-iconbtn" type="button" title="More"><i class="bk-ico bk-ico--more" aria-hidden="true"></i></button></span></div><div class="bk-tile__clip"><div class="bk-page"><h4>Example dashboard</h4><p>Last 7 days</p>
+<div class="bk-page__cards"><div class="bk-page__card"><small>Visitors</small><b>12,480</b><em>▲ 8.2%</em></div>
+<div class="bk-page__card"><small>Sign-ups</small><b data-signups>342</b><em>▲ 3.1%</em></div></div>
+<div class="bk-page__bars"><i style="height:44%"></i><i style="height:58%"></i><i style="height:51%"></i><i style="height:66%"></i><i style="height:82%"></i><i style="height:63%"></i><i style="height:94%"></i></div></div></div></article><article id="t-cal" class="bk-tile" style=""><span class="bk-handle bk-handle--n"></span><span class="bk-handle bk-handle--s"></span><span class="bk-handle bk-handle--e"></span><span class="bk-handle bk-handle--w"></span><span class="bk-grip"></span><button class="bk-remove" type="button" aria-label="Remove"><i class="bk-ico bk-ico--close" aria-hidden="true"></i></button><div class="bk-tile__head"><span class="bk-chip"><i class="bk-ico bk-ico--calendar" aria-hidden="true"></i>Calendar</span></div><div class="bk-tile__clip"><div class="bk-tile__body"><div class="bk-cal"><div class="bk-cal__head"><span class="bk-cal__day">12</span><span class="bk-cal__date"><b>Thursday</b><span>November</span></span><div class="bk-seg" role="group"><span class="bk-seg__thumb"></span><button class="bk-seg__opt" type="button" data-value="day" aria-pressed="true">Day</button><button class="bk-seg__opt" type="button" data-value="week" aria-pressed="false">7 Days</button></div></div><div class="bk-cal__grid"><div class="bk-cal__hour" style="top:0.0%"><span>9 AM</span></div><div class="bk-cal__hour" style="top:12.5%"><span>10</span></div><div class="bk-cal__hour" style="top:25.0%"><span>11</span></div><div class="bk-cal__hour" style="top:37.5%"><span>Noon</span></div><div class="bk-cal__hour" style="top:50.0%"><span>1 PM</span></div><div class="bk-cal__hour" style="top:62.5%"><span>2</span></div><div class="bk-cal__hour" style="top:75.0%"><span>3</span></div><div class="bk-cal__hour" style="top:87.5%"><span>4</span></div><div class="bk-cal__event" style="top:3%;height:9%">Standup<span>9:15 AM</span></div><div class="bk-cal__event" style="top:25%;height:14%">Design review<span>11:00 AM · Room 4</span></div><div class="bk-cal__now" style="top:46%"></div><div class="bk-cal__event" style="top:62.5%;height:12.5%">1:1 with Sam<span>2:00 PM</span></div></div></div></div></div></article></div><p class="ov-note">Draft · the desktop behind is a flat stand-in for the blurred one</p></div>
+<script>
+document.querySelectorAll('.bk-seg').forEach(function (seg) {
+  var thumb = seg.querySelector('.bk-seg__thumb');
+  function place(button) {
+    seg.style.setProperty('--x', button.offsetLeft + 'px');
+    seg.style.setProperty('--w', button.offsetWidth + 'px');
+  }
+  seg.querySelectorAll('.bk-seg__opt').forEach(function (button) {
+    button.addEventListener('click', function () {
+      seg.querySelectorAll('.bk-seg__opt').forEach(function (b) { b.setAttribute('aria-pressed', String(b === button)); });
+      place(button);
+      seg.dispatchEvent(new CustomEvent('change', { detail: button.dataset.value }));
+    });
+  });
+  var on = seg.querySelector('[aria-pressed="true"]');
+  if (on) { thumb.style.transition = 'none'; place(on); requestAnimationFrame(function () { thumb.style.transition = ''; }); }
+});
+
+document.querySelectorAll('.bk-rem').forEach(function (list) {
+  var count = list.querySelector('[data-count]');
+  list.querySelectorAll('.bk-rem__item').forEach(function (item) {
+    var timer = 0;
+    item.querySelector('.bk-rem__check').addEventListener('click', function () {
+      var done = item.classList.toggle('is-done');
+      clearTimeout(timer);
+      // Folds away a moment later, so a slip can still be undone.
+      if (done) timer = setTimeout(function () { item.classList.add('is-folded'); }, 1200);
+      if (count) count.textContent = list.querySelectorAll('.bk-rem__item:not(.is-done)').length;
+    });
+  });
+});
+
+var launcher = document.querySelector('.bk-launcher');
+var list = document.querySelector('.bk-launcher__list');
+var highlight = list.querySelector('.bk-launcher__highlight');
+var rows = Array.from(list.querySelectorAll('.bk-lrow'));
+var index = 0;
+function select(i) {
+  index = (i + rows.length) % rows.length;
+  rows.forEach(function (row, j) { row.classList.toggle('is-selected', j === index); });
+  highlight.style.setProperty('--y', (rows[index].offsetTop - highlight.offsetTop) + 'px');
+}
+rows.forEach(function (row, i) { row.addEventListener('mouseenter', function () { select(i); }); });
+launcher.addEventListener('keydown', function (event) {
+  if (event.key === 'ArrowDown') { select(index + 1); event.preventDefault(); }
+  if (event.key === 'ArrowUp') { select(index - 1); event.preventDefault(); }
+});
+highlight.style.transition = 'none'; select(0); requestAnimationFrame(function () { highlight.style.transition = ''; });
+
+var board = document.querySelector('.ov-board');
+var tiles = { clock: document.getElementById('t-clock'), rem: document.getElementById('t-rem'), web: document.getElementById('t-web'), cal: document.getElementById('t-cal') };
+var frames = {
+  flow: { clock: [0, 0, 300, 218], rem: [0, 232, 300, 420], web: [314, 0, 560, 652], cal: [888, 0, 336, 652] },
+  freeform: { clock: [70, 40, 300, 218], rem: [70, 272, 300, 360], web: [400, 20, 520, 470], cal: [944, 120, 280, 420] }
+};
+function layout(mode) {
+  Object.keys(tiles).forEach(function (key) {
+    var f = frames[mode][key];
+    Object.assign(tiles[key].style, { left: f[0] + 'px', top: f[1] + 'px', width: f[2] + 'px', height: f[3] + 'px' });
+  });
+}
+layout('flow');
+document.querySelector('.bk-seg--mode').addEventListener('change', function (event) { layout(event.detail); });
+var arranging = false;
+var arrangeButton = document.querySelector('[data-arrange]');
+arrangeButton.addEventListener('click', function () {
+  arranging = !arranging;
+  Object.keys(tiles).forEach(function (key) { tiles[key].classList.toggle('is-arranging', arranging); });
+  arrangeButton.className = arranging ? 'bk-btn bk-btn--accent' : 'bk-btn';
+  arrangeButton.innerHTML = arranging ? 'Done' : '<i class="bk-ico bk-ico--arrange" aria-hidden="true"></i>Arrange';
+});
+var launcherBox = document.querySelector('.ov-launcher');
+var addButton = document.querySelector('[data-add]');
+function setLauncher(open) {
+  launcherBox.classList.toggle('is-open', open);
+  addButton.classList.toggle('is-on', open);
+  if (open) setTimeout(function () { document.getElementById('launcher-field').focus(); }, 60);
+}
+addButton.addEventListener('click', function (event) { event.stopPropagation(); setLauncher(!launcherBox.classList.contains('is-open')); });
+document.addEventListener('click', function (event) { if (!event.target.closest('.ov-launcher')) setLauncher(false); });
+document.addEventListener('keydown', function (event) { if (event.key === 'Escape') setLauncher(false); });
+</script>
+</body>
+</html>

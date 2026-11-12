@@ -1,0 +1,25 @@
+<!-- @dsCard group="Panels" height=560 subtitle="Hover or use ↑ ↓ to move the highlight" -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>Launcher — preview</title><style>html,body{margin:0;height:100%;background:var(--desktop);}</style></head>
+<body>
+<div class="bk-ground"><div style="display:grid;justify-items:center;padding-top:8px"><div class="bk-launcher" role="dialog" aria-label="Add to Blink"><div class="bk-launcher__field"><i class="bk-ico bk-ico--search bk-ico--lg" aria-hidden="true"></i><input id="launcher-field" placeholder="Add a website, a widget or a file" aria-label="Search"><span class="bk-keycap">esc</span></div><div class="bk-launcher__list"><span class="bk-launcher__highlight"></span><p class="bk-caption" style="margin:0">Widgets</p><div class="bk-lrow"><span class="bk-lrow__icon"><i class="bk-ico bk-ico--clock bk-ico--lg" aria-hidden="true"></i></span><span class="bk-lrow__text"><b>Clock</b><small>The time in the places you care about</small></span><span class="bk-keycap">↩</span></div><div class="bk-lrow"><span class="bk-lrow__icon"><i class="bk-ico bk-ico--calendar bk-ico--lg" aria-hidden="true"></i></span><span class="bk-lrow__text"><b>Calendar</b><small>Today’s events, or the next seven days</small></span><span class="bk-keycap">↩</span></div><div class="bk-lrow"><span class="bk-lrow__icon"><i class="bk-ico bk-ico--checklist bk-ico--lg" aria-hidden="true"></i></span><span class="bk-lrow__text"><b>Reminders</b><small>What is due, ready to tick off</small></span><span class="bk-keycap">↩</span></div><div class="bk-lrow"><span class="bk-lrow__icon"><i class="bk-ico bk-ico--note bk-ico--lg" aria-hidden="true"></i></span><span class="bk-lrow__text"><b>Notes</b><small>A scratchpad that is always there</small></span><span class="bk-keycap">↩</span></div><p class="bk-caption" style="margin:0">Files</p><div class="bk-lrow"><span class="bk-lrow__icon"><i class="bk-ico bk-ico--doc bk-ico--lg" aria-hidden="true"></i></span><span class="bk-lrow__text"><b>PDF or HTML File…</b><small>Keep a document within reach</small></span><span class="bk-keycap">↩</span></div><p class="bk-caption" style="margin:0">Websites</p><div class="bk-lrow"><span class="bk-lrow__icon bk-lrow__icon--web"><i class="bk-ico bk-ico--globe bk-ico--lg" aria-hidden="true"></i></span><span class="bk-lrow__text"><b>GitHub</b><small>github.com</small></span><span class="bk-keycap">↩</span></div></div><div class="bk-launcher__foot"><span class="bk-keycap">↑</span><span class="bk-keycap">↓</span>to choose<span class="gap"></span><span class="bk-keycap">↩</span>to add</div></div></div></div>
+<script>
+var list = document.querySelector('.bk-launcher__list');
+var highlight = list.querySelector('.bk-launcher__highlight');
+var rows = Array.from(list.querySelectorAll('.bk-lrow'));
+var index = 0;
+function select(i) {
+  index = (i + rows.length) % rows.length;
+  rows.forEach(function (row, j) { row.classList.toggle('is-selected', j === index); });
+  highlight.style.setProperty('--y', (rows[index].offsetTop - highlight.offsetTop) + 'px');
+}
+rows.forEach(function (row, i) { row.addEventListener('mouseenter', function () { select(i); }); });
+document.addEventListener('keydown', function (event) {
+  if (event.key === 'ArrowDown') { select(index + 1); event.preventDefault(); }
+  if (event.key === 'ArrowUp') { select(index - 1); event.preventDefault(); }
+});
+highlight.style.transition = 'none'; select(0); requestAnimationFrame(function () { highlight.style.transition = ''; });
+</script>
+</body>
+</html>

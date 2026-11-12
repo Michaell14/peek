@@ -1,0 +1,26 @@
+<!-- @dsCard group="Widgets" height=380 width=440 -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>CalendarWidget — preview</title><style>html,body{margin:0;height:100%;background:var(--desktop);}</style></head>
+<body>
+<div class="bk-ground"><div style="height:340px"><article class="bk-tile" style="height:100%"><div class="bk-tile__head"></div><div class="bk-tile__clip"><div class="bk-tile__body"><div class="bk-cal"><div class="bk-cal__head"><span class="bk-cal__day">12</span><span class="bk-cal__date"><b>Thursday</b><span>November</span></span><div class="bk-seg" role="group"><span class="bk-seg__thumb"></span><button class="bk-seg__opt" type="button" data-value="day" aria-pressed="true">Day</button><button class="bk-seg__opt" type="button" data-value="week" aria-pressed="false">7 Days</button></div></div><div class="bk-cal__grid"><div class="bk-cal__hour" style="top:0.0%"><span>9 AM</span></div><div class="bk-cal__hour" style="top:12.5%"><span>10</span></div><div class="bk-cal__hour" style="top:25.0%"><span>11</span></div><div class="bk-cal__hour" style="top:37.5%"><span>Noon</span></div><div class="bk-cal__hour" style="top:50.0%"><span>1 PM</span></div><div class="bk-cal__hour" style="top:62.5%"><span>2</span></div><div class="bk-cal__hour" style="top:75.0%"><span>3</span></div><div class="bk-cal__hour" style="top:87.5%"><span>4</span></div><div class="bk-cal__event" style="top:3%;height:9%">Standup<span>9:15 AM</span></div><div class="bk-cal__event" style="top:25%;height:14%">Design review<span>11:00 AM · Room 4</span></div><div class="bk-cal__now" style="top:46%"></div><div class="bk-cal__event" style="top:62.5%;height:12.5%">1:1 with Sam<span>2:00 PM</span></div></div></div></div></div></article></div></div>
+<script>
+document.querySelectorAll('.bk-seg').forEach(function (seg) {
+  var thumb = seg.querySelector('.bk-seg__thumb');
+  function place(button) {
+    seg.style.setProperty('--x', button.offsetLeft + 'px');
+    seg.style.setProperty('--w', button.offsetWidth + 'px');
+  }
+  seg.querySelectorAll('.bk-seg__opt').forEach(function (button) {
+    button.addEventListener('click', function () {
+      seg.querySelectorAll('.bk-seg__opt').forEach(function (b) { b.setAttribute('aria-pressed', String(b === button)); });
+      place(button);
+      seg.dispatchEvent(new CustomEvent('change', { detail: button.dataset.value }));
+    });
+  });
+  var on = seg.querySelector('[aria-pressed="true"]');
+  if (on) { thumb.style.transition = 'none'; place(on); requestAnimationFrame(function () { thumb.style.transition = ''; }); }
+});
+</script>
+</body>
+</html>

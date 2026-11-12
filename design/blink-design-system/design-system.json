@@ -1,0 +1,56 @@
+{
+ "v": 3,
+ "layout": "files",
+ "createdOnFiles": {
+  "v": 1,
+  "at": "2026-11-12T21:29:28Z"
+ },
+ "title": "Blink",
+ "namespace": "Blink",
+ "libraries": [],
+ "sections": {},
+ "groups": [
+  "Logos"
+ ],
+ "assetGroups": {
+  "Logos": {
+   "name": "Logos",
+   "tile": "l",
+   "order": [
+    "blink-mark.svg",
+    "blink-mark-template.svg",
+    "app-icon.png"
+   ],
+   "files": {
+    "blink-mark.svg": {
+     "name": "blink-mark.svg",
+     "blob": "aacad4d66e92b3988d47866fb9ba1f7c",
+     "size": 381,
+     "type": "image/svg+xml"
+    },
+    "blink-mark-template.svg": {
+     "name": "blink-mark-template.svg",
+     "blob": "302a8cbe593843a2779fa7fb39a5a582",
+     "size": 352,
+     "type": "image/svg+xml"
+    },
+    "app-icon.png": {
+     "name": "app-icon.png",
+     "blob": "cde60f51587d72dd079e19ab3041c32c",
+     "size": 9496,
+     "type": "image/png"
+    }
+   }
+  }
+ },
+ "blobs": {},
+ "docs": {
+  "sections": []
+ },
+ "lastChange": {
+  "by": "Claude",
+  "at": "2026-11-12T21:29:28Z",
+  "via": "Claude Code",
+  "note": "Blink's overlay design system and redesign drafts, built from the app's theme and views"
+ }
+}

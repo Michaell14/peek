@@ -1,0 +1,26 @@
+<!-- @dsCard group="Chrome" height=150 subtitle="Pinned, and while arranging" -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>CommandBar — preview</title><style>html,body{margin:0;height:100%;background:var(--desktop);}</style></head>
+<body>
+<div class="bk-ground"><div class="bk-stack" style="justify-items:center"><div class="bk-bar" role="toolbar" aria-label="Blink"><span class="bk-bar__brand"><svg class="bk-mark" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><rect class="dim" x="0" y="0" width="6.4" height="4.8" rx="2.2"/><rect class="dim" x="0" y="6.88" width="6.4" height="9.12" rx="2.2"/><rect class="lit" x="8.48" y="0" width="7.52" height="16" rx="2.2"/></svg>Blink</span><span class="bk-bar__sep"></span><div class="bk-seg bk-seg--mode" role="group"><span class="bk-seg__thumb"></span><button class="bk-seg__opt" type="button" data-value="flow" aria-pressed="true"><i class="bk-ico bk-ico--flow" aria-hidden="true"></i>Flow</button><button class="bk-seg__opt" type="button" data-value="freeform" aria-pressed="false"><i class="bk-ico bk-ico--freeform" aria-hidden="true"></i>Freeform</button></div><span class="bk-bar__sep"></span><button class="bk-iconbtn" type="button" title="Add (⌘N)" data-add><i class="bk-ico bk-ico--plus bk-ico--lg" aria-hidden="true"></i></button><button class="bk-btn" type="button" data-arrange><i class="bk-ico bk-ico--arrange" aria-hidden="true"></i>Arrange</button><button class="bk-iconbtn" type="button" title="Settings"><i class="bk-ico bk-ico--gear bk-ico--lg" aria-hidden="true"></i></button><span class="bk-bar__sep"></span><span class="bk-bar__hint"><span class="bk-keycap">esc</span></span></div><div class="bk-bar" role="toolbar" aria-label="Blink"><span class="bk-bar__brand"><svg class="bk-mark" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><rect class="dim" x="0" y="0" width="6.4" height="4.8" rx="2.2"/><rect class="dim" x="0" y="6.88" width="6.4" height="9.12" rx="2.2"/><rect class="lit" x="8.48" y="0" width="7.52" height="16" rx="2.2"/></svg>Blink</span><span class="bk-bar__sep"></span><div class="bk-seg bk-seg--mode" role="group"><span class="bk-seg__thumb"></span><button class="bk-seg__opt" type="button" data-value="flow" aria-pressed="true"><i class="bk-ico bk-ico--flow" aria-hidden="true"></i>Flow</button><button class="bk-seg__opt" type="button" data-value="freeform" aria-pressed="false"><i class="bk-ico bk-ico--freeform" aria-hidden="true"></i>Freeform</button></div><span class="bk-bar__sep"></span><button class="bk-iconbtn" type="button" title="Add (⌘N)" data-add><i class="bk-ico bk-ico--plus bk-ico--lg" aria-hidden="true"></i></button><button class="bk-btn bk-btn--accent" type="button" data-arrange>Done</button><button class="bk-iconbtn" type="button" title="Settings"><i class="bk-ico bk-ico--gear bk-ico--lg" aria-hidden="true"></i></button><span class="bk-bar__sep"></span><span class="bk-bar__hint"><span class="bk-keycap">esc</span></span></div></div></div>
+<script>
+document.querySelectorAll('.bk-seg').forEach(function (seg) {
+  var thumb = seg.querySelector('.bk-seg__thumb');
+  function place(button) {
+    seg.style.setProperty('--x', button.offsetLeft + 'px');
+    seg.style.setProperty('--w', button.offsetWidth + 'px');
+  }
+  seg.querySelectorAll('.bk-seg__opt').forEach(function (button) {
+    button.addEventListener('click', function () {
+      seg.querySelectorAll('.bk-seg__opt').forEach(function (b) { b.setAttribute('aria-pressed', String(b === button)); });
+      place(button);
+      seg.dispatchEvent(new CustomEvent('change', { detail: button.dataset.value }));
+    });
+  });
+  var on = seg.querySelector('[aria-pressed="true"]');
+  if (on) { thumb.style.transition = 'none'; place(on); requestAnimationFrame(function () { thumb.style.transition = ''; }); }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,49 @@
+<!-- @dsCard group="Widgets" height=400 width=420 subtitle="Tick one" -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>RemindersWidget — preview</title><style>html,body{margin:0;height:100%;background:var(--desktop);}</style></head>
+<body>
+<div class="bk-ground"><div style="height:360px"><article class="bk-tile" style="height:100%"><div class="bk-tile__head"></div><div class="bk-tile__clip"><div class="bk-tile__body"><div class="bk-rem">
+<div class="bk-rem__top"><div class="bk-seg bk-seg--plain" role="group"><span class="bk-seg__thumb"></span><button class="bk-seg__opt" type="button" data-value="today" aria-pressed="true">Today</button><button class="bk-seg__opt" type="button" data-value="later" aria-pressed="false">Later</button><button class="bk-seg__opt" type="button" data-value="all" aria-pressed="false">All</button></div><span class="bk-rem__count" data-count>4</span></div>
+<p class="bk-caption bk-rem__group">Overdue</p>
+<div class="bk-rem__item"><button class="bk-rem__check" type="button" aria-label="Done"></button><span><b>Send the invoice</b><small class="is-late">Yesterday</small></span></div>
+<p class="bk-caption bk-rem__group">Today</p>
+<div class="bk-rem__item"><button class="bk-rem__check" type="button" aria-label="Done"></button><span><b>Book a room for Thursday</b><small>10:00 AM</small></span></div>
+<div class="bk-rem__item"><button class="bk-rem__check" type="button" aria-label="Done"></button><span><b>Water the plants</b><small>Today</small></span></div>
+<div class="bk-rem__item"><button class="bk-rem__check" type="button" aria-label="Done"></button><span><b>Call the dentist</b><small>Today, 5:30 PM</small></span></div>
+<div class="bk-rem__new"><i class="bk-ico bk-ico--plus" aria-hidden="true"></i>New Reminder</div>
+</div></div></div></article></div></div>
+<script>
+document.querySelectorAll('.bk-seg').forEach(function (seg) {
+  var thumb = seg.querySelector('.bk-seg__thumb');
+  function place(button) {
+    seg.style.setProperty('--x', button.offsetLeft + 'px');
+    seg.style.setProperty('--w', button.offsetWidth + 'px');
+  }
+  seg.querySelectorAll('.bk-seg__opt').forEach(function (button) {
+    button.addEventListener('click', function () {
+      seg.querySelectorAll('.bk-seg__opt').forEach(function (b) { b.setAttribute('aria-pressed', String(b === button)); });
+      place(button);
+      seg.dispatchEvent(new CustomEvent('change', { detail: button.dataset.value }));
+    });
+  });
+  var on = seg.querySelector('[aria-pressed="true"]');
+  if (on) { thumb.style.transition = 'none'; place(on); requestAnimationFrame(function () { thumb.style.transition = ''; }); }
+});
+
+document.querySelectorAll('.bk-rem').forEach(function (list) {
+  var count = list.querySelector('[data-count]');
+  list.querySelectorAll('.bk-rem__item').forEach(function (item) {
+    var timer = 0;
+    item.querySelector('.bk-rem__check').addEventListener('click', function () {
+      var done = item.classList.toggle('is-done');
+      clearTimeout(timer);
+      // Folds away a moment later, so a slip can still be undone.
+      if (done) timer = setTimeout(function () { item.classList.add('is-folded'); }, 1200);
+      if (count) count.textContent = list.querySelectorAll('.bk-rem__item:not(.is-done)').length;
+    });
+  });
+});
+</script>
+</body>
+</html>

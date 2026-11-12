@@ -1,0 +1,87 @@
+<!-- @dsCard group="Drafts" height=540 width=1000 page subtitle="Hold the key (or Space) to look; tap it to keep Blink open" -->
+<!doctype html>
+<html>
+<head><meta charset="utf-8"><title>HoldAndTap — preview</title><style>html,body{margin:0;height:100%;background:var(--desktop);}</style></head>
+<body>
+<style>
+.ht { display: grid; grid-template-columns: 1fr 220px; gap: 28px; align-items: center; height: 100%; padding: 28px; box-sizing: border-box; }
+.ht-screen { position: relative; height: 470px; overflow: hidden; border-radius: 14px; background: var(--desktop); box-shadow: inset 0 0 0 0.5px var(--stroke); }
+.ht-doc { position: absolute; left: 70px; top: 60px; width: 420px; height: 330px; padding: 22px 26px; border-radius: 10px; background: var(--web-ground); color: #16181d; font: 400 13px/20px Georgia, serif; box-sizing: border-box; }
+.ht-doc b { display: block; margin-bottom: 8px; font: 700 18px/24px Georgia, serif; }
+.ht-caret { display: inline-block; width: 1.5px; height: 15px; margin-left: 1px; vertical-align: -2px; background: #1f6feb; }
+.ht-scrim { position: absolute; inset: 0; background: var(--scrim); opacity: 0; transition: opacity var(--duration-leave) var(--ease-leave); }
+.ht-top { position: absolute; top: 10px; left: 0; right: 0; display: flex; justify-content: center; opacity: 0; transform: translateY(-6px) scale(0.92); transition: opacity var(--duration-leave) var(--ease-leave), transform var(--duration-leave) var(--ease-leave); }
+.ht-top .bk-bar { transform-origin: 50% 0; }
+.ht-board { position: absolute; top: 56px; left: 18px; right: 18px; bottom: 18px; display: grid; grid-template-columns: 1fr 1.6fr 1fr; grid-template-rows: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+.ht-board .bk-tile { min-height: 0; }
+.ht-doc { transition: filter var(--duration-leave) var(--ease-leave); }
+.ht.is-open .ht-doc { filter: blur(14px); transition: filter var(--duration-fade) var(--ease-arrive); }
+.ht-board .bk-tile { opacity: 0; transform: scale(0.985); transition: opacity var(--duration-leave) var(--ease-leave), transform var(--duration-leave) var(--ease-leave); }
+.ht-board .bk-tile:nth-child(2) { grid-row: span 2; }
+.ht-board .bk-tile:nth-child(3) { grid-row: span 2; }
+.ht.is-open .ht-scrim { opacity: 1; transition: opacity var(--duration-fade) var(--ease-arrive); }
+.ht.is-open .ht-board .bk-tile { opacity: 1; transform: none; transition: opacity var(--duration-fade) var(--ease-arrive) calc(var(--i) * var(--stagger)), transform var(--duration-fade) var(--ease-arrive) calc(var(--i) * var(--stagger)); }
+.ht.is-pinned .ht-top { opacity: 1; transform: none; transition: opacity var(--duration-move) var(--ease-arrive) var(--duration-fade), transform var(--duration-move) var(--ease-arrive) var(--duration-fade); }
+.ht-side { display: grid; gap: 14px; justify-items: center; text-align: center; }
+.ht-key { width: 96px; height: 96px; border: 0; border-radius: 18px; background: var(--tile-raised); box-shadow: inset 0 0 0 0.5px var(--stroke-strong), 0 6px 0 var(--desktop), var(--shadow-bar); color: var(--ink); font: 500 22px/1 var(--font-rounded); cursor: pointer; transition: transform var(--duration-leave), box-shadow var(--duration-leave); touch-action: none; user-select: none; }
+.ht-key.is-down { transform: translateY(5px); box-shadow: inset 0 0 0 0.5px var(--stroke-strong), 0 1px 0 var(--desktop), var(--shadow-tile); }
+.ht-key:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+.ht-state { margin: 0; color: var(--ink); font: 600 13px/16px var(--font-sans); }
+.ht-timing { margin: 0; color: var(--ink-2); font: 400 12px/17px var(--font-sans); }
+</style><div class="bk-ground ht" style="padding:28px"><div class="ht-screen"><div class="ht-doc"><b>Notes for Thursday</b>Sam, thanks for the new page. A few things before we meet.<br><br>First, sign-ups. Last week we averaged 342 a day. Since the new page went live, we are at<span class="ht-caret"></span></div><div class="ht-scrim"></div><div class="ht-top"><div class="bk-bar" role="toolbar" aria-label="Blink"><span class="bk-bar__brand"><svg class="bk-mark" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><rect class="dim" x="0" y="0" width="6.4" height="4.8" rx="2.2"/><rect class="dim" x="0" y="6.88" width="6.4" height="9.12" rx="2.2"/><rect class="lit" x="8.48" y="0" width="7.52" height="16" rx="2.2"/></svg>Blink</span><span class="bk-bar__sep"></span><div class="bk-seg bk-seg--mode" role="group"><span class="bk-seg__thumb"></span><button class="bk-seg__opt" type="button" data-value="flow" aria-pressed="true"><i class="bk-ico bk-ico--flow" aria-hidden="true"></i>Flow</button><button class="bk-seg__opt" type="button" data-value="freeform" aria-pressed="false"><i class="bk-ico bk-ico--freeform" aria-hidden="true"></i>Freeform</button></div><span class="bk-bar__sep"></span><button class="bk-iconbtn" type="button" title="Add (⌘N)" data-add><i class="bk-ico bk-ico--plus bk-ico--lg" aria-hidden="true"></i></button><button class="bk-btn" type="button" data-arrange><i class="bk-ico bk-ico--arrange" aria-hidden="true"></i>Arrange</button><button class="bk-iconbtn" type="button" title="Settings"><i class="bk-ico bk-ico--gear bk-ico--lg" aria-hidden="true"></i></button><span class="bk-bar__sep"></span><span class="bk-bar__hint"><span class="bk-keycap">esc</span></span></div></div><div class="ht-board"><article class="bk-tile" style="--i:2"><div class="bk-tile__head"></div><div class="bk-tile__clip"><div class="bk-tile__body"><div class="bk-clock bk-clock--narrow">
+<div class="bk-clock__row"><i class="bk-ico bk-ico--sun" aria-hidden="true"></i><span class="bk-clock__place"><b>San Francisco</b><small>Today</small></span><span class="bk-clock__time">9:41<small>AM</small></span></div>
+<div class="bk-clock__row"><i class="bk-ico bk-ico--sun" aria-hidden="true"></i><span class="bk-clock__place"><b>London</b><small>Today, +8 hrs</small></span><span class="bk-clock__time">5:41<small>PM</small></span></div>
+<div class="bk-clock__row"><i class="bk-ico bk-ico--moon is-night" aria-hidden="true"></i><span class="bk-clock__place"><b>Tokyo</b><small>Tomorrow, +17 hrs</small></span><span class="bk-clock__time">2:41<small>AM</small></span></div>
+</div></div></div></article><article class="bk-tile bk-tile--web" style="--i:0"><div class="bk-tile__head"></div><div class="bk-tile__clip"><div class="bk-page"><h4>Example dashboard</h4><p>Last 7 days</p>
+<div class="bk-page__cards"><div class="bk-page__card"><small>Visitors</small><b>12,480</b><em>▲ 8.2%</em></div>
+<div class="bk-page__card"><small>Sign-ups</small><b data-signups>342</b><em>▲ 3.1%</em></div></div>
+<div class="bk-page__bars"><i style="height:44%"></i><i style="height:58%"></i><i style="height:51%"></i><i style="height:66%"></i><i style="height:82%"></i><i style="height:63%"></i><i style="height:94%"></i></div></div></div></article><article class="bk-tile" style="--i:1"><div class="bk-tile__head"></div><div class="bk-tile__clip"><div class="bk-tile__body"><div class="bk-cal"><div class="bk-cal__head"><span class="bk-cal__day">12</span><span class="bk-cal__date"><b>Thursday</b><span>November</span></span><div class="bk-seg" role="group"><span class="bk-seg__thumb"></span><button class="bk-seg__opt" type="button" data-value="day" aria-pressed="true">Day</button><button class="bk-seg__opt" type="button" data-value="week" aria-pressed="false">7 Days</button></div></div><div class="bk-cal__grid"><div class="bk-cal__hour" style="top:0.0%"><span>9 AM</span></div><div class="bk-cal__hour" style="top:12.5%"><span>10</span></div><div class="bk-cal__hour" style="top:25.0%"><span>11</span></div><div class="bk-cal__hour" style="top:37.5%"><span>Noon</span></div><div class="bk-cal__hour" style="top:50.0%"><span>1 PM</span></div><div class="bk-cal__hour" style="top:62.5%"><span>2</span></div><div class="bk-cal__hour" style="top:75.0%"><span>3</span></div><div class="bk-cal__hour" style="top:87.5%"><span>4</span></div><div class="bk-cal__event" style="top:3%;height:9%">Standup<span>9:15 AM</span></div><div class="bk-cal__event" style="top:25%;height:14%">Design review<span>11:00 AM · Room 4</span></div><div class="bk-cal__now" style="top:46%"></div><div class="bk-cal__event" style="top:62.5%;height:12.5%">1:1 with Sam<span>2:00 PM</span></div></div></div></div></div></article><article class="bk-tile" style="--i:3"><div class="bk-tile__head"></div><div class="bk-tile__clip"><div class="bk-tile__body"><div class="bk-rem">
+<div class="bk-rem__top"><div class="bk-seg bk-seg--plain" role="group"><span class="bk-seg__thumb"></span><button class="bk-seg__opt" type="button" data-value="today" aria-pressed="true">Today</button><button class="bk-seg__opt" type="button" data-value="later" aria-pressed="false">Later</button><button class="bk-seg__opt" type="button" data-value="all" aria-pressed="false">All</button></div><span class="bk-rem__count" data-count>4</span></div>
+<p class="bk-caption bk-rem__group">Overdue</p>
+<div class="bk-rem__item"><button class="bk-rem__check" type="button" aria-label="Done"></button><span><b>Send the invoice</b><small class="is-late">Yesterday</small></span></div>
+<p class="bk-caption bk-rem__group">Today</p>
+<div class="bk-rem__item"><button class="bk-rem__check" type="button" aria-label="Done"></button><span><b>Book a room for Thursday</b><small>10:00 AM</small></span></div>
+<div class="bk-rem__item"><button class="bk-rem__check" type="button" aria-label="Done"></button><span><b>Water the plants</b><small>Today</small></span></div>
+<div class="bk-rem__item"><button class="bk-rem__check" type="button" aria-label="Done"></button><span><b>Call the dentist</b><small>Today, 5:30 PM</small></span></div>
+<div class="bk-rem__new"><i class="bk-ico bk-ico--plus" aria-hidden="true"></i>New Reminder</div>
+</div></div></div></article></div></div><div class="ht-side"><button class="ht-key" type="button" aria-label="fn key: hold to look, tap to keep Blink open">fn</button><p class="ht-state">Hidden</p><p class="ht-timing">Press and hold the key, or tap it.</p></div></div>
+<script>
+var stage = document.querySelector('.ht');
+var key = document.querySelector('.ht-key');
+var stateLine = document.querySelector('.ht-state');
+var timing = document.querySelector('.ht-timing');
+var state = 'hidden', since = 0;
+var TEXT = {
+  hidden: ['Hidden', 'Press and hold the key, or tap it.'],
+  holding: ['Holding: Blink is open', 'Tiles fade in over 140ms, 18ms apart from the nearest. Let go to leave.'],
+  pinned: ['Tapped: Blink stays open', 'The command bar drops in after the tiles settle. Tap again to close.'],
+  leaving: ['Released: back to work', 'Everything leaves at once in 90ms.']
+};
+function show(name) {
+  state = name === 'leaving' ? 'hidden' : name;
+  stage.classList.toggle('is-open', name === 'holding' || name === 'pinned');
+  stage.classList.toggle('is-pinned', name === 'pinned');
+  stateLine.textContent = TEXT[name][0];
+  timing.textContent = TEXT[name][1];
+}
+function down() {
+  key.classList.add('is-down');
+  if (state === 'pinned') { show('leaving'); state = 'closing'; return; }
+  since = performance.now();
+  show('holding');
+}
+function up() {
+  key.classList.remove('is-down');
+  if (state === 'closing') { state = 'hidden'; return; }
+  if (state !== 'holding') return;
+  if (performance.now() - since < 300) show('pinned'); else show('leaving');
+}
+key.addEventListener('pointerdown', function (event) { event.preventDefault(); key.setPointerCapture(event.pointerId); down(); });
+key.addEventListener('pointerup', up);
+key.addEventListener('pointercancel', up);
+document.addEventListener('keydown', function (event) { if ((event.code === 'Space' || event.key === 'Enter') && !event.repeat) { event.preventDefault(); down(); } });
+document.addEventListener('keyup', function (event) { if (event.code === 'Space' || event.key === 'Enter') { event.preventDefault(); up(); } });
+show('hidden');
+</script>
+</body>
+</html>
