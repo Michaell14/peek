@@ -7,7 +7,7 @@ The drafts of the redesigned overlay are the **Overlay**, **First run** and **Ho
 1. **The content is the interface.** While the key is held, show tiles and nothing else. Chrome — the `CommandBar`, a tile's head and tools — appears only once the overlay is pinned (tapped open), and a tile's tools only on the tile under the pointer.
 2. **One clear accent.** `accent` means *on, new, or the one thing to do*: the selected layout mode, the primary button, unread and due counts, messages you sent, keyboard focus. Never use it for decoration, and never show more than one filled `accent` element per tile. Blink's amber, `brand`, lights the mark and nothing else.
 3. **Arrive fast, leave faster.** Blink must feel like a glance. Things arrive in `duration-fade` with `ease-arrive` and leave in `duration-leave` with `ease-leave`; nothing makes you wait to get back to work. See **Motion**.
-4. **Liquid glass, not cards.** Every surface is the same glass: the desktop behind it blurred by `glass-blur` and lifted by `glass-saturate`, a whisper of white from `glass-fill-top` to `glass-fill-bottom`, a dark `glass-shade` so text always reads, a `specular` sheen across the top and a lit rim that runs from `rim-light` at the top-left and bottom-right corners to `rim-dark` between them. Floating glass (the command bar, the launcher, tile heads) uses the deeper `glass-shade-raised`. Never put a solid fill, a colour or a thick border on glass.
+4. **Liquid glass, not cards.** Every surface is the same glass: the desktop behind it blurred by `glass-blur` and lifted by `glass-saturate`, a whisper of white from `glass-fill-top` to `glass-fill-bottom`, a dark `glass-shade` so text always reads, a `specular` sheen across the top and a lit rim that runs from `rim-light` at the top-left and bottom-right corners to `rim-dark` between them. Floating glass (the command bar, the launcher, menus) uses the deeper `glass-shade-raised`, because it often sits over a white page. Never put a solid fill, a colour or a thick border on glass.
 5. **Start somewhere.** A new board offers `Templates`, never an empty state.
 
 ## Voice
@@ -26,7 +26,8 @@ The drafts of the redesigned overlay are the **Overlay**, **First run** and **Ho
 - Text: `ink` for titles and values, `ink-2` for details and hints, `section` for `caption` labels, `ink-3` only for placeholders and disabled labels.
 - Controls: rest on `control`, `control-hover` under the pointer, `control-selected` when chosen. The selected layout segment is the one control that may use `accent` text.
 - Signals: `late` for overdue and the calendar's now line, `up`/`down` for trends — always with a word or ▲▼, never colour alone. `cool` marks night in the clock and websites in the launcher.
-- Messages: received bubbles in `bubble-in`, sent ones in `accent` with `on-accent` text.
+- Messages: received bubbles in `bubble-in`, sent ones in `accent` with `on-accent` text. Avatars are tinted glass, each person a different one of `cool`, `warm`, `up` and `accent`.
+- Calendar events are tinted glass in their calendar's colour (`cool`, `warm`), with a 2px edge in the full colour.
 - Brand: `brand` (Blink's amber) is the lit tile of the mark. Nowhere else.
 - Edges: `stroke` around tiles and panels, `stroke-control` around the command bar, `stroke-strong` only for a tile being arranged and for keycaps.
 

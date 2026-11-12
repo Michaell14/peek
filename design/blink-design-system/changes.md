@@ -2,7 +2,7 @@
 
 ## Liquid glass
 
-**Draft:** every surface becomes the same liquid glass: the desktop behind blurred and lifted in colour, a faint white body, a dark shade inside so text always reads, a sheen across the top and a lit rim that catches light at two corners. Corners grow (26px tiles) and stay concentric; web pages sit framed inside their glass. Text colours are checked on glass over the brightest part of the wallpaper. Geist and Lucide stay. Graphite, Champagne and Porcelain remain on **Directions**.
+**Draft:** every surface becomes the same liquid glass: the desktop behind blurred and lifted in colour, a faint white body, a dark shade inside so text always reads, a sheen across the top and a lit rim that catches light at two corners. Corners grow (26px tiles) and stay concentric; web pages sit framed inside their glass. Text colours are checked on glass over the brightest part of the wallpaper, and floating glass (the command bar, the Add list) over a white page, which is why it is tinted deeper. Geist and Lucide stay. Graphite, Champagne and Porcelain remain on **Directions**.
 
 ## Templates instead of an empty board
 
@@ -30,11 +30,11 @@ These are the drafts for Blink's next look, set against what 0.1 does today. The
 
 **Draft:** one `CommandBar` capsule centred at the top while pinned: the mark and name, the layout switch, then Add, Arrange and Settings, with the `esc` hint at its end. One place to look, grouped by what the controls do, and clear of the menu bar's corners where the pointer often rests. It only exists while pinned, so a glance stays chrome-free.
 
-## Tiles get a head on hover
+## Pages get a title strip; widgets stay clean
 
 **Now:** widgets have no names, and web tiles show a floating tool pill over the page.
 
-**Draft:** under a resting pointer, a tile shows a slim head: its icon and name on the left, its tools on the right (back, forward, reload, more for pages; a filter for reminders). The head floats over the content in `tile-raised` glass, so nothing reflows, and goes as soon as the pointer leaves.
+**Draft:** a page tile has a slim strip in its glass with the site's initial and name, and its tools appear there under the pointer, so nothing ever covers the page. Widgets need no strip: their first row already says what they are.
 
 ## Arrange keeps the content visible
 
