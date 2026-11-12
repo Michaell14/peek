@@ -5,7 +5,8 @@
 #   UNIVERSAL=1 Scripts/build-app.sh     # Apple silicon + Intel
 #   CONFIG=debug Scripts/build-app.sh
 #
-# The app is signed ad hoc unless SIGN_IDENTITY names a certificate.
+# The app is signed ad hoc unless SIGN_IDENTITY names a certificate. With one,
+# it is signed the way Apple's notary service asks: hardened runtime, timestamp.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -34,5 +35,10 @@ sed -e "s/@VERSION@/$VERSION/g" \
     Resources/Info.plist > "$APP/Contents/Info.plist"
 plutil -lint "$APP/Contents/Info.plist" > /dev/null
 
-codesign --force --sign "$SIGN_IDENTITY" "$APP"
+if [ "$SIGN_IDENTITY" = "-" ]; then
+    codesign --force --sign - "$APP"
+else
+    codesign --force --sign "$SIGN_IDENTITY" --options runtime --timestamp \
+        --entitlements Resources/Blink.entitlements "$APP"
+fi
 echo "Built $APP ($VERSION, build $BUILD)"
