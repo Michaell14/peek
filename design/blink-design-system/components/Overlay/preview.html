@@ -1,4 +1,4 @@
-<!-- @dsCard group="Drafts" height=800 width=1280 page subtitle="The pinned overlay, redesigned: hover tiles, switch Flow and Freeform, Arrange, Add, tick a reminder" -->
+<!-- @dsCard group="Drafts" height=800 width=1280 page subtitle="The pinned overlay: hover tiles, switch Flow and Freeform, Arrange, Add, open a message and reply, tick a reminder" -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>Overlay — preview</title><style>html,body{margin:0;height:100%;background:var(--desktop);}</style></head>
@@ -17,7 +17,22 @@
 <div class="bk-clock__row"><i class="bk-ico bk-ico--sun" aria-hidden="true"></i><span class="bk-clock__place"><b>San Francisco</b><small>Today</small></span><span class="bk-clock__time">9:41<small>AM</small></span></div>
 <div class="bk-clock__row"><i class="bk-ico bk-ico--sun" aria-hidden="true"></i><span class="bk-clock__place"><b>London</b><small>Today, +8 hrs</small></span><span class="bk-clock__time">5:41<small>PM</small></span></div>
 <div class="bk-clock__row"><i class="bk-ico bk-ico--moon is-night" aria-hidden="true"></i><span class="bk-clock__place"><b>Tokyo</b><small>Tomorrow, +17 hrs</small></span><span class="bk-clock__time">2:41<small>AM</small></span></div>
-</div></div></div></article><article id="t-rem" class="bk-tile" style=""><span class="bk-handle bk-handle--n"></span><span class="bk-handle bk-handle--s"></span><span class="bk-handle bk-handle--e"></span><span class="bk-handle bk-handle--w"></span><span class="bk-grip"></span><button class="bk-remove" type="button" aria-label="Remove"><i class="bk-ico bk-ico--close" aria-hidden="true"></i></button><div class="bk-tile__head"><span class="bk-chip"><i class="bk-ico bk-ico--checklist" aria-hidden="true"></i>Reminders</span></div><div class="bk-tile__clip"><div class="bk-tile__body"><div class="bk-rem">
+</div></div></div></article><article id="t-msg" class="bk-tile" style=""><span class="bk-handle bk-handle--n"></span><span class="bk-handle bk-handle--s"></span><span class="bk-handle bk-handle--e"></span><span class="bk-handle bk-handle--w"></span><span class="bk-grip"></span><button class="bk-remove" type="button" aria-label="Remove"><i class="bk-ico bk-ico--close" aria-hidden="true"></i></button><div class="bk-tile__head"><span class="bk-chip"><i class="bk-ico bk-ico--messages" aria-hidden="true"></i>Messages</span></div><div class="bk-tile__clip"><div class="bk-tile__body"><div class="bk-msg">
+<div class="bk-msg__pane bk-msg__list">
+<div class="bk-msg__top"><span class="bk-caption">Recent</span><span class="bk-msg__count" data-unread>2 unread</span></div>
+<div class="bk-mrow is-unread" data-open><span class="bk-avatar">MC</span><span class="bk-mrow__text"><b>Maya Chen</b><small>Can we move the review to 3?</small></span><span class="bk-mrow__meta"><time>2m</time><i class="bk-mrow__dot"></i></span></div>
+<div class="bk-mrow is-unread"><span class="bk-avatar">DT</span><span class="bk-mrow__text"><b>Design team</b><small>Leo: The new build is up</small></span><span class="bk-mrow__meta"><time>18m</time><i class="bk-mrow__dot"></i></span></div>
+<div class="bk-mrow"><span class="bk-avatar">SO</span><span class="bk-mrow__text"><b>Sam Okafor</b><small>You: Sounds good, see you then</small></span><span class="bk-mrow__meta"><time>1h</time><i class="bk-mrow__dot"></i></span></div>
+<div class="bk-mrow"><span class="bk-avatar">PN</span><span class="bk-mrow__text"><b>Priya N.</b><small>Lunch on Thursday?</small></span><span class="bk-mrow__meta"><time>Tue</time><i class="bk-mrow__dot"></i></span></div>
+</div>
+<div class="bk-msg__pane bk-msg__thread">
+<div class="bk-thread__head"><button class="bk-iconbtn" type="button" data-back title="All messages"><i class="bk-ico bk-ico--back" aria-hidden="true"></i></button><span class="bk-avatar bk-avatar--sm">MC</span><b>Maya Chen</b></div>
+<div class="bk-thread__body"><span class="bk-thread__stamp">Today 9:38</span>
+<p class="bk-bubble bk-bubble--in">Morning. Is the deck ready for the review?</p>
+<p class="bk-bubble bk-bubble--out">Nearly, one more chart to go.</p>
+<p class="bk-bubble bk-bubble--in">Can we move the review to 3?</p></div>
+<form class="bk-reply" data-reply><input type="text" placeholder="Reply to Maya" aria-label="Reply to Maya"><button class="bk-send" type="submit" aria-label="Send"><i class="bk-ico bk-ico--send" aria-hidden="true"></i></button></form>
+</div></div></div></div></article><article id="t-rem" class="bk-tile" style=""><span class="bk-handle bk-handle--n"></span><span class="bk-handle bk-handle--s"></span><span class="bk-handle bk-handle--e"></span><span class="bk-handle bk-handle--w"></span><span class="bk-grip"></span><button class="bk-remove" type="button" aria-label="Remove"><i class="bk-ico bk-ico--close" aria-hidden="true"></i></button><div class="bk-tile__head"><span class="bk-chip"><i class="bk-ico bk-ico--checklist" aria-hidden="true"></i>Reminders</span></div><div class="bk-tile__clip"><div class="bk-tile__body"><div class="bk-rem">
 <div class="bk-rem__top"><div class="bk-seg bk-seg--plain" role="group"><span class="bk-seg__thumb"></span><button class="bk-seg__opt" type="button" data-value="today" aria-pressed="true">Today</button><button class="bk-seg__opt" type="button" data-value="later" aria-pressed="false">Later</button><button class="bk-seg__opt" type="button" data-value="all" aria-pressed="false">All</button></div><span class="bk-rem__count" data-count>4</span></div>
 <p class="bk-caption bk-rem__group">Overdue</p>
 <div class="bk-rem__item"><button class="bk-rem__check" type="button" aria-label="Done"></button><span><b>Send the invoice</b><small class="is-late">Yesterday</small></span></div>
@@ -62,6 +77,42 @@ document.querySelectorAll('.bk-rem').forEach(function (list) {
   });
 });
 
+document.querySelectorAll('.bk-msg').forEach(function (box) {
+  var unread = box.querySelector('[data-unread]');
+  function count() {
+    var n = box.querySelectorAll('.bk-mrow.is-unread').length;
+    if (unread) unread.textContent = n ? n + ' unread' : '';
+  }
+  box.querySelectorAll('.bk-mrow').forEach(function (row) {
+    row.addEventListener('click', function () {
+      row.classList.remove('is-unread');
+      count();
+      if (row.hasAttribute('data-open')) box.classList.add('is-open');
+    });
+  });
+  var back = box.querySelector('[data-back]');
+  if (back) back.addEventListener('click', function () { box.classList.remove('is-open'); });
+  var form = box.querySelector('[data-reply]');
+  if (form) form.addEventListener('submit', function (event) {
+    event.preventDefault();
+    var input = form.querySelector('input');
+    var text = input.value.trim();
+    if (!text) return;
+    var body = box.querySelector('.bk-thread__body');
+    var old = body.querySelector('.bk-thread__status');
+    if (old) old.remove();
+    var bubble = document.createElement('p');
+    bubble.className = 'bk-bubble bk-bubble--out';
+    bubble.textContent = text;
+    body.appendChild(bubble);
+    var status = document.createElement('span');
+    status.className = 'bk-thread__status';
+    status.textContent = 'Delivered';
+    body.appendChild(status);
+    input.value = '';
+  });
+});
+
 var launcher = document.querySelector('.bk-launcher');
 var list = document.querySelector('.bk-launcher__list');
 var highlight = list.querySelector('.bk-launcher__highlight');
@@ -80,10 +131,10 @@ launcher.addEventListener('keydown', function (event) {
 highlight.style.transition = 'none'; select(0); requestAnimationFrame(function () { highlight.style.transition = ''; });
 
 var board = document.querySelector('.ov-board');
-var tiles = { clock: document.getElementById('t-clock'), rem: document.getElementById('t-rem'), web: document.getElementById('t-web'), cal: document.getElementById('t-cal') };
+var tiles = { clock: document.getElementById('t-clock'), msg: document.getElementById('t-msg'), rem: document.getElementById('t-rem'), web: document.getElementById('t-web'), cal: document.getElementById('t-cal') };
 var frames = {
-  flow: { clock: [0, 0, 300, 218], rem: [0, 232, 300, 420], web: [314, 0, 560, 652], cal: [888, 0, 336, 652] },
-  freeform: { clock: [70, 40, 300, 218], rem: [70, 272, 300, 360], web: [400, 20, 520, 470], cal: [944, 120, 280, 420] }
+  flow: { clock: [0, 0, 300, 196], msg: [0, 210, 300, 442], web: [314, 0, 520, 652], cal: [848, 0, 376, 336], rem: [848, 350, 376, 302] },
+  freeform: { clock: [60, 30, 300, 196], msg: [60, 240, 300, 400], web: [400, 10, 500, 450], cal: [930, 60, 294, 330], rem: [930, 404, 294, 248] }
 };
 function layout(mode) {
   Object.keys(tiles).forEach(function (key) {

@@ -1,6 +1,6 @@
 # Tile
 
-One thing you check: a page, a widget or a file, on smoked glass.
+One thing you check: a page, a widget or a file, on graphite glass.
 
 - `tile` (glass on the Mac: `glass-tint` over the blur), `stroke` hairline, `shadow-tile`, `radius-tile`. Web tiles show the page on `web-ground`.
 - Under a resting pointer, after `hover-delay`, a head fades in over the content: a chip with the tile's icon and name on the left, its tools on the right. It leaves in `duration-leave` when the pointer does. Nothing in the tile moves to make room.

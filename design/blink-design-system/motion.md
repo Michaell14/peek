@@ -16,6 +16,8 @@ Motion in Blink confirms what just happened and then gets out of the way. Every 
 | Snap | A 1px `accent` guide flashes along the aligned edge | in at once, out `duration-move` |
 | Launcher | Opens from the `+` button: scales from 0.96 and drops 6px; rows arrive 12ms apart; the highlight slides between rows | panel `duration-move`; highlight `spring-select` |
 | Add a tile | The new tile grows from the launcher row into its slot; the launcher fades | `spring-reflow` |
+| Open a conversation | The list slides 24px left and fades as the thread slides in from the right | `duration-move`, `ease-arrive`; back is the same, reversed |
+| Send a message | The new bubble rises 6px and fades in; “Delivered” follows it | `duration-move`, `ease-arrive` |
 | Tick a reminder | The circle fills `accent`, the tick draws, the title fades to `ink-3`; the row folds away 1.2s later | fill `duration-fade`; tick `duration-move`; fold `duration-settle` |
 | Refresh | A 2px `accent` line runs along the tile's top while loading; the new page crossfades in | line tracks progress; crossfade `duration-fade` |
 | Press | Fills step to `control-selected` or `accent-pressed` while held | at once, release `duration-leave` |

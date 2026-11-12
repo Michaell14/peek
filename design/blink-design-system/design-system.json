@@ -10,7 +10,8 @@
  "libraries": [],
  "sections": {},
  "groups": [
-  "Logos"
+  "Logos",
+  "Icons"
  ],
  "assetGroups": {
   "Logos": {
@@ -41,6 +42,168 @@
      "type": "image/png"
     }
    }
+  },
+  "Icons": {
+   "name": "Icons",
+   "tile": "xs",
+   "order": [
+    "arrow-up.svg",
+    "calendar.svg",
+    "check.svg",
+    "chevron-left.svg",
+    "chevron-right.svg",
+    "clock.svg",
+    "columns-3.svg",
+    "ellipsis.svg",
+    "file-text.svg",
+    "globe.svg",
+    "layout-dashboard.svg",
+    "list-checks.svg",
+    "message-circle.svg",
+    "moon.svg",
+    "move.svg",
+    "plus.svg",
+    "rotate-cw.svg",
+    "search.svg",
+    "settings.svg",
+    "sticky-note.svg",
+    "sun.svg",
+    "x.svg"
+   ],
+   "files": {
+    "arrow-up.svg": {
+     "name": "arrow-up.svg",
+     "blob": "1350e62855bfd25a2c509aa06570fb4a",
+     "size": 245,
+     "type": "image/svg+xml"
+    },
+    "calendar.svg": {
+     "name": "calendar.svg",
+     "blob": "478b5d1c1d4c34910be91ca5bf87f1c0",
+     "size": 320,
+     "type": "image/svg+xml"
+    },
+    "check.svg": {
+     "name": "check.svg",
+     "blob": "7a2f5d1c0f779f0db159fcfbcdc8fe5b",
+     "size": 220,
+     "type": "image/svg+xml"
+    },
+    "chevron-left.svg": {
+     "name": "chevron-left.svg",
+     "blob": "d9d6d2b2587e9b98541ff9f93b59f048",
+     "size": 219,
+     "type": "image/svg+xml"
+    },
+    "chevron-right.svg": {
+     "name": "chevron-right.svg",
+     "blob": "73f8f1569781ae01ec12402bcc4413a3",
+     "size": 218,
+     "type": "image/svg+xml"
+    },
+    "clock.svg": {
+     "name": "clock.svg",
+     "blob": "0b2bce69a70b72d5c5922ccd7e5d064b",
+     "size": 275,
+     "type": "image/svg+xml"
+    },
+    "columns-3.svg": {
+     "name": "columns-3.svg",
+     "blob": "8fa83593db9dc04d41b6a19e5fc5fe95",
+     "size": 295,
+     "type": "image/svg+xml"
+    },
+    "ellipsis.svg": {
+     "name": "ellipsis.svg",
+     "blob": "f77ebb0fb6f87f0126fdb57e4b42326b",
+     "size": 305,
+     "type": "image/svg+xml"
+    },
+    "file-text.svg": {
+     "name": "file-text.svg",
+     "blob": "83a1e856ff151414896b070b18d976be",
+     "size": 385,
+     "type": "image/svg+xml"
+    },
+    "globe.svg": {
+     "name": "globe.svg",
+     "blob": "ff12a4880abd8b4134a3db79e64a9b88",
+     "size": 320,
+     "type": "image/svg+xml"
+    },
+    "layout-dashboard.svg": {
+     "name": "layout-dashboard.svg",
+     "blob": "f5adb180b5235915c8ff40461fcfb7b7",
+     "size": 406,
+     "type": "image/svg+xml"
+    },
+    "list-checks.svg": {
+     "name": "list-checks.svg",
+     "blob": "7db2dc57a97e314f8c31f90341783afc",
+     "size": 329,
+     "type": "image/svg+xml"
+    },
+    "message-circle.svg": {
+     "name": "message-circle.svg",
+     "blob": "b90e1bc89728d8aeedd491f6241cab95",
+     "size": 235,
+     "type": "image/svg+xml"
+    },
+    "moon.svg": {
+     "name": "moon.svg",
+     "blob": "5861a3c1c6f0eba39f756760516e1f9c",
+     "size": 239,
+     "type": "image/svg+xml"
+    },
+    "move.svg": {
+     "name": "move.svg",
+     "blob": "9b767e02f37b2ee1092f075d8c723541",
+     "size": 367,
+     "type": "image/svg+xml"
+    },
+    "plus.svg": {
+     "name": "plus.svg",
+     "blob": "405637d15a0ae1dea2e8777bf4fa833d",
+     "size": 240,
+     "type": "image/svg+xml"
+    },
+    "rotate-cw.svg": {
+     "name": "rotate-cw.svg",
+     "blob": "56745628eaba5616e462df062e3b3f99",
+     "size": 283,
+     "type": "image/svg+xml"
+    },
+    "search.svg": {
+     "name": "search.svg",
+     "blob": "e443a0805ca8984989bdc4d83b60f04e",
+     "size": 259,
+     "type": "image/svg+xml"
+    },
+    "settings.svg": {
+     "name": "settings.svg",
+     "blob": "ed974ae74687b62af4e42a6c7ed327dc",
+     "size": 810,
+     "type": "image/svg+xml"
+    },
+    "sticky-note.svg": {
+     "name": "sticky-note.svg",
+     "blob": "c8d8bf82994942f0abde93ba668fa22b",
+     "size": 305,
+     "type": "image/svg+xml"
+    },
+    "sun.svg": {
+     "name": "sun.svg",
+     "blob": "f03a7d1134ccab9cec678aabcbf63069",
+     "size": 492,
+     "type": "image/svg+xml"
+    },
+    "x.svg": {
+     "name": "x.svg",
+     "blob": "99bbebf4653107caf068388107ba4e68",
+     "size": 244,
+     "type": "image/svg+xml"
+    }
+   }
   }
  },
  "blobs": {},
@@ -49,8 +212,8 @@
  },
  "lastChange": {
   "by": "Claude",
-  "at": "2026-11-12T21:29:28Z",
+  "at": "2026-11-12T21:41:54Z",
   "via": "Claude Code",
-  "note": "Blink's overlay design system and redesign drafts, built from the app's theme and views"
+  "note": "Graphite direction: Geist type, Lucide icons, cobalt accent; Messages widget; Directions page with Champagne and Porcelain"
  }
 }

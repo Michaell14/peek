@@ -8,34 +8,35 @@ html, body { margin: 0; height: 100%; background: var(--desktop); }
 .cv svg { position: absolute; inset: 0; }
 .tile { fill: var(--tile); }
 .raised { fill: var(--tile-raised); }
-.lit { fill: var(--accent); }
+.brand { fill: var(--brand); }
+.accent { fill: var(--accent); }
 .dim { fill: var(--mark-dim); }
-.cool { fill: var(--cool); }
 .edge { fill: none; stroke: var(--stroke-strong); stroke-width: 1; }
 .r { rx: var(--radius-tile); }
+.pill { rx: 32px; }
 .cv-text { position: absolute; left: 40px; bottom: 34px; max-width: 440px; }
-.cv-name { margin: 0; color: var(--ink); font-size: 120px; font-weight: 700; line-height: 0.92; letter-spacing: -4px; }
+.cv-name { margin: 0; color: var(--ink); font-size: 120px; font-weight: 600; line-height: 0.92; letter-spacing: -5px; }
 .cv-tag { margin: 12px 0 0; color: var(--ink-2); font-size: 14px; line-height: 20px; }
 </style></head>
 <body>
 <div class="cv">
 <svg width="960" height="288" viewBox="0 0 960 288" aria-hidden="true">
 <!--
-blocks: accent (the lit tile, 150x260), mark-dim (120x86), cool (126x64), tile-raised and tile (filler), all radius-tile corners
-arrangement: a board of tiles right of x=480 bleeding off the right and bottom edges, columns tile-gap apart, like Blink's own board seen from the top-left
-pattern: geometric, modular, dense UI -> tiles cut by the radius token, one merged two-tall like a tile in Flow; chosen because the product IS a board of tiles with one lit
-scales: tile-gap 14px between blocks, canvas-padding 28px top inset, radius-tile 18px
+blocks: brand (the lit tile, 150x260), accent (126x64 pill), mark-dim (120x86), tile-raised and tile (graphite filler), radius-tile corners
+arrangement: a board of tiles right of x=480 bleeding off the right and bottom edges, columns tile-gap apart, as Blink's board looks from its top-left
+pattern: geometric, modular, dense UI -> tiles cut by the radius token, one tall like a tile in Flow; the product is a board of tiles with one lit
+scales: tile-gap 14px between blocks, canvas-padding 28px top inset, radius-tile 18px, the accent block a pill (radius-pill, half its height)
 -->
 <rect class="raised r" x="508" y="28" width="120" height="86"/>
 <rect class="dim r" x="508" y="128" width="120" height="86"/>
 <rect class="tile r" x="508" y="228" width="120" height="86"/>
-<rect class="lit r" x="642" y="28" width="150" height="260"/>
+<rect class="brand r" x="642" y="28" width="150" height="260"/>
 <rect class="tile r" x="806" y="28" width="126" height="64"/>
-<rect class="cool r" x="806" y="106" width="126" height="64"/>
+<rect class="accent pill" x="806" y="106" width="126" height="64"/>
 <rect class="raised r" x="806" y="184" width="168" height="130"/>
 <rect class="edge r" x="508.5" y="28.5" width="119" height="85"/>
 </svg>
-<div class="cv-text"><p class="cv-name">Blink</p><p class="cv-tag">Smoked glass and one warm light, for the things you check all day.</p></div>
+<div class="cv-text"><p class="cv-name">Blink</p><p class="cv-tag">Graphite glass and one clear accent, for the things you check all day.</p></div>
 </div>
 </body>
 </html>

@@ -1,5 +1,17 @@
 # What changes
 
+## A new look: Graphite
+
+**Now:** neutral greys, a bright amber for every highlight and stand-in line icons.
+
+**Draft:** graphite glass with a cool cobalt `accent` for what is on, new or next; Blink's amber kept for the mark alone (`brand`). Type moves from the system font to **Geist** and **Geist Mono**, and icons to **Lucide**. **Directions** shows this beside two alternatives, Champagne (warm, with the website's Schibsted Grotesk and Fraunces) and Porcelain (light glass, Instrument Sans and Serif); any of them can become the system.
+
+## A Messages widget
+
+Recent conversations in a tile: initials, name, last message and time, with unread ones marked. Click one and the thread slides in; reply without leaving what you were doing. See **MessagesWidget**.
+
+## The rest
+
 These are the drafts for Blink's next look, set against what 0.1 does today. The **Overlay** page puts them together; each component page shows one.
 
 ## The command bar replaces the corner toolbar
@@ -35,6 +47,6 @@ These are the drafts for Blink's next look, set against what 0.1 does today. The
 
 ## Small things
 
-- Section labels go from 45% to 50% white so they pass 4.5:1.
+- Section labels are raised until they pass 4.5:1 on tiles and raised surfaces.
 - Every control gets a visible `focus` ring.
 - Leaving is faster than arriving (`duration-leave` 90ms against `duration-fade` 140ms).
