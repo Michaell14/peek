@@ -599,7 +599,8 @@
       const width = stack.clientWidth || (vw - 32);
       const viewWidth = window.innerWidth >= 900 ? (width - 40) * 1.7 / 2.7 : width;
       stack.style.setProperty('--cf', (viewWidth / 1300).toFixed(5));
-      stills.forEach((still) => { still.scene.fit = viewWidth / 1300; });
+      stillFit = viewWidth / 1300;
+      stills.forEach((still) => { if (still.scene) still.scene.fit = stillFit; });
       renderStills();
     }
   }
@@ -693,11 +694,16 @@
 
   // ---- Stills -------------------------------------------------------------
 
+  // Each still is a full copy of the screen, so they are built only as they
+  // come near the screen, not all at once when the page opens.
   const stills = [];
+  let stillTemplate = null;
+  let stillFit = 0.3;
+  let stillWatcher = null;
   function buildStills() {
     if (stills.length) return;
-    const template = display.cloneNode(true);
-    template.removeAttribute('id');
+    stillTemplate = display.cloneNode(true);
+    stillTemplate.removeAttribute('id');
     stack.innerHTML = '';
     STILLS.forEach((t, index) => {
       const item = document.createElement('li');
@@ -705,25 +711,53 @@
       const view = document.createElement('div');
       view.className = 'still__view';
       view.setAttribute('aria-hidden', 'true');
-      const cam = document.createElement('div');
-      cam.className = 'cam';
-      const copy = template.cloneNode(true);
-      cam.append(copy);
-      view.append(cam);
+      view.dataset.still = index;
       const cap = document.createElement('p');
       cap.className = 'still__cap';
       cap.textContent = caps[index].textContent;
       item.append(view, cap);
       stack.append(item);
-      const scene = makeScene(copy);
-      stills.push({ index, scene, cap, words: splitWords(cap), cache: [] });
+      stills.push({ index, scene: null, view, cap, words: splitWords(cap), cache: [] });
     });
+    // The ones about to come into view are built straight away; the rest are
+    // built in spare moments, one at a time, so they are ready before anyone
+    // scrolls to them and the page never stops for long to make them.
+    stillWatcher = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => { if (entry.isIntersecting) fillStill(stills[Number(entry.target.dataset.still)]); });
+    }, { rootMargin: '50% 0px' });
+    stills.forEach((still) => stillWatcher.observe(still.view));
+    buildAhead();
+  }
+
+  const whenIdle = window.requestIdleCallback
+    ? (callback) => requestIdleCallback(callback, { timeout: 2000 })
+    : (callback) => setTimeout(callback, 150);
+  function buildAhead() {
+    whenIdle(() => {
+      const next = stills.find((still) => !still.scene);
+      if (!next || mode !== 'stack') return;
+      fillStill(next);
+      buildAhead();
+    });
+  }
+
+  function fillStill(still) {
+    if (still.scene) return;
+    stillWatcher.unobserve(still.view);
+    const cam = document.createElement('div');
+    cam.className = 'cam';
+    const copy = stillTemplate.cloneNode(true);
+    cam.append(copy);
+    still.view.append(cam);
+    still.scene = makeScene(copy);
+    still.scene.fit = stillFit;
+    if (!POINTER.length) measure();
     updateClocks();
-    updateCalendar();
+    render(still.scene, STILLS[still.index], { still: true });
   }
 
   function renderStills() {
-    stills.forEach((still) => render(still.scene, STILLS[still.index], { still: true }));
+    stills.forEach((still) => { if (still.scene) render(still.scene, STILLS[still.index], { still: true }); });
   }
 
   function renderStillCaptions() {
@@ -738,7 +772,9 @@
   // ---- Measuring points the pointer goes to --------------------------------
 
   function measure() {
-    const scene = mode === 'take' ? stageScene : (stills[7] && stills[7].scene);
+    // Any copy of the screen will do: the points are the same in all of them.
+    const built = stills.find((still) => still.scene);
+    const scene = mode === 'take' ? stageScene : built && built.scene;
     if (!scene) return;
     render(scene, 7.5);
     const screenRect = scene.screen.getBoundingClientRect();
@@ -1102,7 +1138,6 @@
     const now = performance.now();
     if (arrives(pixels(event))) {
       event.preventDefault();
-      lock.armed = false;
       lock.lastAt = now;
       lock.lastSize = Math.abs(event.deltaY);
       return;
@@ -1114,16 +1149,9 @@
     const fresh = now - lock.lastAt > GAP || (size > lock.lastSize * 1.6 && size > 12);
     lock.lastAt = now;
     lock.lastSize = size;
-    if (playing()) return;
-    if (!lock.armed && !fresh) return;
-    lock.armed = false;
+    if (playing() || !fresh) return;
     step(direction);
   }, { passive: false });
-
-  // Once a step has finished, the next gesture is welcome.
-  setInterval(() => {
-    if (!playing() && performance.now() - lock.lastAt > GAP) lock.armed = true;
-  }, 60);
 
   window.addEventListener('keydown', (event) => {
     if (event.altKey || event.ctrlKey || event.metaKey || isTyping(event.target)) return;
@@ -1178,7 +1206,10 @@
   layout();
   measure();
   refresh();
-  setInterval(updateClocks, 1000);
+  // The clocks show minutes: update them as each minute turns, not every second.
+  (function nextMinute() {
+    setTimeout(() => { updateClocks(); nextMinute(); }, 60000 - (Date.now() % 60000) + 40);
+  }());
   setInterval(updateCalendar, 60000);
 
   const afterFonts = () => { layout(); measure(); refresh(); };

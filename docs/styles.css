@@ -176,9 +176,9 @@ kbd {
 .bar__link { font-size: 15px; font-weight: 500; text-decoration: none; }
 .bar__link:hover { text-decoration: underline; }
 .bar.is-past {
-  background: rgba(245, 246, 248, 0.82);
-  -webkit-backdrop-filter: blur(16px) saturate(1.4);
-  backdrop-filter: blur(16px) saturate(1.4);
+  /* Nearly opaque rather than blurred: a live blur under a bar that stays on
+     screen while everything scrolls behind it costs every frame. */
+  background: rgba(245, 246, 248, 0.95);
   box-shadow: 0 1px 0 var(--rule);
 }
 .bar.is-past .bar__mark { opacity: 1; visibility: visible; transform: none; transition-delay: 0s; }
@@ -418,9 +418,8 @@ html:not(.js) .foot, .is-stack .foot { position: static; }
   gap: 20px;
   height: 28px;
   padding: 0 16px 0 18px;
-  background: rgba(246, 248, 251, 0.62);
-  -webkit-backdrop-filter: blur(20px);
-  backdrop-filter: blur(20px);
+  /* The sky behind it is a smooth gradient, so blurring it would look the same. */
+  background: rgba(246, 248, 251, 0.66);
   color: #16181d;
   font-size: 13.5px;
   font-weight: 450;
@@ -531,10 +530,8 @@ html:not(.js) .foot, .is-stack .foot { position: static; }
   gap: 10px;
   padding: 7px 9px;
   border-radius: 20px;
-  background: rgba(250, 251, 253, 0.42);
+  background: rgba(244, 246, 250, 0.7);
   box-shadow: inset 0 0 0 0.5px rgba(255, 255, 255, 0.7), 0 0 0 0.5px rgba(30, 40, 60, 0.12);
-  -webkit-backdrop-filter: blur(20px);
-  backdrop-filter: blur(20px);
   transform: translateX(-50%);
   will-change: transform;
 }
@@ -601,8 +598,8 @@ html:not(.js) .foot, .is-stack .foot { position: static; }
   inset: 0;
   z-index: 10;
   background: radial-gradient(120% 120% at 50% 40%, rgba(14, 15, 20, 0.64), rgba(6, 7, 10, 0.8));
-  -webkit-backdrop-filter: blur(24px) saturate(1.1);
-  backdrop-filter: blur(24px) saturate(1.1);
+  -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
@@ -779,8 +776,6 @@ html:not(.js) .foot, .is-stack .foot { position: static; }
   color: #f2f2ef;
   font-size: 11.5px;
   opacity: 0;
-  -webkit-backdrop-filter: blur(10px);
-  backdrop-filter: blur(10px);
 }
 .w-hover i { display: grid; place-items: center; width: 26px; height: 24px; font-style: normal; }
 .w-hover svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
@@ -814,8 +809,8 @@ html:not(.js) .foot, .is-stack .foot { position: static; }
   opacity: 0;
   pointer-events: none;
   background: radial-gradient(120% 120% at 50% 40%, rgba(16, 18, 24, 0.55), rgba(8, 9, 12, 0.74));
-  -webkit-backdrop-filter: blur(26px) saturate(1.15);
-  backdrop-filter: blur(26px) saturate(1.15);
+  -webkit-backdrop-filter: blur(26px);
+  backdrop-filter: blur(26px);
   outline: none;
   transition: opacity 0.14s ease-out, visibility 0s linear 0.14s;
 }
@@ -940,6 +935,7 @@ h3 { font-size: 17px; font-weight: 620; letter-spacing: -0.01em; }
 .still__view {
   position: relative;
   aspect-ratio: 1300 / 820;
+  content-visibility: auto;
   overflow: hidden;
   border-radius: calc(26px * var(--cf, 0.3));
 }
