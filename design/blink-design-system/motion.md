@@ -18,6 +18,7 @@ Motion in Blink confirms what just happened and then gets out of the way. Every 
 | Add a tile | The new tile grows from the launcher row into its slot; the launcher fades | `spring-reflow` |
 | Open a conversation | The list slides 24px left and fades as the thread slides in from the right | `duration-move`, `ease-arrive`; back is the same, reversed |
 | Send a message | The new bubble rises 6px and fades in; “Delivered” follows it | `duration-move`, `ease-arrive` |
+| Choose a template | The picker leaves; the template's tiles arrive one by one, 70ms apart; the command bar follows | picker `duration-leave`; tiles `duration-fade` and `duration-move`, `ease-arrive` |
 | Tick a reminder | The circle fills `accent`, the tick draws, the title fades to `ink-3`; the row folds away 1.2s later | fill `duration-fade`; tick `duration-move`; fold `duration-settle` |
 | Refresh | A 2px `accent` line runs along the tile's top while loading; the new page crossfades in | line tracks progress; crossfade `duration-fade` |
 | Press | Fills step to `control-selected` or `accent-pressed` while held | at once, release `duration-leave` |

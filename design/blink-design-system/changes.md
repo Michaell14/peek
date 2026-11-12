@@ -1,6 +1,16 @@
 # What changes
 
-## A new look: Graphite
+## Liquid glass
+
+**Draft:** every surface becomes the same liquid glass: the desktop behind blurred and lifted in colour, a faint white body, a dark shade inside so text always reads, a sheen across the top and a lit rim that catches light at two corners. Corners grow (26px tiles) and stay concentric; web pages sit framed inside their glass. Text colours are checked on glass over the brightest part of the wallpaper. Geist and Lucide stay. Graphite, Champagne and Porcelain remain on **Directions**.
+
+## Templates instead of an empty board
+
+**Now:** a new board is empty.
+
+**Draft:** a new board offers six ready-made boards (Workday, Engineering, Remote team, Markets, Study, Creator), each shown as a map of its tiles. Choose one and it builds in place, tile by tile; or start empty. See **Templates** and the **First run** draft.
+
+## Before that: Graphite
 
 **Now:** neutral greys, a bright amber for every highlight and stand-in line icons.
 

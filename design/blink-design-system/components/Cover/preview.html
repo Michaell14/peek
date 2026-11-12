@@ -11,6 +11,9 @@ html, body { margin: 0; height: 100%; background: var(--desktop); }
 .brand { fill: var(--brand); }
 .accent { fill: var(--accent); }
 .dim { fill: var(--mark-dim); }
+.wall1 { fill: var(--wall-1); }
+.wall2 { fill: var(--wall-2); }
+.wall3 { fill: var(--wall-3); }
 .edge { fill: none; stroke: var(--stroke-strong); stroke-width: 1; }
 .r { rx: var(--radius-tile); }
 .pill { rx: 32px; }
@@ -22,21 +25,21 @@ html, body { margin: 0; height: 100%; background: var(--desktop); }
 <div class="cv">
 <svg width="960" height="288" viewBox="0 0 960 288" aria-hidden="true">
 <!--
-blocks: brand (the lit tile, 150x260), accent (126x64 pill), mark-dim (120x86), tile-raised and tile (graphite filler), radius-tile corners
+blocks: brand (the lit tile, 150x260), wall-3 (the dusk glow, 168x130), wall-2 and wall-1 (the sea and the deep blue), accent (126x64 pill), mark-dim, radius-tile corners
 arrangement: a board of tiles right of x=480 bleeding off the right and bottom edges, columns tile-gap apart, as Blink's board looks from its top-left
 pattern: geometric, modular, dense UI -> tiles cut by the radius token, one tall like a tile in Flow; the product is a board of tiles with one lit
 scales: tile-gap 14px between blocks, canvas-padding 28px top inset, radius-tile 18px, the accent block a pill (radius-pill, half its height)
 -->
-<rect class="raised r" x="508" y="28" width="120" height="86"/>
+<rect class="wall2 r" x="508" y="28" width="120" height="86"/>
 <rect class="dim r" x="508" y="128" width="120" height="86"/>
 <rect class="tile r" x="508" y="228" width="120" height="86"/>
 <rect class="brand r" x="642" y="28" width="150" height="260"/>
-<rect class="tile r" x="806" y="28" width="126" height="64"/>
+<rect class="wall1 r" x="806" y="28" width="126" height="64"/>
 <rect class="accent pill" x="806" y="106" width="126" height="64"/>
-<rect class="raised r" x="806" y="184" width="168" height="130"/>
+<rect class="wall3 r" x="806" y="184" width="168" height="130"/>
 <rect class="edge r" x="508.5" y="28.5" width="119" height="85"/>
 </svg>
-<div class="cv-text"><p class="cv-name">Blink</p><p class="cv-tag">Graphite glass and one clear accent, for the things you check all day.</p></div>
+<div class="cv-text"><p class="cv-name">Blink</p><p class="cv-tag">Liquid glass and one clear accent, for the things you check all day.</p></div>
 </div>
 </body>
 </html>

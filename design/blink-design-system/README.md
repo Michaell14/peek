@@ -1,13 +1,14 @@
 Blink is a Mac overlay: hold a key and the things you check all day appear over whatever you are doing; let go and they are gone. This system covers that overlay — the board of tiles, the chrome you get once it is pinned open, the launcher and the widgets. It is always dark, because it sits over whatever is on screen, and web pages inside tiles keep their own colours.
 
-The drafts of the redesigned overlay are the **Overlay** and **Hold and tap** pages under Drafts. **Directions** sets three looks side by side (Graphite, the one this system uses, Champagne and Porcelain), and **What changes** lists every change from Blink 0.1 and why.
+The drafts of the redesigned overlay are the **Overlay**, **First run** and **Hold and tap** pages under Drafts. **Directions** sets four looks side by side (Liquid, the one this system uses, then Graphite, Champagne and Porcelain), and **What changes** lists every change from Blink 0.1 and why.
 
 ## Principles
 
 1. **The content is the interface.** While the key is held, show tiles and nothing else. Chrome — the `CommandBar`, a tile's head and tools — appears only once the overlay is pinned (tapped open), and a tile's tools only on the tile under the pointer.
 2. **One clear accent.** `accent` means *on, new, or the one thing to do*: the selected layout mode, the primary button, unread and due counts, messages you sent, keyboard focus. Never use it for decoration, and never show more than one filled `accent` element per tile. Blink's amber, `brand`, lights the mark and nothing else.
 3. **Arrive fast, leave faster.** Blink must feel like a glance. Things arrive in `duration-fade` with `ease-arrive` and leave in `duration-leave` with `ease-leave`; nothing makes you wait to get back to work. See **Motion**.
-4. **Glass, not cards.** Tiles are graphite glass (`glass-tint` over the blurred desktop) with a `stroke` hairline and `shadow-tile`. Depth comes from blur and shadow, never from borders thicker than a hairline or from colour fills.
+4. **Liquid glass, not cards.** Every surface is the same glass: the desktop behind it blurred by `glass-blur` and lifted by `glass-saturate`, a whisper of white from `glass-fill-top` to `glass-fill-bottom`, a dark `glass-shade` so text always reads, a `specular` sheen across the top and a lit rim that runs from `rim-light` at the top-left and bottom-right corners to `rim-dark` between them. Floating glass (the command bar, the launcher, tile heads) uses the deeper `glass-shade-raised`. Never put a solid fill, a colour or a thick border on glass.
+5. **Start somewhere.** A new board offers `Templates`, never an empty state.
 
 ## Voice
 
@@ -20,8 +21,8 @@ The drafts of the redesigned overlay are the **Overlay** and **Hold and tap** pa
 
 ## Colour
 
-- Ground: the board sits on `desktop` (the real desktop, blurred) under `scrim` and a `vignette` toward the edges. Never put text straight on `desktop` except the command bar's hint, in `ink-2`.
-- Surfaces: tiles are `tile`; anything floating above tiles (command bar, launcher, menus, the remove button) is `tile-raised` with `shadow-bar` or `shadow-panel`. Web tiles show the page; before it paints, `web-ground`.
+- Ground: the board sits on the person's own desktop under `scrim` and a `vignette` toward the edges. Previews paint a dusk wallpaper from `wall-1` to `wall-4` over `desktop`; `wall-3`, the warm glow, is the brightest ground glass ever meets, so every text colour is checked on glass over it. Never put text straight on the desktop except the command bar's hint, in `ink-2`, with `shadow-text`.
+- Surfaces: every surface is glass (see Principles). `tile` and `tile-raised` are flat stand-ins for places glass cannot be drawn. Web pages sit `web-inset` inside their glass, so the glass frames the page; before it paints, `web-ground`.
 - Text: `ink` for titles and values, `ink-2` for details and hints, `section` for `caption` labels, `ink-3` only for placeholders and disabled labels.
 - Controls: rest on `control`, `control-hover` under the pointer, `control-selected` when chosen. The selected layout segment is the one control that may use `accent` text.
 - Signals: `late` for overdue and the calendar's now line, `up`/`down` for trends — always with a word or ▲▼, never colour alone. `cool` marks night in the clock and websites in the launcher.
@@ -47,7 +48,9 @@ Blink sets everything in **Geist**, with **Geist Mono** for keys. Both are under
 
 ## Depth
 
-- `shadow-tile` on every tile at rest; `shadow-lifted` on the tile being dragged; `shadow-bar` on the command bar and tile tools; `shadow-panel` on the launcher.
+- `shadow-tile` on every tile at rest; `shadow-lifted` on the tile being dragged; `shadow-bar` on the command bar and tile tools; `shadow-panel` on the launcher; `shadow-thumb` under the selected segment, a droplet of glass on its track.
+- Text on glass carries `shadow-text`; text on web pages never does.
+- Radii are concentric: anything inset inside a tile takes `radius-tile` minus its inset.
 - Never stack two floating layers over the same tile: the launcher replaces the tile tools while open.
 
 ## States
