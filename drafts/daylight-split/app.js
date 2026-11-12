@@ -29,9 +29,6 @@
   }
   const within = (T, ranges) => ranges.some(([a, b]) => T >= a && T < b);
 
-  const DMG = 'https://github.com/Michaell14/peek/releases/latest/download/Blink.dmg';
-  void DMG;
-
   // ---------------------------------------------------------------------
   // The story, as one timeline T (the same one Daylight scrubs by scroll).
   // Here each step plays a stretch of it on a clock: keys are
