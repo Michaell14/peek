@@ -1,6 +1,6 @@
 # Tile
 
-One thing you check: a page, a widget or a file, in liquid glass.
+One thing you check: a page, a widget or a file, in frosted glass.
 
 - Glass as the Principles describe it, `shadow-tile`, `radius-tile`. Widgets sit on the glass; pages sit `web-inset` inside it.
 - A page tile has a title strip in its glass: a small square in `cool` with the site's initial, then the site in `ink-2`. It is always there, so you know which page you are looking at, and it never covers the page.

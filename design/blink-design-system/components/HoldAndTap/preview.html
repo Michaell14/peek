@@ -1,4 +1,4 @@
-<!-- @dsCard group="Drafts" height=540 width=1000 page subtitle="Hold the key (or Space) to look; tap it to keep Blink open" -->
+<!-- @dsCard group="Drafts" height=540 width=1000 page subtitle="Hold the keys (or Space) to look; tap them to keep Blink open" -->
 <!doctype html>
 <html>
 <head><meta charset="utf-8"><title>HoldAndTap — preview</title><style>html,body{margin:0;height:100%;background:var(--desktop);}</style></head>
@@ -23,7 +23,7 @@
 .ht.is-open .ht-board .bk-tile { opacity: 1; transform: none; transition: opacity var(--duration-fade) var(--ease-arrive) calc(var(--i) * var(--stagger)), transform var(--duration-fade) var(--ease-arrive) calc(var(--i) * var(--stagger)); }
 .ht.is-pinned .ht-top { opacity: 1; transform: none; transition: opacity var(--duration-move) var(--ease-arrive) var(--duration-fade), transform var(--duration-move) var(--ease-arrive) var(--duration-fade); }
 .ht-side { display: grid; gap: 14px; justify-items: center; text-align: center; }
-.ht-key { width: 96px; height: 96px; border: 0; border-radius: 18px; background: var(--tile-raised); box-shadow: inset 0 0 0 0.5px var(--stroke-strong), 0 6px 0 var(--desktop), var(--shadow-bar); color: var(--ink); font: 500 22px/1 var(--font-rounded); cursor: pointer; transition: transform var(--duration-leave), box-shadow var(--duration-leave); touch-action: none; user-select: none; }
+.ht-key { width: 124px; height: 96px; border: 0; border-radius: 18px; background: var(--tile-raised); box-shadow: inset 0 0 0 0.5px var(--stroke-strong), 0 6px 0 var(--desktop), var(--shadow-bar); color: var(--ink); font: 500 32px/1 var(--font-rounded); letter-spacing: 0.06em; cursor: pointer; transition: transform var(--duration-leave), box-shadow var(--duration-leave); touch-action: none; user-select: none; }
 .ht-key.is-down { transform: translateY(5px); box-shadow: inset 0 0 0 0.5px var(--stroke-strong), 0 1px 0 var(--desktop), var(--shadow-tile); }
 .ht-key:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
 .ht-state { margin: 0; color: var(--ink); font: 600 13px/16px var(--font-sans); }
@@ -50,7 +50,7 @@
 <p class="bk-bubble bk-bubble--out">Nearly, one more chart to go.</p>
 <p class="bk-bubble bk-bubble--in">Can we move the review to 3?</p></div>
 <form class="bk-reply" data-reply><input type="text" placeholder="Reply to Maya" aria-label="Reply to Maya"><button class="bk-send" type="submit" aria-label="Send"><i class="bk-ico bk-ico--send" aria-hidden="true"></i></button></form>
-</div></div></div></div></article></div></div><div class="ht-side"><button class="ht-key" type="button" aria-label="fn key: hold to look, tap to keep Blink open">fn</button><p class="ht-state">Hidden</p><p class="ht-timing">Press and hold the key, or tap it.</p></div></div>
+</div></div></div></div></article></div></div><div class="ht-side"><button class="ht-key" type="button" aria-label="Option and backtick: hold to look, tap to keep Blink open">⌥`</button><p class="ht-state">Hidden</p><p class="ht-timing">Press and hold the key, or tap it.</p></div></div>
 <script>
 var stage = document.querySelector('.ht');
 var key = document.querySelector('.ht-key');
