@@ -116,7 +116,7 @@ await test('scrolling plays the walkthrough on the pinned screen', async (page) 
   assert.equal(Math.round(a.y), Math.round(b.y), 'the screen moved while pinned');
   assert.ok(before.y > a.y, 'the screen should rise into place from the opening');
 
-  // Holding fn in the story brings Blink up over the writer.
+  // Holding ⌥` in the story brings Blink up over the writer.
   await goToBeat(page, 2.6);
   const shown = await page.locator('[data-ov]').evaluate((el) => Number(getComputedStyle(el).opacity));
   assert.ok(shown > 0.9, 'Blink is not showing during the hold beat');
@@ -269,7 +269,7 @@ await test('below the walkthrough, Space opens Blink over the page itself', asyn
   assert.equal(await page.evaluate(() => document.querySelector('main').inert), false);
 });
 
-await test('the fn key on the page works with a pointer: hold and tap', async (page) => {
+await test('the keys on the page work with a pointer: hold and tap', async (page) => {
   await goToBeat(page, 0.4);
   const [x, y] = await centre(page, '.foot .fnkey');
   await page.mouse.move(x, y);
@@ -304,7 +304,7 @@ await test('the questions respond, and say what the app does by default', async 
   await page.click('.faq summary >> nth=0');
   assert.equal(await page.locator('.faq details >> nth=0').getAttribute('open'), '');
   const answers = await page.locator('.faq').textContent(); // closed answers included
-  assert.match(answers, /fn/);
+  assert.match(answers, /⌥/);
   assert.match(answers, /Input Monitoring/);
   assert.match(answers, /Open Anyway/);
 });
@@ -351,7 +351,7 @@ await test('with reduced motion the walkthrough is a list of stills', async (pag
   assert.equal(await page.locator('#stack').isVisible(), true);
   assert.equal(await page.locator('#stack .still').count(), 10);
   const caption = await page.locator('#stack .still__cap >> nth=2').textContent();
-  assert.match(caption, /Hold fn/);
+  assert.match(caption, /Hold ⌥`/);
 }, { width: 1280, height: 800 }, { reducedMotion: 'reduce' });
 
 await test('on a phone: stills, no sideways scrolling, and the key opens Blink as a list', async (page) => {

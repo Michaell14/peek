@@ -2,8 +2,8 @@
 // The opening scrolls like any page, and the screen rises into place. From
 // there the story plays on it one step per scroll: each scroll gesture plays
 // the next step through and rests there, and the page scrolls freely again
-// after the last one. Hold Space (or press the fn
-// key on screen) at any point to open Blink yourself.
+// after the last one. Hold Space (or press the ⌥`
+// keys on screen) at any point to open Blink yourself.
 (() => {
   'use strict';
 
@@ -435,7 +435,7 @@
     flag(scene.board, 'is-editing', editing);
     flag(scene.edit, 'is-on', editing);
     text(scene.edit, editing ? 'Done' : 'Edit');
-    text(scene.stripHint, editing ? 'Drag a tile to move it, or its edge to resize' : 'fn or esc to close');
+    text(scene.stripHint, editing ? 'Drag a tile to move it, or its edge to resize' : '⌥` or esc to close');
 
     // Tiles.
     TILE_ORDER.forEach((kind, index) => {
@@ -981,7 +981,7 @@
   // ---- Blink over the page --------------------------------------------------
 
   povBoard.innerHTML = TILE_ORDER.map(tileHTML).join('');
-  if (window.matchMedia('(hover: none)').matches) $('#pov-hint').textContent = 'Tap fn again to close';
+  if (window.matchMedia('(hover: none)').matches) $('#pov-hint').textContent = 'Tap the keys again to close';
   const povTiles = $$('.tile', povBoard);
   povBoard.addEventListener('click', (event) => {
     const item = event.target.closest('.w-rem__item');

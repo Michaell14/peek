@@ -130,13 +130,13 @@ public struct Shortcut: Codable, Hashable, Sendable {
         )
     }
 
-    /// fn on its own: one key, under the left hand, that types nothing.
-    /// macOS only shows it to apps that have been allowed Input Monitoring.
-    public static let `default` = Shortcut(keyCode: nil, modifiers: [ModifierKey(.function)])
+    /// ⌥`: Option and the key above Tab. An ordinary combination, so it
+    /// needs no permission, and few other apps claim it.
+    public static let `default` = Shortcut(keyCode: 50, modifiers: [ModifierKey(.option)])
 
-    /// ⌥`, the default before fn, which the permission prompt also used to
-    /// offer instead of fn. Settings saved with it are moved to fn once.
-    public static let previousDefault = Shortcut(keyCode: 50, modifiers: [ModifierKey(.option)])
+    /// fn on its own, which was the default in 0.1.2. macOS only shows it to
+    /// apps allowed Input Monitoring. Settings saved with it move back to ⌥` once.
+    public static let functionKey = Shortcut(keyCode: nil, modifiers: [ModifierKey(.function)])
 
     /// True for fn by itself, which macOS may also use to show the emoji
     /// picker, switch input source or start dictation.

@@ -6,7 +6,7 @@ Blink is a free, open-source macOS menu bar app. It keeps websites, local files 
 loaded in a full-screen overlay that appears while you hold a shortcut — over any app, including
 full-screen ones — and disappears when you release it.
 
-- **Hold** the shortcut (`fn` by default) to peek. Release to return.
+- **Hold** the shortcut (`⌥` + `` ` `` by default) to peek. Release to return.
 - **Tap** the shortcut to keep the overlay open and use it. Tap again or press `esc` to close.
 
 ![The Blink overlay showing a clock, reminders, a web dashboard and a calendar](docs/screenshot.png)
@@ -89,12 +89,12 @@ Blink asks only for what a feature needs, and only when you use it.
 | Permission | Needed for |
 |---|---|
 | Calendars / Reminders | Those two widgets |
-| Input Monitoring | The default shortcut, `fn`, and any other made of modifier keys alone or a specific left/right key. Blink looks for the shortcut and does not record what you type. |
+| Input Monitoring | Only a shortcut made of modifier keys alone (such as `fn`) or a specific left/right key. Blink looks for the shortcut and does not record what you type. |
 
-macOS only shows `fn` to apps allowed under Input Monitoring, so Blink explains this and asks when
-it first opens. If you would rather not allow it, record an ordinary combination in Settings, such
-as `⌥` + `` ` ``: those need no permission. (Settings saved by earlier versions with `⌥` + `` ` ``,
-the old default, move to `fn` once.)
+The default, `⌥` + `` ` `` (Option and the key above Tab), is an ordinary combination and needs no
+permission. macOS only shows `fn` to apps allowed under Input Monitoring, so if you pick it in
+Settings, Blink explains this and asks. (Settings saved by 0.1.2 with `fn`, the default then, move
+back to `⌥` + `` ` `` once.)
 
 With `fn` as the shortcut, set *System Settings → Keyboard → Press 🌐 key to* **Do Nothing**, or
 macOS will also run its own action (the emoji picker, by default) each time. Blink waits a moment
@@ -167,7 +167,7 @@ keeps layouts somewhere other than `~/Library/Application Support/Blink`.
 ## The website
 
 `docs/` holds Blink's website. One Mac screen, drawn in HTML, stays pinned while Blink's story
-plays on it: someone mid-sentence, the overlay coming up while fn is held, a website refreshing,
+plays on it: someone mid-sentence, the overlay coming up while the shortcut is held, a website refreshing,
 widgets, a PDF, arranging tiles, and a full-screen app. Each scroll gesture (or arrow key) plays the
 next step through at its own pace and rests there, with a caption that fills in as it plays; after
 the last step the page scrolls normally. The page is also its own demo: hold Space at any point and the

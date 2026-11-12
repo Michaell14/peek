@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Blink: hold fn to see what you check all day</title>
-  <meta name="description" content="Blink is a free, open-source Mac app. Hold fn to see the websites, widgets and files you check all day, over whatever you are doing. Let go and carry on.">
+  <title>Blink: hold ⌥` to see what you check all day</title>
+  <meta name="description" content="Blink is a free, open-source Mac app. Hold Option and the key above Tab to see the websites, widgets and files you check all day, over whatever you are doing. Let go and carry on.">
   <meta name="color-scheme" content="light">
   <meta name="theme-color" content="#f5f6f8">
-  <meta property="og:title" content="Blink: hold fn to see what you check all day">
-  <meta property="og:description" content="Hold fn to see the websites, widgets and files you check all day, over whatever you are doing. Let go and carry on. Free and open source for macOS.">
+  <meta property="og:title" content="Blink: hold ⌥` to see what you check all day">
+  <meta property="og:description" content="Hold ⌥` to see the websites, widgets and files you check all day, over whatever you are doing. Let go and carry on. Free and open source for macOS.">
   <meta property="og:image" content="cover.jpg">
   <link rel="icon" href="icon.png">
   <link rel="stylesheet" href="styles.css">
@@ -37,7 +37,7 @@
         <span class="sr">Blink</span>
       </h1>
       <div class="hero__text">
-        <p class="hero__line">Hold <span class="fn">fn</span> to see the things you check all&nbsp;day. Let go and carry&nbsp;on.</p>
+        <p class="hero__line">Hold <span class="keys"><span class="fn">⌥</span><span class="fn">`</span></span> to see the things you check all&nbsp;day. Let go and carry&nbsp;on.</p>
         <p class="hero__get">
           <a class="btn" href="https://github.com/Michaell14/peek/releases/latest/download/Blink.dmg">Download for Mac</a>
           <span class="hero__note">macOS 14 or later, free</span>
@@ -139,7 +139,7 @@
                 <!-- Blink, over all of it. -->
                 <div class="ov" data-ov>
                   <div class="ov__strip" data-strip>
-                    <span class="ov__brand"><span class="mark"><i></i><i></i><i></i></span><b>Blink</b><span data-strip-hint>fn or esc to close</span></span>
+                    <span class="ov__brand"><span class="mark"><i></i><i></i><i></i></span><b>Blink</b><span data-strip-hint>⌥` or esc to close</span></span>
                     <span class="toolbar">
                       <span class="seg" data-seg><i class="is-on" data-seg-flow><svg viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="10" rx="2"/><path d="M6.5 3v10M10 3v10"/></svg>Flow</i><i data-seg-free><svg viewBox="0 0 16 16"><rect x="2" y="5" width="8" height="8" rx="1.6"/><path d="M6 3h6.4A1.6 1.6 0 0 1 14 4.6V10"/></svg>Freeform</i></span>
                       <i class="tb-icon"><svg viewBox="0 0 16 16"><path d="M8 3.5v9M3.5 8h9"/></svg></i>
@@ -158,26 +158,25 @@
 
         <div class="foot">
           <button class="fnkey" type="button" data-key aria-describedby="try-note">
-            <span class="fnkey__fn">fn</span>
-            <svg class="fnkey__globe" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M2 8h12M8 2c2.2 2 2.2 10 0 12M8 2C5.8 4 5.8 12 8 14"/></svg>
-            <span class="fnkey__led" aria-hidden="true"></span>
+            <span class="fnkey__cap" aria-hidden="true"><span class="fnkey__led"></span><span class="fnkey__sym">⌥</span><span class="fnkey__word">option</span></span>
+            <span class="fnkey__cap fnkey__cap--grave" aria-hidden="true"><span class="fnkey__shift">~</span><span class="fnkey__base">`</span></span>
             <span class="sr">Hold to open Blink</span>
           </button>
           <ol class="caps" id="caps">
             <li class="cap" data-beat="1">You are halfway through a sentence.</li>
             <li class="cap" data-beat="2">Checking one thing means switching apps, then finding your place again.</li>
-            <li class="cap" data-beat="3">Hold fn. The things you check appear over what you are doing.</li>
+            <li class="cap" data-beat="3">Hold ⌥`. The things you check appear over what you are doing.</li>
             <li class="cap" data-beat="4">Let go. You are still in your sentence, and now you know the number.</li>
             <li class="cap" data-beat="5">Websites stay signed in and refresh on a timer, so they are current when you look.</li>
             <li class="cap" data-beat="6">Clocks for the cities you work with. Reminders to tick off. Today on your calendar.</li>
             <li class="cap" data-beat="7">PDF and HTML files too. Save the file and the tile shows the new version.</li>
-            <li class="cap" data-beat="8">Tap fn instead and it stays open, so you can click, scroll and type.</li>
+            <li class="cap" data-beat="8">Tap ⌥` instead and it stays open, so you can click, scroll and type.</li>
             <li class="cap" data-beat="9">Flow keeps your tiles in tidy columns. Freeform lets you put them anywhere.</li>
             <li class="cap" data-beat="10">It opens over full-screen apps too, and leaves them as they were.</li>
           </ol>
           <p class="try" id="try-note">
             <span class="try__keys">Hold <kbd>Space</kbd> to try it</span>
-            <span class="try__touch">Press and hold <b>fn</b> to try it</span>
+            <span class="try__touch">Press and hold <b>⌥`</b> to try it</span>
           </p>
         </div>
 
@@ -224,7 +223,7 @@
         <dl class="more__list">
           <div><dt>Quieter pages</dt><dd>Third-party ads and trackers are blocked and cookie banners hidden. Click any part of a page to hide it for good.</dd></div>
           <div><dt>The right display</dt><dd>It opens on the display with your pointer, the one with the active window, or one you pick.</dd></div>
-          <div><dt>Your own shortcut</dt><dd>Keep fn, choose any key combination, or use one modifier on its own, such as the right <kbd>⌘</kbd>.</dd></div>
+          <div><dt>Your own shortcut</dt><dd>Keep <kbd>⌥</kbd> <kbd>`</kbd>, choose any other combination, or use one key on its own, such as <kbd>fn</kbd> or the right <kbd>⌘</kbd>.</dd></div>
           <div><dt>Open it elsewhere</dt><dd>Send any tile to your browser, or a file to the app that usually opens it.</dd></div>
         </dl>
       </div>
@@ -238,8 +237,8 @@
           <p>Download the disk image, open it and drag Blink into Applications. Blink is not notarized by Apple yet, so macOS stops it the first time you open it. Go to System Settings, then Privacy &amp; Security, and choose Open Anyway. You only do this once.</p>
         </details>
         <details>
-          <summary>Why does it ask for Input Monitoring?</summary>
-          <p>macOS only shows the <kbd>fn</kbd> key to apps you allow under Input Monitoring. Blink watches for its shortcut and does not record what you type. If you would rather not allow it, pick an ordinary combination such as <kbd>⌥</kbd> <kbd>`</kbd> in Settings, which needs no permission. With fn as the shortcut, set System Settings, Keyboard, “Press globe key to” to Do Nothing.</p>
+          <summary>Does it need any permissions?</summary>
+          <p>Not for the shortcut: <kbd>⌥</kbd> <kbd>`</kbd> is an ordinary combination. Calendar and Reminders ask the first time you add those widgets. If you choose a key on its own as the shortcut, such as <kbd>fn</kbd>, macOS only shows it to apps you allow under Input Monitoring, so Blink asks then. It watches for its shortcut and does not record what you type.</p>
         </details>
         <details>
           <summary>How does it update?</summary>
@@ -261,16 +260,15 @@
     </section>
 
     <section class="get" aria-labelledby="get-title">
-      <h2 id="get-title">Hold fn, look, let go.</h2>
+      <h2 id="get-title">Hold <span class="keys"><span class="fn">⌥</span><span class="fn">`</span></span>, look, let&nbsp;go.</h2>
       <div class="get__row">
         <a class="btn btn--big" href="https://github.com/Michaell14/peek/releases/latest/download/Blink.dmg">Download for Mac</a>
         <p class="get__note">macOS 14 or later, free.<br><a href="https://github.com/Michaell14/peek" rel="noopener">Source on GitHub</a></p>
         <div class="get__try">
-          <p class="try" id="get-try"><span class="try__keys">Once more: hold <kbd>Space</kbd> and Blink opens over this page.</span><span class="try__touch">Once more: press and hold this key.</span></p>
+          <p class="try" id="get-try"><span class="try__keys">Once more: hold <kbd>Space</kbd> and Blink opens over this page.</span><span class="try__touch">Once more: press and hold these keys.</span></p>
           <button class="fnkey fnkey--small" type="button" data-key aria-describedby="get-try" aria-label="Hold to open Blink over this page">
-            <span class="fnkey__fn">fn</span>
-            <svg class="fnkey__globe" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M2 8h12M8 2c2.2 2 2.2 10 0 12M8 2C5.8 4 5.8 12 8 14"/></svg>
-            <span class="fnkey__led" aria-hidden="true"></span>
+            <span class="fnkey__cap" aria-hidden="true"><span class="fnkey__led"></span><span class="fnkey__sym">⌥</span><span class="fnkey__word">option</span></span>
+            <span class="fnkey__cap fnkey__cap--grave" aria-hidden="true"><span class="fnkey__shift">~</span><span class="fnkey__base">`</span></span>
           </button>
         </div>
       </div>
@@ -297,9 +295,8 @@
   <!-- On phones: the key, always within reach. -->
   <div class="float" id="float">
     <button class="fnkey fnkey--float" type="button" data-key id="float-key" aria-label="Hold to open Blink over this page">
-      <span class="fnkey__fn">fn</span>
-      <svg class="fnkey__globe" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6"/><path d="M2 8h12M8 2c2.2 2 2.2 10 0 12M8 2C5.8 4 5.8 12 8 14"/></svg>
-      <span class="fnkey__led" aria-hidden="true"></span>
+      <span class="fnkey__cap" aria-hidden="true"><span class="fnkey__led"></span><span class="fnkey__sym">⌥</span><span class="fnkey__word">option</span></span>
+      <span class="fnkey__cap fnkey__cap--grave" aria-hidden="true"><span class="fnkey__shift">~</span><span class="fnkey__base">`</span></span>
     </button>
     <span class="float__hint" aria-hidden="true">Press and hold</span>
   </div>

@@ -4,48 +4,50 @@ import XCTest
 final class ShortcutTests: XCTestCase {
     private typealias M = ModifierState
 
-    func testDefaultShortcutIsTheFnKeyAlone() {
-        XCTAssertEqual(Shortcut.default, Shortcut(keyCode: nil, modifiers: [ModifierKey(.function)]))
-        XCTAssertEqual(Shortcut.default.displayString, "fn")
+    func testDefaultShortcutIsOptionBacktick() {
+        XCTAssertEqual(Shortcut.default, Shortcut(keyCode: 50, modifiers: [ModifierKey(.option)]))
+        XCTAssertEqual(Shortcut.default.displayString, "⌥`")
         XCTAssertTrue(Shortcut.default.isValid)
-        XCTAssertTrue(Shortcut.default.isFunctionKeyAlone)
-        XCTAssertTrue(Shortcut.default.requiresEventTap, "macOS shows fn only to apps allowed Input Monitoring")
+        XCTAssertFalse(Shortcut.default.isFunctionKeyAlone)
+        XCTAssertFalse(Shortcut.default.requiresEventTap, "an ordinary combination needs no permission")
+        XCTAssertEqual(Shortcut.default.carbonModifiers, 0x0800)
     }
 
-    func testThePreviousDefaultNeedsNoPermission() {
-        XCTAssertFalse(Shortcut.previousDefault.requiresEventTap)
-        XCTAssertEqual(Shortcut.previousDefault.carbonModifiers, 0x0800)
-        XCTAssertEqual(Shortcut.previousDefault.displayString, "⌥`")
-        XCTAssertFalse(Shortcut.previousDefault.isFunctionKeyAlone)
+    func testTheFunctionKeyNeedsInputMonitoring() {
+        XCTAssertEqual(Shortcut.functionKey.displayString, "fn")
+        XCTAssertTrue(Shortcut.functionKey.isFunctionKeyAlone)
+        XCTAssertTrue(Shortcut.functionKey.requiresEventTap, "macOS shows fn only to apps allowed Input Monitoring")
     }
 
     // Settings as earlier versions saved them: everything but the new flag.
-    private func savedSettings(shortcut: Shortcut, movedToFn: Bool?) throws -> AppSettings {
+    private func savedSettings(shortcut: Shortcut, movedBack: Bool?) throws -> AppSettings {
         var settings = AppSettings()
         settings.shortcut = shortcut
         var object = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(settings)) as? [String: Any])
-        object["shortcutMovedToFn"] = movedToFn
+        object["shortcutMovedBack"] = movedBack
+        object["shortcutMovedToFn"] = true // what 0.1.2 saved alongside fn
         return try JSONDecoder().decode(AppSettings.self, from: JSONSerialization.data(withJSONObject: object))
     }
 
-    func testTheOldDefaultSavedByEarlierVersionsMovesToFn() throws {
-        let loaded = try savedSettings(shortcut: .previousDefault, movedToFn: nil)
+    func testFnSavedByEarlierVersionsMovesBackToOptionBacktick() throws {
+        let loaded = try savedSettings(shortcut: .functionKey, movedBack: nil)
         XCTAssertEqual(loaded.shortcut, .default)
-        XCTAssertTrue(loaded.shortcutMovedToFn)
+        XCTAssertTrue(loaded.shortcutMovedBack)
     }
 
-    func testOptionBacktickChosenAfterTheMoveIsKept() throws {
-        XCTAssertEqual(try savedSettings(shortcut: .previousDefault, movedToFn: true).shortcut, .previousDefault)
+    func testFnChosenAfterTheMoveIsKept() throws {
+        XCTAssertEqual(try savedSettings(shortcut: .functionKey, movedBack: true).shortcut, .functionKey)
     }
 
     func testOtherSavedShortcutsAreLeftAlone() throws {
         let rightCommand = Shortcut(keyCode: nil, modifiers: [ModifierKey(.command, side: .right)])
-        XCTAssertEqual(try savedSettings(shortcut: rightCommand, movedToFn: nil).shortcut, rightCommand)
+        XCTAssertEqual(try savedSettings(shortcut: rightCommand, movedBack: nil).shortcut, rightCommand)
+        XCTAssertEqual(try savedSettings(shortcut: .default, movedBack: nil).shortcut, .default)
     }
 
-    func testNewSettingsStartOnFnWithNothingToMove() {
+    func testNewSettingsStartOnOptionBacktickWithNothingToMove() {
         XCTAssertEqual(AppSettings().shortcut, .default)
-        XCTAssertTrue(AppSettings().shortcutMovedToFn)
+        XCTAssertTrue(AppSettings().shortcutMovedBack)
     }
 
     func testOnlyFnByItselfCountsAsTheFnKeyAlone() {
@@ -54,9 +56,9 @@ final class ShortcutTests: XCTestCase {
         XCTAssertFalse(Shortcut(keyCode: nil, modifiers: [ModifierKey(.command, side: .right)]).isFunctionKeyAlone)
     }
 
-    func testHoldingAndTappingTheDefaultShortcut() {
+    func testHoldingAndTappingFnAlone() {
         let fn: UInt64 = 0x80_0000   // the fn flag, as the system reports it
-        var tracker = ShortcutTracker(shortcut: .default)
+        var tracker = ShortcutTracker(shortcut: .functionKey)
         XCTAssertEqual(tracker.handle(.flagsChanged(rawFlags: fn)), .pressed)
         XCTAssertNil(tracker.handle(.flagsChanged(rawFlags: fn)), "the same flags again change nothing")
         XCTAssertEqual(tracker.handle(.flagsChanged(rawFlags: 0)), .released)
