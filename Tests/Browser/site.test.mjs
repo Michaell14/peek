@@ -130,22 +130,40 @@ await test('the step list jumps to a beat', async (page) => {
   assert.deepEqual(await shownCaption(page), [7]);
 });
 
-await test('one scroll plays one step through, and holds there', async (page) => {
+await test('the opening scrolls normally, and the story takes over once the screen is in place', async (page) => {
   await page.mouse.move(640, 400);
-  await page.mouse.wheel(0, 120);
-  await page.waitForTimeout(300);
+  await page.mouse.wheel(0, 100);
+  await page.waitForTimeout(400);
+  assert.equal(await blink(page, 'playing'), false, 'the opening should scroll like any page');
+  const scrolled = await page.evaluate(() => window.scrollY);
+  assert.ok(scrolled > 50, 'the opening did not scroll');
+  assert.ok(await blink(page, 'T') < 0);
+
+  // The scroll that would carry the page past the screen stops there instead,
+  // and plays the first step.
+  const pin = await page.evaluate(() => window.__blink.scrollForT(0));
+  await page.mouse.wheel(0, pin - scrolled + 300);
+  await page.waitForTimeout(150);
   assert.equal(await blink(page, 'playing'), true, 'the first step should be playing');
   for (let i = 0; i < 4; i += 1) { await page.mouse.wheel(0, 120); await page.waitForTimeout(60); }
   await settled(page);
-  assert.ok(Math.abs(await blink(page, 'T') - 0.9) < 0.02, 'more scrolling while a step played skipped ahead');
+  assert.ok(Math.abs(await blink(page, 'T') - 0.9) < 0.02, 'scrolling while it played skipped ahead');
   assert.deepEqual(await shownCaption(page), [1]);
 
-  // A fresh gesture after it has finished plays the next one.
+  // A fresh gesture after it has finished plays the next step.
   await page.waitForTimeout(250);
   await page.mouse.wheel(0, 120);
   await settled(page);
   assert.ok(Math.abs(await blink(page, 'T') - 1.93) < 0.02);
   assert.deepEqual(await shownCaption(page), [2]);
+
+  // Back up past the first step, the page scrolls normally again.
+  await goToBeat(page, 0.9);
+  await page.waitForTimeout(250);
+  await page.mouse.wheel(0, -200);
+  await page.waitForTimeout(400);
+  assert.equal(await blink(page, 'playing'), false);
+  assert.ok(await blink(page, 'T') < 0.9);
 });
 
 await test('a trackpad swipe, momentum and all, is one step', async (page) => {

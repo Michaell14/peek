@@ -1,7 +1,8 @@
 // Blink's website.
-// One screen stays pinned while the story plays on it, one step per scroll:
-// each scroll gesture plays the next step through and rests there, and the
-// page scrolls freely again after the last one. Hold Space (or press the fn
+// The opening scrolls like any page, and the screen rises into place. From
+// there the story plays on it one step per scroll: each scroll gesture plays
+// the next step through and rests there, and the page scrolls freely again
+// after the last one. Hold Space (or press the fn
 // key on screen) at any point to open Blink yourself.
 (() => {
   'use strict';
@@ -992,13 +993,14 @@
   }
 
   // ---- One step per scroll ----------------------------------------------------
-  // While the story is on screen, a scroll gesture does not scrub it. It plays
-  // the next step through at that step's own pace, and the page waits there.
-  // Further scrolling is held back until the step has finished and the
-  // gesture has ended. After the last step the page scrolls freely again.
+  // The opening scrolls normally. Once the screen is in place, a scroll
+  // gesture does not scrub the story. It plays the next step through at that
+  // step's own pace, and the page waits there. Further scrolling is held back
+  // until the step has finished and the gesture has ended. After the last
+  // step the page scrolls freely again.
 
-  // Where the story comes to rest: the opening, then the end of each step.
-  const REST = [-1, 0.9, 1.93, 2.9, 3.9, 4.9, 5.9, 6.9, 7.9, 8.93, 9.97];
+  // Where the story comes to rest: the end of each step.
+  const REST = [0.9, 1.93, 2.9, 3.9, 4.9, 5.9, 6.9, 7.9, 8.93, 9.97];
   // How long one whole unit of T takes to play, in ms: the opening, then each step.
   const PACE = [1300, 1700, 2600, 1500, 1700, 2400, 2000, 2000, 2600, 3600, 2800];
   const BACK = 0.5; // stepping back plays at twice the speed
@@ -1071,11 +1073,24 @@
     return true;
   }
 
+  // Scrolling down through the opening: if this much more would bring the
+  // screen into place, the story takes over from here and plays its first
+  // step, instead of letting the page run on past it.
+  function arrives(distance) {
+    if (!inStory() || playing() || distance <= 0) return false;
+    if (readT() >= 0) return false;
+    if (window.scrollY + distance < scrollForT(0) - 2) return false;
+    playTo(REST[0]);
+    return true;
+  }
+  const pixels = (event) => event.deltaY * (event.deltaMode === 1 ? 16 : event.deltaMode === 2 ? state.vh : 1);
+
   // Would a gesture in this direction be the story's, rather than the page's?
   function owns(direction) {
     if (!inStory()) return false;
     if (playing()) return true;
     const now = readT();
+    if (now < 0) return false; // the opening scrolls normally
     if (direction < 0 && window.scrollY > scrollForT(10) + 2) return false;
     if (direction > 0 && now >= 10) return false;
     return nextRest(now, direction) !== undefined;
@@ -1084,9 +1099,16 @@
   window.addEventListener('wheel', (event) => {
     if (event.ctrlKey || Math.abs(event.deltaX) > Math.abs(event.deltaY) || !event.deltaY) return;
     const direction = Math.sign(event.deltaY);
+    const now = performance.now();
+    if (arrives(pixels(event))) {
+      event.preventDefault();
+      lock.armed = false;
+      lock.lastAt = now;
+      lock.lastSize = Math.abs(event.deltaY);
+      return;
+    }
     if (!owns(direction)) return;
     event.preventDefault();
-    const now = performance.now();
     const size = Math.abs(event.deltaY);
     // A new gesture: after a pause, or a fresh push while momentum is fading.
     const fresh = now - lock.lastAt > GAP || (size > lock.lastSize * 1.6 && size > 12);
@@ -1106,7 +1128,9 @@
   window.addEventListener('keydown', (event) => {
     if (event.altKey || event.ctrlKey || event.metaKey || isTyping(event.target)) return;
     const direction = { ArrowDown: 1, PageDown: 1, ArrowUp: -1, PageUp: -1 }[event.key];
-    if (!direction || !owns(direction)) return;
+    if (!direction) return;
+    if (!event.repeat && arrives(event.key === 'PageDown' ? state.vh * 0.85 : 40)) { event.preventDefault(); return; }
+    if (!owns(direction)) return;
     event.preventDefault();
     if (!playing() && !event.repeat) step(direction);
   });
@@ -1133,7 +1157,7 @@
   indexLinks.forEach((link) => link.addEventListener('click', (event) => {
     event.preventDefault();
     const k = Number(link.dataset.go);
-    const target = REST[k];
+    const target = REST[k - 1];
     const far = Math.abs(target - readT()) > 1.2;
     playTo(target, { fast: far });
   }));
