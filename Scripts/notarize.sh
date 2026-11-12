@@ -43,4 +43,15 @@ if ! grep -q "status: Accepted" "$WORK/log"; then
     exit 1
 fi
 
-xcrun stapler staple "$TARGET"
+# Stapling fetches the ticket from Apple, and a dropped connection fails it
+# even though notarizing worked, so try a few times before giving up.
+for attempt in 1 2 3 4 5; do
+    if xcrun stapler staple "$TARGET"; then
+        exit 0
+    fi
+    [ "$attempt" -lt 5 ] || break
+    echo "Stapling failed (attempt $attempt); trying again shortly." >&2
+    sleep $(( attempt * 10 ))
+done
+echo "Apple notarized $TARGET, but the ticket could not be stapled." >&2
+exit 1
