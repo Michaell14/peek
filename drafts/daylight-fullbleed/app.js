@@ -831,7 +831,7 @@
     } else {
       renderStillCaptions();
       const stackRect = stack.getBoundingClientRect();
-      flag(floatBox, 'is-shown', stackRect.top < state.vh * 0.6 && stackRect.bottom > state.vh * 0.5);
+      flag(floatBox, 'is-shown', stackRect.top < state.vh * 0.6 && stackRect.bottom > state.vh - 24);
     }
   }
   let frame = 0;
