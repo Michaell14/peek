@@ -8,7 +8,7 @@ struct ToolbarView: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            if let name = state.previewName, !state.isShelfOpen {
+            if let name = state.previewName, !state.isShelfOpen, !state.hidesPreviewBar {
                 ToolbarIconButton(symbol: "chevron.left") { actions.previewStep(-1) }
                     .help("The template before (←)")
                 VStack(spacing: 0) {

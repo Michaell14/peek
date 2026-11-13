@@ -644,6 +644,23 @@ final class OverlayController: NSObject {
         showOnShelf(all[next].id)
     }
 
+    /// Whether the bar for trying templates is out of the way (while the
+    /// tour shows its own cards for choosing).
+    var hidesPreviewBar: Bool {
+        get { state.hidesPreviewBar }
+        set { if state.hidesPreviewBar != newValue { state.hidesPreviewBar = newValue } }
+    }
+
+    var panelFrame: CGRect { panel.frame }
+
+    /// Keeps the bottom of the board clear by this much, measured from the
+    /// bottom of the screen, for something sitting over it (the tour).
+    func setBottomRoom(_ points: CGFloat) {
+        guard !state.isShelfOpen else { return }
+        let padding = CGFloat(model.settings.canvasPadding.rounded())
+        activeBoardView?.setBottomInset(points > 0 ? max(points - padding, 0) : 0, animated: true)
+    }
+
     /// For the self-check: as if the pointer rested on a card of an empty
     /// board's gallery.
     func pointGallery(at id: String?) {
@@ -885,6 +902,7 @@ final class OverlayController: NSObject {
             "shelfShowing": state.shelfShowing ?? "",
             "shelfFrame": shelfHost.map { _ in [root.shelfFrame.minX, root.shelfFrame.minY, root.shelfFrame.width, root.shelfFrame.height].map { Double($0) } } ?? [],
             "keptNotice": state.keptName ?? "",
+            "previewBarHidden": state.hidesPreviewBar,
             "galleryHot": activeBoardView?.gallery.hot ?? "",
             "tiles": tiles,
         ]

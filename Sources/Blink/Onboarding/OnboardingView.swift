@@ -49,7 +49,7 @@ struct OnboardingView: View {
         case .hello: return 500
         case .hold, .tap: return 600
         case .shortcut: return 620
-        case .board: return 800
+        case .board: return 860
         case .access: return 620
         case .ready: return 680
         }
@@ -62,7 +62,7 @@ struct OnboardingView: View {
         case .hold: return 232
         case .tap: return 276
         case .shortcut: return 540
-        case .board: return 76
+        case .board: return 212
         case .access: return 470
         case .ready: return 420
         }
@@ -489,7 +489,7 @@ private struct ChangingWords: View {
 private struct KeysHint: View {
     let before: String
     let caps: [OnboardingKey]
-    let after: String
+    var after = ""
 
     var body: some View {
         HStack(spacing: 6) {
@@ -499,7 +499,7 @@ private struct KeysHint: View {
                     SmallCap(label: key.symbol, height: 19)
                 }
             }
-            Text(after)
+            if !after.isEmpty { Text(after) }
         }
         .font(Tour.small)
         .foregroundStyle(Tour.ink3)
@@ -923,63 +923,136 @@ private struct ShortcutStep: View {
 
 // MARK: - 5 · A starting board
 
+/// The tour's own way of choosing a template: the six of them as cards,
+/// each a click away from being tried on the real board above.
 private struct BoardStep: View {
     @ObservedObject var tour: OnboardingModel
 
+    private static let arrows = [OnboardingKey(symbol: "←", name: nil), OnboardingKey(symbol: "→", name: nil)]
+
     var body: some View {
-        HStack(spacing: 16) {
-            Text("STEP 4 OF 4")
-                .font(Tour.caption)
-                .tracking(0.9)
-                .foregroundStyle(Tour.ink3)
-                .fixedSize()
-            if let kept = tour.kept {
-                Tick()
-                Text("\(kept.name) is your board. Move, resize or remove anything on it whenever you like.")
-                    .font(.system(size: 13))
-                    .foregroundStyle(Tour.ink.opacity(0.86))
-                    .lineLimit(2)
-                Spacer(minLength: 8)
-                TourButton(title: "Continue") { tour.advance() }
-            } else if tour.putBack || tour.trying == nil {
-                Text("Your board is as it was.")
-                    .font(.system(size: 13))
-                    .foregroundStyle(Tour.ink.opacity(0.86))
-                Spacer(minLength: 8)
-                TourLink(title: "Try templates again") { tour.startTrying() }
-                TourButton(title: "Continue") { tour.advance() }
-            } else if let trying = tour.trying {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(trying.name)
-                        .font(.system(size: 13, weight: .semibold))
-                    Text(trying.summary)
-                        .font(.system(size: 12))
-                        .foregroundStyle(Tour.ink2)
-                        .lineLimit(2)
-                }
-                .id(trying.id)
-                .transition(.opacity.combined(with: .offset(y: 4)))
-                Spacer(minLength: 8)
-                HStack(spacing: 6) {
-                    ForEach(BoardTemplate.all) { template in
-                        Button { tour.startTrying(template) } label: {
-                            Capsule()
-                                .fill(template.id == trying.id ? Tour.cool : Color.white.opacity(0.22))
-                                .frame(width: template.id == trying.id ? 22 : 8, height: 8)
-                                .contentShape(Rectangle().inset(by: -4))
-                        }
-                        .buttonStyle(.plain)
-                        .help(template.name)
-                    }
-                }
+        let selected = tour.kept ?? tour.trying
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 12) {
+                Text("STEP 4 OF 4")
+                    .font(Tour.caption)
+                    .tracking(0.9)
+                    .foregroundStyle(Tour.ink3)
+                    .fixedSize()
+                Text("Try a starting board")
+                    .font(.system(size: 15, weight: .semibold))
+                    .tracking(-0.2)
+                Spacer()
                 TourLink(title: "Skip") { tour.advance() }
-                TourButton(title: "Use \(trying.name)", arrow: false, height: 32) { tour.keepTrying() }
             }
+            ZStack(alignment: .leading) {
+                Text(line)
+                    .font(Tour.body)
+                    .foregroundStyle(Tour.ink2)
+                    .lineLimit(1)
+                    .id(line)
+                    .transition(.opacity)
+            }
+            .padding(.top, 5)
+            .animation(.easeOut(duration: 0.18), value: line)
+
+            HStack(spacing: 10) {
+                ForEach(BoardTemplate.all) { template in
+                    TemplateChoice(
+                        template: template,
+                        isOn: selected?.id == template.id,
+                        isKept: tour.kept?.id == template.id
+                    ) { tour.startTrying(template) }
+                }
+            }
+            .padding(.top, 14)
+
+            Rectangle()
+                .fill(Tour.hairline)
+                .frame(height: 1)
+                .padding(.top, 14)
+            HStack(spacing: 10) {
+                if let kept = tour.kept {
+                    Tick()
+                    Text("\(kept.name) is your board. Change anything on it whenever you like.")
+                        .font(.system(size: 13))
+                        .foregroundStyle(Tour.ink.opacity(0.86))
+                        .lineLimit(1)
+                    Spacer()
+                    TourButton(title: "Continue") { tour.advance() }
+                        .transition(.opacity.combined(with: .offset(x: 8)))
+                } else if let trying = tour.trying {
+                    KeysHint(before: "Click a board to try it, or flip with", caps: Self.arrows)
+                    Spacer()
+                    TourButton(title: "Use \(trying.name)", arrow: false) { tour.keepTrying() }
+                } else {
+                    Text("Your board is as it was. Click any board to try it.")
+                        .font(Tour.small)
+                        .foregroundStyle(Tour.ink3)
+                    Spacer()
+                    TourButton(title: "Continue") { tour.advance() }
+                }
+            }
+            .frame(height: 36)
+            .padding(.top, 10)
+            .animation(Tour.settle, value: tour.kept?.id)
         }
-        .animation(Tour.settle, value: tour.trying?.id)
-        .animation(Tour.settle, value: tour.kept?.id)
-        .padding(.horizontal, 20)
-        .frame(height: 76)
+        .padding(.horizontal, 22)
+        .padding(.top, 18)
+        .padding(.bottom, 12)
+    }
+
+    private var line: String {
+        if let kept = tour.kept { return kept.summary }
+        if let trying = tour.trying { return trying.summary }
+        return "Each one goes on your board with your own calendar, messages and pages in it."
+    }
+}
+
+/// One template, as a card with its map, in the tour's board step.
+private struct TemplateChoice: View {
+    let template: BoardTemplate
+    let isOn: Bool
+    let isKept: Bool
+    let choose: () -> Void
+
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: choose) {
+            VStack(alignment: .leading, spacing: 7) {
+                TemplateMap(template: template)
+                    .padding(5)
+                    .frame(height: 64)
+                    .frame(maxWidth: .infinity)
+                    .background(Color.black.opacity(0.24), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                HStack(spacing: 5) {
+                    Image(systemName: isKept ? "checkmark.circle.fill" : template.symbol)
+                        .font(.system(size: 10.5, weight: .semibold))
+                        .foregroundStyle(isKept ? Tour.green : (isOn ? Tour.cool : Tour.ink3))
+                    Text(template.name)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(isOn ? Tour.ink : Tour.ink.opacity(0.82))
+                        .lineLimit(1)
+                }
+                .padding(.horizontal, 2)
+            }
+            .padding(6)
+            .background(
+                isOn ? Tour.cool.opacity(0.13) : Color.white.opacity(isHovering ? 0.08 : 0.04),
+                in: RoundedRectangle(cornerRadius: 12, style: .continuous)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 12, style: .continuous)
+                    .strokeBorder(isOn ? Tour.cool.opacity(0.65) : Color.white.opacity(isHovering ? 0.16 : 0.07), lineWidth: isOn ? 1.5 : 1)
+            )
+            .offset(y: isHovering && !isOn ? -2 : 0)
+            .contentShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+        .buttonStyle(PressScale())
+        .onHover { hovering in withAnimation(.easeOut(duration: 0.15)) { isHovering = hovering } }
+        .animation(Tour.settle, value: isOn)
+        .help(template.summary)
     }
 }
 

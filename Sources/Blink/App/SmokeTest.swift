@@ -1045,6 +1045,15 @@ enum SmokeTest {
             noteTourFrame()
             let triesFirst = tour.trying?.id == all[0].id && overlay.previewingTemplate?.id == all[0].id
             let boardCoachAbove = onboarding.windowLevel > panelLevel
+            let barHidden = flag("previewBarHidden")
+            // The board moves up, clear of the tour's panel.
+            let boardClear: Bool = {
+                guard let coach = onboarding.windowFrame,
+                      let panel = overlay.snapshot()["panelFrame"] as? [Double], panel.count == 4 else { return false }
+                let coachTop = panel[1] + panel[3] - Double(coach.maxY)
+                let frames = tileFrames()
+                return !frames.isEmpty && frames.allSatisfy { Double($0.maxY) <= coachTop + 1 }
+            }()
             await capture("tour-board")
             tour.startTrying(all[1])
             await pause(1.0)
@@ -1054,6 +1063,8 @@ enum SmokeTest {
             expect("tour-board", [
                 ("the step tries the first template", triesFirst),
                 ("its coach is above the overlay", boardCoachAbove),
+                ("the overlay's own template bar steps aside", barHidden),
+                ("the board moves up, clear of the panel", boardClear),
                 ("the dots flip between templates", flipped),
                 ("keeping one is noticed", tour.kept?.id == all[1].id),
                 ("the board holds the template's tiles", tileIDs().count == all[1].makeTiles().count),
@@ -1065,6 +1076,7 @@ enum SmokeTest {
             noteTourFrame()
             expect("tour-access", [
                 ("the overlay steps aside", !flag("visible")),
+                ("the template bar is back to normal", !flag("previewBarHidden")),
                 ("the tour moves on", tour.step == .access),
                 ("it is on screen", tourOnScreen()),
             ])

@@ -18,6 +18,8 @@ final class OverlayState: ObservableObject {
     @Published var shelfShowing: String?
     /// "Using My Day", for a few seconds after a template is kept, with Undo.
     @Published var keptName: String?
+    /// Set while something else (the tour) offers its own way to choose.
+    @Published var hidesPreviewBar = false
 }
 
 /// What the toolbar and launcher can ask the overlay to do.

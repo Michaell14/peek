@@ -111,13 +111,24 @@ final class OnboardingModel: ObservableObject {
     func go(to next: Step) {
         // Leaving the board step with a template still on trial puts the
         // board back; anything kept stays.
-        if step == .board, next != .board, overlay.isVisible { overlay.dismiss() }
+        if step == .board, next != .board { leaveBoard() }
         if next == .shortcut { shortcutChoice = Self.choice(for: model.settings.shortcut) }
         last = (overlay.isVisible, overlay.isInteractive)
         withAnimation(.spring(response: 0.42, dampingFraction: 0.86)) {
             step = next
         }
-        if next == .board { startTrying() }
+        if next == .board {
+            // The tour's cards do the choosing; the overlay's own bar for
+            // trying templates steps aside.
+            overlay.hidesPreviewBar = true
+            startTrying()
+        }
+    }
+
+    private func leaveBoard() {
+        overlay.hidesPreviewBar = false
+        overlay.setBottomRoom(0)
+        if overlay.isVisible { overlay.dismiss() }
     }
 
     func advance() {
@@ -139,7 +150,7 @@ final class OnboardingModel: ObservableObject {
     }
 
     private func finish(completed: Bool) {
-        if overlay.isVisible, step == .board { overlay.dismiss() }
+        if step == .board { leaveBoard() }
         Self.isDone = true
         onFinish?(completed)
     }
@@ -357,6 +368,10 @@ final class OnboardingController {
         // permission prompts they lead to can come up in front.
         window.level = step.isCoach ? NSWindow.Level(rawValue: NSWindow.Level.statusBar.rawValue + 2) : .normal
         let frame = CGRect(origin: origin, size: size).integral
+        // On the board step the board moves up, clear of the panel.
+        if step == .board {
+            tour.overlay.setBottomRoom(frame.maxY - tour.overlay.panelFrame.minY + 12)
+        }
         guard frame != window.frame else { return }
         if animated {
             NSAnimationContext.runAnimationGroup({ context in
