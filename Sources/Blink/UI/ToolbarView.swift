@@ -71,7 +71,7 @@ struct BrandView: View {
     }
 
     private var hint: String {
-        if state.isEditing { return "Drag a tile to move it, or its edge to resize" }
+        if state.isEditing { return "Drag a tile to move or stack it, or an edge to resize it" }
         return "\(state.shortcutText) or esc to close"
     }
 }

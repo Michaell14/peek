@@ -43,10 +43,12 @@ public struct Workspace: Codable, Hashable, Sendable {
 
         You can change the shortcut in Settings (the gear, top right).
         """
-        var tiles = [
-            Tile(content: .widget(.clock(ClockConfig(zones: [ClockConfig.localZone, "Europe/London", "Asia/Tokyo"])))),
-            Tile(content: .widget(.notes(NotesConfig(text: welcome)))),
-        ]
+        let clock = Tile(content: .widget(.clock(ClockConfig(zones: [ClockConfig.localZone, "Europe/London", "Asia/Tokyo"]))))
+        // The note sits under the clock and takes the rest of the column.
+        var note = Tile(content: .widget(.notes(NotesConfig(text: welcome))))
+        note.column = clock.column
+        note.flowHeight = nil
+        var tiles = [clock, note]
         if let url = URL(string: "https://en.m.wikipedia.org/wiki/Main_Page") {
             tiles.append(Tile(content: .web(WebContent(url: url))))
         }
@@ -105,6 +107,25 @@ public struct Workspace: Codable, Hashable, Sendable {
         updateBoard(boardID) { board in
             guard let index = board.tiles.firstIndex(where: { $0.id == tileID }) else { return }
             change(&board.tiles[index])
+        }
+    }
+
+    /// Puts a board's tiles in the order, columns and sizes of `items`, as
+    /// left by dragging. Tiles that `items` leaves out keep their place at
+    /// the end.
+    public mutating func arrangeTiles(_ items: [FlowLayout.Item], in boardID: UUID) {
+        updateBoard(boardID) { board in
+            var remaining = Dictionary(board.tiles.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+            var arranged: [Tile] = []
+            for item in items {
+                guard var tile = remaining.removeValue(forKey: item.id) else { continue }
+                tile.flowWidth = item.width
+                tile.flowHeight = item.height
+                tile.column = item.column
+                arranged.append(tile)
+            }
+            arranged += board.tiles.filter { remaining[$0.id] != nil }
+            board.tiles = arranged
         }
     }
 

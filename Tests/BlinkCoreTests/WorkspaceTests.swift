@@ -195,7 +195,7 @@ final class WorkspaceTests: XCTestCase {
 
         let canvas = LayoutSize(width: 1440, height: 840)
         let frames = FlowLayout.layout(
-            board.tiles.map { FlowLayout.Item(id: $0.id, width: $0.flowWidth, height: $0.flowHeight) }, in: canvas
+            board.tiles.map(\.flowItem), in: canvas
         )
         XCTAssertEqual(frames.count, 3)
         XCTAssertEqual(frames[board.tiles[0].id]?.x, frames[board.tiles[1].id]?.x, "the stack stays one column")
@@ -208,6 +208,63 @@ final class WorkspaceTests: XCTestCase {
         ])
         XCTAssertEqual(board.tiles.map(\.id.uuidString), [ids[2], ids[0]])
         XCTAssertEqual(board.tiles.map(\.flowWidth), [300, 300])
+    }
+
+    // MARK: - Boards saved before tiles were stacked by hand
+
+    /// Then, a tile went under the one before it whenever it fitted, and the
+    /// bottom tile of each column stretched to the bottom.
+    func testABoardSavedBeforeStackingKeepsItsColumns() throws {
+        func tile(_ id: String, _ height: Double?) -> [String: Any] {
+            var entry: [String: Any] = [
+                "id": id,
+                "content": ["type": "widget", "widget": ["kind": "notes", "config": ["text": ""]]],
+                "flowWidth": 300,
+            ]
+            if let height { entry["flowHeight"] = height }
+            return entry
+        }
+        let json: [String: Any] = ["id": UUID().uuidString, "name": "Main", "tiles": [
+            tile(ids[0], 220), tile(ids[1], 240), tile(ids[2], nil), tile(ids[3], 500), tile(UUID().uuidString, 500),
+        ]]
+        let board = try JSONDecoder().decode(Board.self, from: JSONSerialization.data(withJSONObject: json))
+        let columns = FlowLayout.columns(for: board.tiles.map(\.flowItem))
+        XCTAssertEqual(columns.map(\.count), [2, 1, 1, 1], "220 and 240 shared a column; 500 and 500 did not fit together")
+        XCTAssertEqual(board.tiles[0].flowHeight, 220)
+        XCTAssertNil(board.tiles[1].flowHeight, "the bottom tile of a column was stretched, so it fills")
+        XCTAssertNil(board.tiles[3].flowHeight)
+
+        // Saved again, the columns are kept as they are.
+        let again = try JSONDecoder().decode(Board.self, from: JSONEncoder().encode(board))
+        XCTAssertEqual(again, board)
+    }
+
+    func testTheWelcomeBoardStacksItsNoteUnderTheClock() {
+        let workspace = Workspace.makeDefault()
+        let tiles = workspace.board(workspace.sharedBoardID)?.tiles ?? []
+        let columns = FlowLayout.columns(for: tiles.map(\.flowItem))
+        XCTAssertEqual(columns.map(\.count), [2, 1])
+        XCTAssertNil(tiles[1].flowHeight)
+    }
+
+    func testArrangingTilesWritesOrderColumnsAndSizes() {
+        var workspace = Workspace(board: Board(name: "Main"))
+        let boardID = workspace.sharedBoardID
+        let a = Tile(content: .widget(.notes(NotesConfig()))), b = Tile(content: .widget(.notes(NotesConfig())))
+        let c = Tile(content: .widget(.notes(NotesConfig())))
+        [a, b, c].forEach { workspace.addTile($0, to: boardID) }
+
+        var items = [c, a].map(\.flowItem)
+        items[1].column = c.column
+        items[1].height = nil
+        items[1].width = 333
+        workspace.arrangeTiles(items, in: boardID)
+
+        let tiles = workspace.board(boardID)?.tiles ?? []
+        XCTAssertEqual(tiles.map(\.id), [c.id, a.id, b.id], "tiles left out keep their place at the end")
+        XCTAssertEqual(tiles[1].column, c.column)
+        XCTAssertNil(tiles[1].flowHeight)
+        XCTAssertEqual(tiles[1].flowWidth, 333)
     }
 
     func testBoardsNoLongerSaveAModeOrFreeformFrames() throws {

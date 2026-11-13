@@ -466,7 +466,7 @@ enum SmokeTest {
             expect("editing", [("⌘E turns edit mode on", flag("editing"))])
             await capture("editing")
 
-            // Flow: drag the first tile past the last one to reorder.
+            // Drag the first tile past the end of the row: it becomes the last column.
             let kindsBefore = tileKinds()
             let idsBefore = tileIDs()
             let layout = framesByID()
@@ -474,7 +474,7 @@ enum SmokeTest {
                let last = idsBefore.last.flatMap({ layout[$0] }) {
                 await drag(
                     from: CGPoint(x: first.midX, y: first.midY),
-                    to: CGPoint(x: last.maxX - 20, y: last.midY)
+                    to: CGPoint(x: last.maxX - 10, y: last.midY)
                 )
             }
             expect("reordered", [
@@ -482,6 +482,58 @@ enum SmokeTest {
                  tileKinds() == Array(kindsBefore.dropFirst()) + kindsBefore.prefix(1)),
                 ("no tile was lost", Set(tileIDs()) == Set(idsBefore)),
             ])
+
+            @MainActor func tileID(ofKind kind: String) -> String? {
+                zip(tileIDs(), tileKinds()).first { $0.1 == kind }?.0
+            }
+
+            // Stacking: drop the clock in the empty space under the note, and
+            // it goes into the note's column, below it.
+            if let notes = tileID(ofKind: "widget:notes"), let clock = tileID(ofKind: "widget:clock"),
+               let notesFrame = framesByID()[notes], let clockFrame = framesByID()[clock] {
+                await drag(
+                    from: CGPoint(x: clockFrame.midX, y: clockFrame.midY),
+                    to: CGPoint(x: notesFrame.midX, y: notesFrame.maxY + 80)
+                )
+                let frames = framesByID()
+                let top = frames[notes] ?? .zero, below = frames[clock] ?? .zero
+                expect("stacked", [
+                    ("a tile dropped under another joins its column",
+                     near(below.minX, top.minX, within: 1) && near(below.width, top.width, within: 1)),
+                    ("and sits below it", below.minY > top.maxY && below.minY < top.maxY + 40),
+                    ("each keeps its own height", near(top.height, notesFrame.height, within: 1)
+                        && near(below.height, clockFrame.height, within: 1)),
+                ])
+                await capture("stacked")
+
+                // The edge between them sizes the tile above; the one below follows.
+                await drag(
+                    from: CGPoint(x: top.midX, y: top.maxY - 4),
+                    to: CGPoint(x: top.midX, y: top.maxY - 104)
+                )
+                let after = framesByID()
+                expect("stack-resized", [
+                    ("pulling the edge up makes the upper tile shorter",
+                     near(after[notes]?.height ?? 0, top.height - 100, within: 3)),
+                    ("and the tile below moves up with it",
+                     near(after[clock]?.minY ?? 0, below.minY - 100, within: 3)),
+                    ("and keeps its height", near(after[clock]?.height ?? 0, below.height, within: 1)),
+                ])
+            }
+
+            // A tile on its own can be made shorter too, leaving room below it.
+            if let web = tileID(ofKind: "web"), let before = framesByID()[web] {
+                await drag(
+                    from: CGPoint(x: before.midX, y: before.maxY - 4),
+                    to: CGPoint(x: before.midX, y: before.maxY - 154)
+                )
+                let after = framesByID()[web] ?? .zero
+                expect("shortened", [
+                    ("pulling a lone tile's bottom edge up makes it shorter", near(after.height, before.height - 150, within: 3)),
+                    ("its top stays put", near(after.minY, before.minY, within: 1)),
+                ])
+                await capture("shortened")
+            }
 
             // Resizing: pull a tile's right edge out by 60 points. The row of
             // columns stays centred, so the tile widens by up to twice that;
@@ -626,9 +678,14 @@ enum SmokeTest {
                 dashboard.flowWidth = 400
                 model.update { workspace in
                     workspace.updateBoard(workspace.sharedBoardID) { board in
+                        let clock = Tile(content: .widget(.clock(ClockConfig(zones: [ClockConfig.localZone, "Europe/London", "Asia/Tokyo"]))))
+                        // Reminders stacked under the clock, taking the rest of the column.
+                        var reminders = Tile(content: .widget(.reminders(RemindersConfig(filter: .today))))
+                        reminders.column = clock.column
+                        reminders.flowHeight = nil
                         board.tiles = [
-                            Tile(content: .widget(.clock(ClockConfig(zones: [ClockConfig.localZone, "Europe/London", "Asia/Tokyo"])))),
-                            Tile(content: .widget(.reminders(RemindersConfig(filter: .today)))),
+                            clock,
+                            reminders,
                             dashboard,
                             Tile(content: .widget(.calendar(CalendarConfig(mode: .day)))),
                         ]

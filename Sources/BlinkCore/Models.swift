@@ -261,8 +261,11 @@ public struct Tile: Codable, Hashable, Identifiable, Sendable {
     public var content: TileContent
     /// Preferred width in points; columns are as wide as their widest tile.
     public var flowWidth: Double
-    /// Preferred height in points; nil fills the column.
+    /// Height in points; nil fills what is left of the column.
     public var flowHeight: Double?
+    /// Neighbouring tiles with the same column are stacked in it. A new
+    /// tile starts a column of its own.
+    public var column: UUID
 
     public init(id: UUID = UUID(), content: TileContent) {
         self.id = id
@@ -270,6 +273,7 @@ public struct Tile: Codable, Hashable, Identifiable, Sendable {
         let defaults = Tile.defaultSizing(for: content)
         self.flowWidth = defaults.width
         self.flowHeight = defaults.height
+        self.column = UUID()
     }
 
     public init(from decoder: Decoder) throws {
@@ -279,6 +283,12 @@ public struct Tile: Codable, Hashable, Identifiable, Sendable {
         let defaults = Tile.defaultSizing(for: content)
         flowWidth = c.value(.flowWidth, default: defaults.width)
         flowHeight = (try? c.decodeIfPresent(Double.self, forKey: .flowHeight)) ?? nil
+        column = c.value(.column, default: UUID())
+    }
+
+    /// The tile as the layout sees it.
+    public var flowItem: FlowLayout.Item {
+        FlowLayout.Item(id: id, width: flowWidth, height: flowHeight, column: column)
     }
 
     /// Natural size, in points, for a freshly added tile of this kind.
@@ -325,6 +335,8 @@ public struct Board: Codable, Hashable, Identifiable, Sendable {
         let saved = c.value(.tiles, default: [Lossy<SavedTile>]()).compactMap(\.value)
         if c.value(.mode, default: "flow") == "freeform" {
             tiles = Board.columns(fromFreeform: saved)
+        } else if saved.contains(where: { !$0.hasColumn }) {
+            tiles = Board.columns(fromAutomaticStacking: saved.map(\.tile))
         } else {
             tiles = saved.map(\.tile)
         }
@@ -337,16 +349,21 @@ public struct Board: Codable, Hashable, Identifiable, Sendable {
         try c.encode(tiles, forKey: .tiles)
     }
 
-    /// A tile as saved, with the spot it had on a Freeform board, if any.
+    /// A tile as saved, with what older versions saved about where it went.
     private struct SavedTile: Decodable {
         let tile: Tile
+        /// Where it sat on a Freeform board.
         let freeformFrame: LayoutRect?
+        /// False for tiles saved before columns were kept.
+        let hasColumn: Bool
 
-        private enum Key: String, CodingKey { case frame }
+        private enum Key: String, CodingKey { case frame, column }
 
         init(from decoder: Decoder) throws {
             tile = try Tile(from: decoder)
-            freeformFrame = try? decoder.container(keyedBy: Key.self).decodeIfPresent(LayoutRect.self, forKey: .frame)
+            let c = try? decoder.container(keyedBy: Key.self)
+            freeformFrame = try? c?.decodeIfPresent(LayoutRect.self, forKey: .frame)
+            hasColumn = c?.contains(.column) ?? false
         }
     }
 
@@ -369,8 +386,37 @@ public struct Board: Codable, Hashable, Identifiable, Sendable {
             guard var tile = byID[item.id] else { return nil }
             tile.flowWidth = max(item.width.rounded(), 160)
             tile.flowHeight = item.height?.rounded()
+            tile.column = item.column
             return tile
         }
+    }
+
+    /// Before tiles were stacked by hand, a tile went under the one before it
+    /// whenever it fitted there, and the bottom tile of every column was
+    /// stretched to the bottom. A board saved then keeps that arrangement,
+    /// worked out for the canvas of a typical laptop screen.
+    private static func columns(fromAutomaticStacking tiles: [Tile]) -> [Tile] {
+        let available = migrationCanvas.height
+        let options = FlowLayout.Options()
+        var result: [Tile] = []
+        var used = 0.0
+        var columnFills = false
+        var column = UUID()
+        for var tile in tiles {
+            let height = tile.flowHeight.map { min(max($0, options.minHeight), available) }
+            if let height, !result.isEmpty, !columnFills, used + options.gap + height <= available + 0.5 {
+                used += options.gap + height
+            } else {
+                if !result.isEmpty { result[result.count - 1].flowHeight = nil }
+                column = UUID()
+                columnFills = height == nil
+                used = height ?? available
+            }
+            tile.column = column
+            result.append(tile)
+        }
+        if !result.isEmpty { result[result.count - 1].flowHeight = nil }
+        return result
     }
 
     public func tile(_ id: UUID) -> Tile? {

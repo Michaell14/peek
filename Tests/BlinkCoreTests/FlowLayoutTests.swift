@@ -5,8 +5,8 @@ final class FlowLayoutTests: XCTestCase {
     private let canvas = LayoutSize(width: 1400, height: 800)
     private let options = FlowLayout.Options(gap: 10, minWidth: 100, minHeight: 50)
 
-    private func item(_ width: Double, _ height: Double?) -> FlowLayout.Item {
-        FlowLayout.Item(id: UUID(), width: width, height: height)
+    private func item(_ width: Double, _ height: Double?, column: UUID = UUID()) -> FlowLayout.Item {
+        FlowLayout.Item(id: UUID(), width: width, height: height, column: column)
     }
 
     func testEmptyInput() {
@@ -22,8 +22,14 @@ final class FlowLayoutTests: XCTestCase {
         XCTAssertEqual(frames[b.id], LayoutRect(x: 755, y: 0, width: 300, height: 800))
     }
 
-    func testShortTilesStackAndTheLastOneFillsTheColumn() {
-        let clock = item(280, 150), notes = item(300, 240), web = item(400, nil)
+    func testATileOnItsOwnKeepsItsHeight() {
+        let clock = item(280, 220)
+        XCTAssertEqual(FlowLayout.layout([clock], in: canvas, options: options)[clock.id]?.height, 220)
+    }
+
+    func testTilesInAColumnStackAndKeepTheirHeights() {
+        let column = UUID()
+        let clock = item(280, 150, column: column), notes = item(300, 240, column: column), web = item(400, nil)
         let frames = FlowLayout.layout([clock, notes, web], in: canvas, options: options)
         let clockFrame = frames[clock.id]!, notesFrame = frames[notes.id]!, webFrame = frames[web.id]!
 
@@ -32,21 +38,34 @@ final class FlowLayoutTests: XCTestCase {
         XCTAssertEqual(notesFrame.width, 300)
         XCTAssertEqual(clockFrame.height, 150)
         XCTAssertEqual(notesFrame.minY, 160)
-        XCTAssertEqual(notesFrame.maxY, 800, "last tile reaches the bottom")
+        XCTAssertEqual(notesFrame.height, 240, "the bottom tile is not stretched")
         XCTAssertEqual(webFrame.minX, clockFrame.maxX + 10)
         XCTAssertEqual(webFrame.height, 800)
     }
 
-    func testColumnBreaksWhenHeightRunsOut() {
-        let items = [item(200, 500), item(200, 400), item(200, 100)]
-        let columns = FlowLayout.columns(for: items, availableHeight: 800, options: options)
-        XCTAssertEqual(columns.map(\.count), [1, 2])
+    func testTilesWithoutAHeightShareWhatIsLeft() {
+        let column = UUID()
+        let clock = item(300, 200, column: column), a = item(300, nil, column: column), b = item(300, nil, column: column)
+        let frames = FlowLayout.layout([clock, a, b], in: canvas, options: options)
+        // 800 - 200 - 2 gaps = 580, shared.
+        XCTAssertEqual(frames[a.id]?.height, 290)
+        XCTAssertEqual(frames[b.id]?.minY, 510)
+        XCTAssertEqual(frames[b.id]?.maxY, 800)
     }
 
-    func testFillTileNeverSharesAColumn() {
-        let items = [item(200, 100), item(200, nil), item(200, 100), item(200, 100)]
-        let columns = FlowLayout.columns(for: items, availableHeight: 800, options: options)
-        XCTAssertEqual(columns.map(\.count), [1, 1, 2])
+    func testAColumnThatHoldsTooMuchGivesWayInProportion() {
+        let column = UUID()
+        let a = item(300, 500, column: column), b = item(300, 400, column: column), c = item(300, nil, column: column)
+        let heights = FlowLayout.heights(for: [a, b, c], available: 800, options: options)
+        XCTAssertEqual(heights.reduce(0, +) + 20, 800, accuracy: 0.001)
+        XCTAssertEqual(heights[2], 50, "a tile that fills keeps the shortest height")
+        XCTAssertEqual(heights[0] / heights[1], 500.0 / 400.0, accuracy: 0.001)
+    }
+
+    func testColumnsAreRunsOfNeighbours() {
+        let c1 = UUID(), c2 = UUID()
+        let items = [item(200, 100, column: c1), item(200, 100, column: c1), item(200, nil, column: c2), item(200, 100, column: c1)]
+        XCTAssertEqual(FlowLayout.columns(for: items).map(\.count), [2, 1, 1])
     }
 
     func testTooWideLayoutIsSqueezedToFit() {
@@ -60,14 +79,34 @@ final class FlowLayoutTests: XCTestCase {
         }
     }
 
+    func testARowCanStartWhereItIsToldInsteadOfCentred() {
+        let a = item(300, nil), b = item(300, nil)
+        let frames = FlowLayout.layout([a, b], in: canvas, options: options, originX: 40)
+        XCTAssertEqual(frames[a.id]?.minX, 40)
+        // Never past the point where the row would run off the canvas.
+        let late = FlowLayout.layout([a, b], in: canvas, options: options, originX: 1300)
+        XCTAssertEqual(late[b.id]?.maxX, 1400)
+    }
+
+    /// Random boards: some tiles stacked, some with heights, some without.
+    private func randomItems(_ generator: inout SeededGenerator, count: Int) -> [FlowLayout.Item] {
+        var items: [FlowLayout.Item] = []
+        for _ in 0..<count {
+            let column = items.last.flatMap { Bool.random(using: &generator) ? $0.column : nil } ?? UUID()
+            items.append(item(
+                Double.random(in: 120...520, using: &generator).rounded(),
+                Bool.random(using: &generator) ? nil : Double.random(in: 60...700, using: &generator).rounded(),
+                column: column
+            ))
+        }
+        return items
+    }
+
     func testFramesNeverOverlapOrLeaveTheCanvas() {
         var generator = SeededGenerator(seed: 42)
         for _ in 0..<200 {
             let count = Int.random(in: 1...9, using: &generator)
-            let items = (0..<count).map { _ in
-                item(Double.random(in: 80...700, using: &generator),
-                     Bool.random(using: &generator) ? nil : Double.random(in: 40...900, using: &generator))
-            }
+            let items = randomItems(&generator, count: count)
             let frames = FlowLayout.layout(items, in: canvas, options: options)
             XCTAssertEqual(frames.count, count)
             let rects = Array(frames.values)
@@ -86,15 +125,17 @@ final class FlowLayoutTests: XCTestCase {
     }
 
     func testReadingAnArrangementBackKeepsStacksTogether() {
-        let clock = item(280, 160), notes = item(300, 240), web = item(460, nil)
+        let column = UUID()
+        let clock = item(280, 160, column: column), notes = item(300, nil, column: column), web = item(460, nil)
         let frames = FlowLayout.layout([clock, notes, web], in: canvas, options: options)
         let derived = FlowLayout.items(
             from: [web, notes, clock].map { ($0.id, frames[$0.id]!) },  // any input order
             canvasHeight: canvas.height, options: options
         )
         XCTAssertEqual(derived.map(\.id), [clock.id, notes.id, web.id])
-        XCTAssertNil(derived[2].height, "a tall tile on its own fills its column")
-        XCTAssertEqual(FlowLayout.columns(for: derived, availableHeight: canvas.height, options: options).map(\.count), [2, 1])
+        XCTAssertNil(derived[1].height, "the bottom tile reached the bottom, so it fills")
+        XCTAssertNil(derived[2].height)
+        XCTAssertEqual(FlowLayout.columns(for: derived).map(\.count), [2, 1])
         XCTAssertEqual(FlowLayout.layout(derived, in: canvas, options: options), frames)
     }
 
@@ -102,11 +143,14 @@ final class FlowLayoutTests: XCTestCase {
     func testRoundTripThroughPositionsIsStable() {
         var generator = SeededGenerator(seed: 2026)
         for _ in 0..<300 {
-            let count = Int.random(in: 1...8, using: &generator)
-            let items = (0..<count).map { _ in
-                item(Double.random(in: 120...520, using: &generator).rounded(),
-                     Bool.random(using: &generator) ? nil : Double.random(in: 60...700, using: &generator).rounded())
+            let items = randomItems(&generator, count: Int.random(in: 1...8, using: &generator))
+            // A column that holds more than fits is squeezed below the
+            // heights its tiles ask for, which cannot be read back exactly.
+            let fits = FlowLayout.columns(for: items).allSatisfy { column in
+                let asked = column.reduce(0) { $0 + max($1.height ?? options.minHeight, options.minHeight) }
+                return asked + options.gap * Double(column.count - 1) <= canvas.height
             }
+            guard fits else { continue }
             let frames = FlowLayout.layout(items, in: canvas, options: options)
             let derived = FlowLayout.items(
                 from: items.map { ($0.id, frames[$0.id]!) },
@@ -124,28 +168,91 @@ final class FlowLayoutTests: XCTestCase {
         }
     }
 
-    func testInsertionIndexBetweenColumns() {
-        let a = item(300, nil), b = item(300, nil), moving = item(300, nil)
-        let items = [a, b, moving]
-        // With the moving tile removed: a = 395...695, b = 705...1005.
-        XCTAssertEqual(FlowLayout.insertionIndex(at: LayoutPoint(x: 400, y: 400), moving: moving.id, items: items, in: canvas, options: options), 0)
-        XCTAssertEqual(FlowLayout.insertionIndex(at: LayoutPoint(x: 690, y: 400), moving: moving.id, items: items, in: canvas, options: options), 1)
-        XCTAssertEqual(FlowLayout.insertionIndex(at: LayoutPoint(x: 1300, y: 400), moving: moving.id, items: items, in: canvas, options: options), 2)
-        XCTAssertEqual(FlowLayout.insertionIndex(at: LayoutPoint(x: 10, y: 10), moving: moving.id, items: items, in: canvas, options: options), 0)
+    // MARK: - Resizing
+
+    func testATileCanGrowUntilItsColumnIsFull() {
+        let column = UUID()
+        let clock = item(300, 200, column: column), notes = item(300, nil, column: column), lone = item(300, 300)
+        let items = [clock, notes, lone]
+        // The note that fills gives way down to the shortest a tile is drawn.
+        XCTAssertEqual(FlowLayout.maxHeight(of: clock.id, in: items, canvasHeight: 800, options: options), 740)
+        XCTAssertEqual(FlowLayout.maxHeight(of: notes.id, in: items, canvasHeight: 800, options: options), 590)
+        XCTAssertEqual(FlowLayout.maxHeight(of: lone.id, in: items, canvasHeight: 800, options: options), 800)
     }
 
-    func testInsertionIndexWithinAStack() {
-        let top = item(300, 200), bottom = item(300, 200), moving = item(300, nil)
-        let items = [top, bottom, moving]
-        // The stack is centred: x 550...850, top 0...200, bottom 210...800.
-        XCTAssertEqual(FlowLayout.insertionIndex(at: LayoutPoint(x: 700, y: 50), moving: moving.id, items: items, in: canvas, options: options), 0)
-        XCTAssertEqual(FlowLayout.insertionIndex(at: LayoutPoint(x: 700, y: 150), moving: moving.id, items: items, in: canvas, options: options), 1)
-        XCTAssertEqual(FlowLayout.insertionIndex(at: LayoutPoint(x: 700, y: 700), moving: moving.id, items: items, in: canvas, options: options), 2)
+    // MARK: - Dragging
+
+    // Three full-height columns, 300 wide: a 240...540, b 550...850, m 860...1160.
+    private func threeColumns() -> (a: FlowLayout.Item, b: FlowLayout.Item, m: FlowLayout.Item) {
+        (item(300, nil), item(300, nil), item(300, nil))
     }
 
-    func testInsertionIndexWithNothingElseOnTheBoard() {
-        let moving = item(300, nil)
-        XCTAssertEqual(FlowLayout.insertionIndex(at: .zero, moving: moving.id, items: [moving], in: canvas, options: options), 0)
+    private func drop(_ id: UUID, _ x: Double, _ y: Double, _ items: [FlowLayout.Item]) -> [FlowLayout.Item] {
+        FlowLayout.dropping(id, at: LayoutPoint(x: x, y: y), items: items, in: canvas, options: options)
+    }
+
+    func testDroppingOnTheLowerHalfOfATileStacksUnderIt() {
+        let (a, b, m) = threeColumns()
+        let result = drop(m.id, 390, 600, [a, b, m])
+        XCTAssertEqual(result.map(\.id), [a.id, m.id, b.id])
+        XCTAssertEqual(result[1].column, a.column)
+        XCTAssertEqual(FlowLayout.columns(for: result).map(\.count), [2, 1])
+    }
+
+    func testDroppingOnTheUpperHalfStacksAboveIt() {
+        let (a, b, m) = threeColumns()
+        let result = drop(m.id, 390, 100, [a, b, m])
+        XCTAssertEqual(result.map(\.id), [m.id, a.id, b.id])
+        XCTAssertEqual(result[0].column, a.column)
+    }
+
+    func testDroppingBelowTheLastTileOfAShortColumnStacksAtTheBottom() {
+        let column = UUID()
+        let top = item(300, 200, column: column), m = item(300, nil)
+        // top is 0...200 in a column at 395...695; the space below it is free.
+        let result = drop(m.id, 545, 600, [top, m])
+        XCTAssertEqual(result.map(\.id), [top.id, m.id])
+        XCTAssertEqual(result[1].column, column)
+    }
+
+    func testDroppingNearAColumnsEdgeMakesANewColumn() {
+        let (a, b, m) = threeColumns()
+        let before = drop(m.id, 250, 400, [a, b, m])
+        XCTAssertEqual(before.map(\.id), [m.id, a.id, b.id])
+        XCTAssertEqual(FlowLayout.columns(for: before).count, 3, "its own column, left of a")
+
+        let farLeft = drop(m.id, 5, 400, [a, b, m])
+        XCTAssertEqual(farLeft.map(\.id), [m.id, a.id, b.id])
+        XCTAssertEqual(FlowLayout.columns(for: farLeft).count, 3)
+    }
+
+    func testOverItsOwnPlaceNothingChanges() {
+        let (a, b, m) = threeColumns()
+        let items = [a, b, m]
+        XCTAssertEqual(drop(m.id, 1000, 400, items), items)
+        XCTAssertEqual(drop(m.id, 845, 400, items), items, "right of b is where m already is")
+        XCTAssertEqual(drop(m.id, 1390, 400, items), items, "past the end, where m already is")
+    }
+
+    func testLeavingAStackMakesAColumnOfItsOwn() {
+        let column = UUID()
+        let a = item(300, nil, column: column), m = item(300, nil, column: column), b = item(300, nil)
+        let result = drop(m.id, 1350, 400, [a, m, b])
+        XCTAssertEqual(result.map(\.id), [a.id, b.id, m.id])
+        XCTAssertNotEqual(result[2].column, column)
+        XCTAssertEqual(FlowLayout.columns(for: result).map(\.count), [1, 1, 1])
+    }
+
+    func testAStackedTileTakesTheColumnsWidth() {
+        let a = item(420, nil), m = item(280, 160)
+        // a is 345...765 (with m beside it); drop m on a's lower half.
+        let result = drop(m.id, 555, 600, [a, m])
+        XCTAssertEqual(result.last?.width, 420)
+    }
+
+    func testDroppingWithNothingElseOnTheBoardChangesNothing() {
+        let m = item(300, nil)
+        XCTAssertEqual(drop(m.id, 10, 10, [m]), [m])
     }
 }
 

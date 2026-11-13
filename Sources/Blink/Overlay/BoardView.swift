@@ -1,8 +1,8 @@
 import AppKit
 import BlinkCore
 
-/// One board's canvas: creates a view per tile, packs them into columns, and
-/// handles moving and resizing while arranging.
+/// One board's canvas: creates a view per tile, lays them out in columns of
+/// stacked tiles, and handles moving, stacking and resizing while arranging.
 final class BoardView: FlippedView {
     let boardID: UUID
     private(set) var board: Board
@@ -43,8 +43,15 @@ final class BoardView: FlippedView {
         let startPointer: CGPoint
         /// The tile's frame when the drag began, relative to the canvas.
         let startFrame: LayoutRect
+        /// Every tile's frame, and the arrangement, when the drag began.
+        let startFrames: [UUID: LayoutRect]
+        let startItems: [FlowLayout.Item]
+        /// Where the row of columns started. It stays there for the whole
+        /// drag rather than re-centring, so the columns being aimed at do
+        /// not slide out from under the pointer as tiles make room.
+        let originX: Double
         var currentFrame: LayoutRect
-        /// Order and sizes as they would be if the drag ended now.
+        /// The arrangement as it would be if the drag ended now.
         var flowItems: [FlowLayout.Item]
     }
 
@@ -199,12 +206,17 @@ final class BoardView: FlippedView {
     }
 
     private var savedFlowItems: [FlowLayout.Item] {
-        board.tiles.map { FlowLayout.Item(id: $0.id, width: $0.flowWidth, height: $0.flowHeight) }
+        board.tiles.map(\.flowItem)
     }
 
     /// Where every tile belongs, relative to the canvas.
     private func canvasFrames() -> [UUID: LayoutRect] {
-        FlowLayout.layout(drag?.flowItems ?? savedFlowItems, in: LayoutSize(canvasFrame.size), options: flowOptions)
+        FlowLayout.layout(
+            drag?.flowItems ?? savedFlowItems,
+            in: LayoutSize(canvasFrame.size),
+            options: flowOptions,
+            originX: drag?.originX
+        )
     }
 
     private func viewFrame(_ rect: LayoutRect) -> CGRect {
@@ -248,11 +260,15 @@ final class BoardView: FlippedView {
     func beginDrag(_ tileView: TileView, handle: ResizeHandle?, event: NSEvent) {
         let canvas = canvasFrame
         let start = LayoutRect(tileView.frame.offsetBy(dx: -canvas.minX, dy: -canvas.minY))
+        let frames = canvasFrames()
         drag = DragSession(
             tileID: tileView.tileID,
             handle: handle,
             startPointer: convert(event.locationInWindow, from: nil),
             startFrame: start,
+            startFrames: frames,
+            startItems: savedFlowItems,
+            originX: frames.values.map(\.minX).min() ?? 0,
             currentFrame: start,
             flowItems: savedFlowItems
         )
@@ -269,44 +285,72 @@ final class BoardView: FlippedView {
         let canvas = canvasFrame
         let size = LayoutSize(canvas.size)
 
-        switch session.handle {
-        case nil:
+        guard let handle = session.handle else {
+            // Moving: the tile follows the pointer, and the others make room
+            // for wherever it would land.
             session.currentFrame = session.startFrame.offsetBy(dx: delta.x, dy: delta.y)
             tileView.frame = viewFrame(session.currentFrame)
-
-            let point = LayoutPoint(x: pointer.x - canvas.minX, y: pointer.y - canvas.minY)
-            let index = FlowLayout.insertionIndex(
-                at: point, moving: session.tileID, items: session.flowItems, in: size, options: flowOptions
-            )
-            var items = session.flowItems
-            if let from = items.firstIndex(where: { $0.id == session.tileID }) {
-                let item = items.remove(at: from)
-                items.insert(item, at: min(index, items.count))
+            // A press that hardly moves is not a rearrangement.
+            guard abs(delta.x) + abs(delta.y) > 6 else {
+                drag = session
+                return
             }
-            let reordered = items != session.flowItems
+            let point = LayoutPoint(x: pointer.x - canvas.minX, y: pointer.y - canvas.minY)
+            let items = FlowLayout.dropping(
+                session.tileID, at: point, items: session.flowItems, in: size,
+                options: flowOptions, originX: session.originX
+            )
+            let changed = items != session.flowItems
             session.flowItems = items
             drag = session
-            if reordered { layoutTiles(animated: true) }
-
-        case let handle?:
-            guard let index = session.flowItems.firstIndex(where: { $0.id == session.tileID }) else { return }
-            var item = session.flowItems[index]
-            // The row of columns is centred, so an edge moves half as far as
-            // the width changes; doubling keeps it under the pointer.
-            if handle.movesRight { item.width = session.startFrame.width + 2 * delta.x }
-            if handle.movesLeft { item.width = session.startFrame.width - 2 * delta.x }
-            item.width = min(max(item.width, flowOptions.minWidth), size.width)
-
-            if handle.movesBottom || handle.movesTop {
-                let height = session.startFrame.height + (handle.movesBottom ? delta.y : -delta.y)
-                // Dragged to (nearly) full height means "fill the column".
-                item.height = height >= size.height - 24 ? nil : max(height, flowOptions.minHeight)
-            }
-            session.flowItems[index] = item
-            drag = session
-            layoutTiles(animated: false)
-            tileView.setDragging(true, size: tileView.frame.size)
+            if changed { layoutTiles(animated: true) }
+            return
         }
+
+        // Resizing, measured from where everything was when the drag began.
+        var items = session.startItems
+        guard let index = items.firstIndex(where: { $0.id == session.tileID }) else { return }
+        // The run of neighbours that make up this tile's column.
+        var first = index, last = index
+        while first > 0, items[first - 1].column == items[index].column { first -= 1 }
+        while last < items.count - 1, items[last + 1].column == items[index].column { last += 1 }
+
+        if handle.movesLeft || handle.movesRight {
+            // The row of columns is centred, so an edge moves half as far as
+            // the width changes; doubling keeps it under the pointer. The
+            // whole column takes the new width.
+            let change = handle.movesRight ? 2 * delta.x : -2 * delta.x
+            let width = min(max(session.startFrame.width + change, flowOptions.minWidth), size.width)
+            for i in first...last { items[i].width = width.rounded() }
+        }
+
+        // The bottom edge sizes this tile. The top edge is the bottom edge of
+        // the tile above it, so it sizes that one; at the top of a column
+        // there is nothing to size.
+        let target: Int?
+        if handle.movesBottom {
+            target = index
+        } else if handle.movesTop, index > first {
+            target = index - 1
+        } else {
+            target = nil
+        }
+        if let target, let start = session.startFrames[items[target].id] {
+            let id = items[target].id
+            let limit = FlowLayout.maxHeight(of: id, in: items, canvasHeight: size.height, options: flowOptions)
+            let wanted = start.height + delta.y
+            let othersFill = items[first...last].contains { $0.id != id && $0.height == nil }
+            if target == last, !othersFill, wanted >= limit - 12 {
+                // Pulled to the bottom, the bottom tile fills its column again.
+                items[target].height = nil
+            } else {
+                items[target].height = min(max(wanted, flowOptions.minHeight), limit).rounded()
+            }
+        }
+        session.flowItems = items
+        drag = session
+        layoutTiles(animated: false)
+        tileView.setDragging(true, size: tileView.frame.size)
     }
 
     func endDrag() {
@@ -314,22 +358,12 @@ final class BoardView: FlippedView {
         drag = nil
         tileViews[session.tileID]?.layer?.zPosition = 0
         tileViews[session.tileID]?.setDragging(false)
-        let id = session.tileID
-
-        switch session.handle {
-        case nil:
-            if let index = session.flowItems.firstIndex(where: { $0.id == id }) {
-                context.model.update { $0.moveTile(id, in: boardID, to: index) }
-            }
-        case _?:
-            if let item = session.flowItems.first(where: { $0.id == id }) {
-                context.model.updateTile(id, in: boardID) { tile in
-                    tile.flowWidth = item.width
-                    tile.flowHeight = item.height
-                }
-            }
+        if session.flowItems != session.startItems {
+            let items = session.flowItems
+            context.model.update { $0.arrangeTiles(items, in: boardID) }
         }
-        // Covers the case where nothing changed and the model stays quiet.
+        // Back to a centred row, and covers the case where nothing changed
+        // and the model stays quiet.
         layoutTiles(animated: true)
     }
 

@@ -65,16 +65,18 @@
 
   // Tile frames on the board, [x, y, w, h], in screen pixels.
   // Arranging (beat 9), in columns as the app does it: pull the page's edge
-  // in (the row stays centred, so every column shifts), then lift the PDF
-  // above the calendar in its column.
+  // in (the row stays centred, so every column shifts), lift the PDF above
+  // the calendar in its stack, then drag the edge between them down.
   const FRAMES = {
     clock: [[8.2, [0, 0, 330, 212]], [8.3, [50, 0, 330, 212]]],
     reminders: [[8.2, [0, 226, 330, 504]], [8.3, [50, 226, 330, 504]]],
     web: [[8.2, [344, 0, 520, 730]], [8.3, [394, 0, 420, 730]]],
-    calendar: [[6.1, [878, 0, 354, 730]], [6.36, [878, 0, 354, 380]], [8.2, [878, 0, 354, 380]], [8.3, [828, 0, 354, 380]], [8.41, [828, 0, 354, 380]], [8.48, [828, 350, 354, 380]]],
-    pdf: [[6.14, [878, 780, 354, 336]], [6.4, [878, 394, 354, 336]], [8.2, [878, 394, 354, 336]], [8.3, [828, 394, 354, 336]], [8.37, [828, 394, 354, 336]], [8.47, [828, 0, 354, 336]]],
+    calendar: [[6.1, [878, 0, 354, 730]], [6.36, [878, 0, 354, 380]], [8.2, [878, 0, 354, 380]], [8.3, [828, 0, 354, 380]], [8.41, [828, 0, 354, 380]], [8.48, [828, 350, 354, 380]], [8.52, [828, 350, 354, 380]], [8.61, [828, 410, 354, 320]]],
+    pdf: [[6.14, [878, 780, 354, 336]], [6.4, [878, 394, 354, 336]], [8.2, [878, 394, 354, 336]], [8.3, [828, 394, 354, 336]], [8.37, [828, 394, 354, 336]], [8.47, [828, 0, 354, 336]], [8.52, [828, 0, 354, 336]], [8.61, [828, 0, 354, 396]]],
   };
   const HELD = { web: [8.2, 8.31], pdf: [8.37, 8.48] };
+  // Presses that size rather than lift: the edge between the PDF and the calendar.
+  const PRESSED = [[8.52, 8.62]];
   const TILE_ORDER = ['clock', 'reminders', 'web', 'calendar', 'pdf'];
 
   // The pointer, in two acts. Points that depend on layout are measured.
@@ -97,6 +99,7 @@
       [8.09, P.edit], [8.14, P.edit],
       [8.19, P.webEdge], [8.2, P.webEdge], [8.3, [P.webEdge[0] - 50, P.webEdge[1]]], [8.31, [P.webEdge[0] - 50, P.webEdge[1]]],
       [8.36, P.pdf], [8.37, P.pdf], [8.47, [P.pdf[0], P.pdf[1] - 394]], [8.48, [P.pdf[0], P.pdf[1] - 394]],
+      [8.51, [P.pdf[0], 46 + 334]], [8.52, [P.pdf[0], 46 + 334]], [8.61, [P.pdf[0], 46 + 394]], [8.62, [P.pdf[0], 46 + 394]],
       [8.66, P.edit], [8.72, P.edit], [8.9, P.edit],
     ];
   }
@@ -428,7 +431,7 @@
     flag(scene.board, 'is-editing', editing);
     flag(scene.edit, 'is-on', editing);
     text(scene.edit, editing ? 'Done' : 'Edit');
-    text(scene.stripHint, editing ? 'Drag a tile to move it, or its edge to resize' : '⌥` or esc to close');
+    text(scene.stripHint, editing ? 'Drag a tile to move or stack it, or an edge to resize it' : '⌥` or esc to close');
 
     // Tiles.
     TILE_ORDER.forEach((kind, index) => {
@@ -492,7 +495,7 @@
     if (POINTER.length) {
       const shown = track(POINTER_SHOWN, T, linear) * (still && !(T > 1 && T < 2.05) && !(T > 7.2 && T < 9) ? 0 : 1);
       const [x, y] = track(POINTER, T);
-      const click = CLICKS.some((t) => Math.abs(T - t) < 0.012) || Object.values(HELD).some(([a, b]) => T >= a && T < b);
+      const click = CLICKS.some((t) => Math.abs(T - t) < 0.012) || Object.values(HELD).concat(PRESSED).some(([a, b]) => T >= a && T < b);
       css(scene, scene.pointer, 'opacity', shown.toFixed(3));
       css(scene, scene.pointer, 'transform', `translate(${px(x)}, ${px(y)}) scale(${click ? 0.86 : 1})`);
     }
