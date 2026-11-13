@@ -487,6 +487,14 @@ enum SmokeTest {
                 zip(tileIDs(), tileKinds()).first { $0.1 == kind }?.0
             }
 
+            /// Every tile's content and arranging cover fill the tile exactly.
+            @MainActor func insidesMatch() -> Bool {
+                let tiles = overlay.snapshot()["tiles"] as? [[String: Any]] ?? []
+                return !tiles.isEmpty && tiles.allSatisfy { $0["insideMatches"] as? Bool == true }
+            }
+
+            expect("reordered-insides", [("after dragging, every tile's inside fills the tile", insidesMatch())])
+
             // Stacking: drop the clock in the empty space under the note, and
             // it goes into the note's column, below it.
             if let notes = tileID(ofKind: "widget:notes"), let clock = tileID(ofKind: "widget:clock"),
@@ -503,6 +511,7 @@ enum SmokeTest {
                     ("and sits below it", below.minY > top.maxY && below.minY < top.maxY + 40),
                     ("each keeps its own height", near(top.height, notesFrame.height, within: 1)
                         && near(below.height, clockFrame.height, within: 1)),
+                    ("every tile's inside fills the tile", insidesMatch()),
                 ])
                 await capture("stacked")
 
@@ -531,6 +540,7 @@ enum SmokeTest {
                 expect("shortened", [
                     ("pulling a lone tile's bottom edge up makes it shorter", near(after.height, before.height - 150, within: 3)),
                     ("its top stays put", near(after.minY, before.minY, within: 1)),
+                    ("every tile's inside fills the tile", insidesMatch()),
                 ])
                 await capture("shortened")
             }

@@ -494,6 +494,7 @@ final class OverlayController: NSObject {
                     "id": tile.id.uuidString,
                     "kind": kind,
                     "frame": [frame.minX, frame.minY, frame.width, frame.height].map { Double($0) },
+                    "insideMatches": boardView.insideMatches(ofTile: tile.id),
                 ]
                 if let controls = boardView.controlsFrame(ofTile: tile.id) {
                     entry["controls"] = [controls.minX, controls.minY, controls.width, controls.height].map { Double($0) }

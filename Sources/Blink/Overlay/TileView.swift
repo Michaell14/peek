@@ -53,6 +53,12 @@ final class TileView: FlippedView {
     /// Where the hover controls sit, in this view's coordinates.
     var controlsFrame: CGRect { chrome.frame }
 
+    /// Where the content and the arranging cover actually are, in this view's
+    /// coordinates. It should always be the tile's own bounds.
+    var insideFrames: [CGRect] {
+        [content, editCover].map { $0.convert($0.bounds, to: self) }
+    }
+
     init(tile: Tile, settings: AppSettings, context: TileContext) {
         tileID = tile.id
         self.tile = tile

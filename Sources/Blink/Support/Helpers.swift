@@ -38,6 +38,19 @@ extension LayoutPoint {
 /// A plain container whose origin is the top-left corner.
 class FlippedView: NSView {
     override var isFlipped: Bool { true }
+
+    /// Views pinned to the edges (see `pinToSuperviewEdges`) are set to the
+    /// bounds outright on every resize. Autoresizing alone only applies the
+    /// change in size, step by step while a tile animates, and when a drag
+    /// cuts one animation short with the next, the rounding at each step
+    /// adds up: the inside of a tile could end up a different size from the
+    /// tile, with its edges and handles out of place.
+    override func resizeSubviews(withOldSize oldSize: NSSize) {
+        super.resizeSubviews(withOldSize: oldSize)
+        for view in subviews where view.autoresizingMask == [.width, .height] && view.frame != bounds {
+            view.frame = bounds
+        }
+    }
 }
 
 extension NSView {

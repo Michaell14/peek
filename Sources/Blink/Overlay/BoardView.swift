@@ -123,6 +123,15 @@ final class BoardView: FlippedView {
         tileViews[id]?.frame
     }
 
+    /// Whether everything inside a tile is the size of the tile, for the self-check.
+    func insideMatches(ofTile id: UUID) -> Bool {
+        guard let view = tileViews[id] else { return false }
+        return view.insideFrames.allSatisfy { inside in
+            abs(inside.minX) <= 1 && abs(inside.minY) <= 1
+                && abs(inside.width - view.bounds.width) <= 1 && abs(inside.height - view.bounds.height) <= 1
+        }
+    }
+
     /// The frame of a tile's hover controls in this view's coordinates, or
     /// nil while they are hidden.
     func controlsFrame(ofTile id: UUID) -> CGRect? {
