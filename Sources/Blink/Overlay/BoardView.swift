@@ -62,10 +62,8 @@ final class BoardView: FlippedView {
         self.board = board
         self.settings = settings
         self.context = context
-        let id = board.id
-        let model = context.model
         emptyView = NSHostingView(rootView: TemplateGallery(
-            onChoose: { template in model.update { $0.applyTemplate(template, to: id) } },
+            onChoose: context.previewTemplate,
             onAdd: context.presentLauncher
         ))
         super.init(frame: .zero)

@@ -792,6 +792,28 @@ enum SmokeTest {
                 ])
                 await capture("template-day")
             }
+            // Trying a template: it goes on the board, → flips to the next one,
+            // and esc puts the board back as it was.
+            let kept = tileKinds()
+            if let markets = BoardTemplate.all.first(where: { $0.id == "markets" }) {
+                overlay.previewTemplate(markets)
+                await pause(1.0)
+                let previewed = overlay.snapshot()["previewing"] as? String
+                await press("\u{F703}", keyCode: 124)
+                await pause(1.0)
+                let flipped = overlay.snapshot()["previewing"] as? String
+                await capture("template-preview")
+                await press("\u{1b}", keyCode: 53)
+                await pause(1.0)
+                expect("template-preview", [
+                    ("a template can be tried on the board", previewed == "Markets"),
+                    ("→ flips to the next template", flipped != nil && flipped != "" && flipped != "Markets"),
+                    ("esc puts the board back as it was", tileKinds() == kept
+                        && (overlay.snapshot()["previewing"] as? String ?? "x").isEmpty),
+                    ("and keeps the overlay open", flag("visible")),
+                ])
+            }
+
             // The Templates button opens the palette with only templates in it.
             overlay.presentTemplates()
             await pause(0.8)

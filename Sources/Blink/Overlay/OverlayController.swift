@@ -29,6 +29,9 @@ final class OverlayController: NSObject {
     private var hoverTimer: Timer?
     /// The settings the overlay was last brought in line with.
     private var appliedSettings: AppSettings?
+    /// A template being tried on a board, and the tiles to put back if it
+    /// is not kept.
+    private var preview: (template: BoardTemplate, boardID: UUID, previousTiles: [Tile])?
     /// Bumped on every show and hide so a finishing fade-out can tell whether
     /// the overlay has been reopened in the meantime.
     private var visibilityGeneration = 0
@@ -163,6 +166,8 @@ final class OverlayController: NSObject {
         visibilityGeneration += 1
         let generation = visibilityGeneration
 
+        // Going away without choosing is not choosing.
+        cancelPreview()
         closeLauncher()
         setEditing(false)
         setInteractive(false)
@@ -229,7 +234,8 @@ final class OverlayController: NSObject {
                 boardID: boardID,
                 web: web,
                 pickerDidChange: { [weak self] in self?.pickerDidChange() },
-                presentLauncher: { [weak self] in self?.presentLauncher() }
+                presentLauncher: { [weak self] in self?.presentLauncher() },
+                previewTemplate: { [weak self] template in self?.previewTemplate(template) }
             )
             view = BoardView(board: board, settings: model.settings, context: context)
             boardViews[boardID] = view
@@ -301,7 +307,11 @@ final class OverlayController: NSObject {
     // MARK: - Arranging
 
     func setEditing(_ editing: Bool) {
-        if editing { activeBoardView?.stopPicking() }
+        if editing {
+            activeBoardView?.stopPicking()
+            // Arranging a template is keeping it.
+            keepPreview()
+        }
         // Every hide passes through here. An unchanged value must not wake
         // the toolbar, which would lay itself out again for nothing.
         if state.isEditing != editing { state.isEditing = editing }
@@ -332,7 +342,7 @@ final class OverlayController: NSObject {
         launcher.onWebsite = { [weak self] url in self?.addTile(.web(WebContent(url: url))) }
         launcher.onWidget = { [weak self] widget in self?.addTile(.widget(widget)) }
         launcher.onChooseFile = { [weak self] in self?.chooseFiles() }
-        launcher.onTemplate = { [weak self] template in self?.applyTemplate(template) }
+        launcher.onTemplate = { [weak self] template in self?.previewTemplate(template) }
         launcherModel = launcher
 
         let host = NSHostingView(rootView: LauncherView(model: launcher))
@@ -350,29 +360,60 @@ final class OverlayController: NSObject {
     func addTile(_ content: TileContent) {
         if !isVisible { showPinned() }
         closeLauncher()
+        keepPreview()
         guard let boardID = activeBoardID, boardViews[boardID] != nil else { return }
         model.update { $0.addTile(Tile(content: content), to: boardID) }
     }
 
-    /// Fills the board on screen with a template. A board that already has
-    /// tiles is only replaced once the person says so.
-    func applyTemplate(_ template: BoardTemplate) {
-        if !isVisible { showPinned() }
+    // MARK: - Trying templates
+
+    /// Puts a template on the board on screen to try, with the person's own
+    /// calendar, messages and pages in it. The toolbar then offers to keep
+    /// it, to flip to the next template, or to put the board back as it was.
+    func previewTemplate(_ template: BoardTemplate) {
+        if !isVisible || !isInteractive { showPinned() }
         closeLauncher()
+        setEditing(false)
         guard let boardID = activeBoardID, let board = model.workspace.board(boardID) else { return }
-        guard !board.tiles.isEmpty else {
-            model.update { $0.applyTemplate(template, to: boardID) }
-            return
+        // Flipping between templates still goes back to what was there first.
+        let previous = preview?.boardID == boardID ? preview?.previousTiles ?? board.tiles : board.tiles
+        preview = (template, boardID, previous)
+        model.update { $0.applyTemplate(template, to: boardID) }
+        let all = BoardTemplate.all
+        let index = all.firstIndex { $0.id == template.id } ?? 0
+        state.previewName = template.name
+        state.previewPosition = "\(index + 1) of \(all.count)"
+    }
+
+    /// The template before or after the one being tried.
+    func stepPreview(by offset: Int) {
+        guard let current = preview?.template else { return }
+        let all = BoardTemplate.all
+        guard let index = all.firstIndex(where: { $0.id == current.id }) else { return }
+        previewTemplate(all[(index + offset + all.count) % all.count])
+    }
+
+    /// Keeps the template being tried.
+    func keepPreview() {
+        guard preview != nil else { return }
+        preview = nil
+        state.previewName = nil
+    }
+
+    /// Puts the board back as it was before trying templates.
+    func cancelPreview() {
+        guard let preview else { return }
+        self.preview = nil
+        state.previewName = nil
+        model.update { workspace in
+            workspace.updateBoard(preview.boardID) { $0.tiles = preview.previousTiles }
         }
-        let alert = NSAlert()
-        alert.messageText = "Use the \u{201C}\(template.name)\u{201D} template?"
-        alert.informativeText = "The tiles on this board are replaced with the template's. Websites stay signed in."
-        alert.addButton(withTitle: "Replace Tiles")
-        alert.addButton(withTitle: "Cancel")
-        alert.beginSheetModal(for: panel) { [weak self] response in
-            guard response == .alertFirstButtonReturn else { return }
-            onMainActor { self?.model.update { $0.applyTemplate(template, to: boardID) } }
-        }
+    }
+
+    /// Fills the board on screen with a template, without trying it first.
+    func applyTemplate(_ template: BoardTemplate) {
+        previewTemplate(template)
+        keepPreview()
     }
 
     /// Adds local PDF and HTML files; anything else is ignored.
@@ -419,6 +460,8 @@ final class OverlayController: NSObject {
             // Escape backs out one step at a time.
             if root.isShowingLauncher {
                 closeLauncher()
+            } else if preview != nil {
+                cancelPreview()
             } else if activeBoardView?.isPicking == true {
                 activeBoardView?.stopPicking()
             } else if state.isEditing {
@@ -427,6 +470,24 @@ final class OverlayController: NSObject {
                 dismiss()
             }
             return true
+        }
+
+        // While a template is being tried: the arrow keys flip between
+        // templates and Return keeps the one on the board.
+        if preview != nil, !root.isShowingLauncher, flags.isEmpty {
+            switch event.keyCode {
+            case 123:
+                stepPreview(by: -1)
+                return true
+            case 124:
+                stepPreview(by: 1)
+                return true
+            case 36, 76:
+                keepPreview()
+                return true
+            default:
+                break
+            }
         }
 
         // With the launcher open, the arrow keys and Return drive its list
@@ -488,6 +549,9 @@ final class OverlayController: NSObject {
         var actions = OverlayActions()
         actions.add = { [weak self] in self?.presentLauncher() }
         actions.templates = { [weak self] in self?.presentTemplates() }
+        actions.previewStep = { [weak self] offset in self?.stepPreview(by: offset) }
+        actions.keepPreview = { [weak self] in self?.keepPreview() }
+        actions.cancelPreview = { [weak self] in self?.cancelPreview() }
         actions.toggleEditing = { [weak self] in self?.toggleEditing() }
         actions.stopPicking = { [weak self] in self?.activeBoardView?.stopPicking() }
         actions.openSettings = { [weak self] in self?.onOpenSettings?() }
@@ -547,6 +611,7 @@ final class OverlayController: NSObject {
             "windowNumber": panel.windowNumber,
             "launcherOpen": root.isShowingLauncher,
             "templatesShown": activeBoardView?.isShowingTemplates ?? false,
+            "previewing": state.previewName ?? "",
             "tiles": tiles,
         ]
     }

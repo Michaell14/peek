@@ -8,7 +8,29 @@ struct ToolbarView: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            if state.isPicking {
+            if let name = state.previewName {
+                ToolbarIconButton(symbol: "chevron.left") { actions.previewStep(-1) }
+                    .help("The template before (←)")
+                VStack(spacing: 0) {
+                    Text(name)
+                        .font(.system(size: 12, weight: .semibold))
+                    Text(state.previewPosition)
+                        .font(.system(size: 9.5))
+                        .foregroundStyle(.secondary)
+                        .monospacedDigit()
+                }
+                .frame(minWidth: 96)
+                ToolbarIconButton(symbol: "chevron.right") { actions.previewStep(1) }
+                    .help("The template after (→)")
+                Button("Cancel", action: actions.cancelPreview)
+                    .buttonStyle(.plain)
+                    .font(.system(size: 12, weight: .medium))
+                    .padding(.horizontal, 9)
+                    .help("Put the board back as it was (esc)")
+                Button("Use Template", action: actions.keepPreview)
+                    .buttonStyle(AccentButtonStyle())
+                    .help("Keep this board (↩)")
+            } else if state.isPicking {
                 Text("Click anything on the page to hide it")
                     .font(.system(size: 12))
                     .foregroundStyle(.secondary)
@@ -74,6 +96,7 @@ struct BrandView: View {
     }
 
     private var hint: String {
+        if state.previewName != nil { return "Trying a template: your tiles come back if you cancel" }
         if state.isEditing { return "Drag a tile to move or stack it, or an edge to resize it" }
         return "\(state.shortcutText) or esc to close"
     }

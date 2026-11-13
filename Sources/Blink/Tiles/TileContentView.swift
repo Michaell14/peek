@@ -11,6 +11,8 @@ struct TileContext {
     let pickerDidChange: @MainActor () -> Void
     /// Opens the "add something" palette.
     let presentLauncher: @MainActor () -> Void
+    /// Puts a template on the board to try, with the choice to keep it.
+    let previewTemplate: @MainActor (BoardTemplate) -> Void
 }
 
 /// Base class for whatever a tile shows: a web page, a file or a widget.
