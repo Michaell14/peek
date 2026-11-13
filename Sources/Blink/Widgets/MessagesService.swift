@@ -68,7 +68,7 @@ final class MessagesService: ObservableObject {
         canShowNames = CNContactStore.authorizationStatus(for: .contacts) == .authorized
     }
 
-    static var databaseURL: URL {
+    nonisolated static var databaseURL: URL {
         FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Messages/chat.db")
     }
 
