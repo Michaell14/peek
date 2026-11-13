@@ -484,7 +484,8 @@ enum SmokeTest {
             ])
 
             // Resizing: pull a tile's right edge out by 60 points. The row of
-            // columns stays centred, so the tile widens by about twice that.
+            // columns stays centred, so the tile widens by up to twice that;
+            // less on a narrow screen, where the whole row is squeezed to fit.
             if let id = tileIDs().first, let before = framesByID()[id] {
                 await drag(
                     from: CGPoint(x: before.maxX - 5, y: before.midY),
@@ -492,7 +493,7 @@ enum SmokeTest {
                 )
                 let resized = framesByID()[id] ?? .zero
                 expect("resized", [
-                    ("dragging the right edge widens the tile", resized.width > before.width + 60),
+                    ("dragging the right edge widens the tile", resized.width > before.width + 30),
                     ("the height is unchanged", near(resized.height, before.height, within: 1)),
                     ("every tile is still on the board", Set(tileIDs()) == Set(idsBefore)),
                 ])
