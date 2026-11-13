@@ -87,7 +87,13 @@ final class GalleryPointer: ObservableObject {
 
     static let scale: CGFloat = 1.3
 
+    private var lastPointer: CGPoint?
+
     func update(pointer: CGPoint?) {
+        // Only movement counts, so a card picked out some other way stays
+        // picked out until the pointer goes somewhere new.
+        guard pointer != lastPointer else { return }
+        lastPointer = pointer
         guard let pointer else { return set(nil) }
         // The card that has grown keeps the pointer while it is over it,
         // even where it now covers a neighbour.

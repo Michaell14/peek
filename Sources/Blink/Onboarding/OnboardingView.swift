@@ -3,18 +3,39 @@ import BlinkCore
 import EventKit
 import SwiftUI
 
-// The tour's colours: Blink's dark glass, a cool blue for what to press,
-// and the amber of the lit tile.
+// The tour's look: Blink's dark glass, a cool blue for what to press, the
+// amber of the lit tile, and one type scale used throughout.
 private enum Tour {
     static let ink = Color(red: 0.95, green: 0.953, blue: 0.96)
     static let ink2 = Color(red: 0.886, green: 0.902, blue: 0.933).opacity(0.74)
-    static let ink3 = Color(red: 0.886, green: 0.902, blue: 0.933).opacity(0.62)
+    static let ink3 = Color(red: 0.886, green: 0.902, blue: 0.933).opacity(0.56)
+    static let hairline = Color.white.opacity(0.07)
     static let cool = Color(red: 0.616, green: 0.729, blue: 1.0)
     static let onCool = Color(red: 0.04, green: 0.07, blue: 0.15)
     static let lit = Color(red: 1.0, green: 0.78, blue: 0.38)
     static let green = Color(red: 0.24, green: 0.86, blue: 0.52)
     static let warning = Color(red: 1.0, green: 0.6, blue: 0.57)
+
     static let arrive = Animation.spring(response: 0.42, dampingFraction: 0.86)
+    static let settle = Animation.spring(response: 0.34, dampingFraction: 0.9)
+
+    // Type scale.
+    static let display = Font.system(size: 44, weight: .bold)
+    static let title = Font.system(size: 22, weight: .semibold)
+    static let coachTitle = Font.system(size: 19, weight: .semibold)
+    static let lead = Font.system(size: 16, weight: .medium)
+    static let body = Font.system(size: 13.5)
+    static let small = Font.system(size: 12.5)
+    static let caption = Font.system(size: 10, weight: .semibold)
+}
+
+/// The height each step's content wants, measured as laid out. Keyed by
+/// step, so a step on its way out does not count.
+private struct ContentHeights: PreferenceKey {
+    static let defaultValue: [Int: CGFloat] = [:]
+    static func reduce(value: inout [Int: CGFloat], nextValue: () -> [Int: CGFloat]) {
+        value.merge(nextValue()) { max($0, $1) }
+    }
 }
 
 struct OnboardingView: View {
@@ -22,30 +43,49 @@ struct OnboardingView: View {
     @ObservedObject var model: AppModel
     @ObservedObject var hotkeys: HotkeyMonitor
 
-    /// The window's size for each step.
-    static func size(for step: OnboardingModel.Step) -> CGSize {
+    /// Each step's width. Its height is whatever its content needs.
+    static func width(for step: OnboardingModel.Step) -> CGFloat {
         switch step {
-        case .hello: return CGSize(width: 520, height: 492)
-        case .hold: return CGSize(width: 600, height: 236)
-        case .tap: return CGSize(width: 600, height: 276)
-        case .shortcut: return CGSize(width: 660, height: 610)
-        case .board: return CGSize(width: 800, height: 76)
-        case .access: return CGSize(width: 640, height: 488)
-        case .ready: return CGSize(width: 740, height: 430)
+        case .hello: return 500
+        case .hold, .tap: return 600
+        case .shortcut: return 620
+        case .board: return 800
+        case .access: return 620
+        case .ready: return 680
+        }
+    }
+
+    /// A first guess at the height, used until the content has been measured.
+    static func estimatedHeight(for step: OnboardingModel.Step) -> CGFloat {
+        switch step {
+        case .hello: return 470
+        case .hold: return 232
+        case .tap: return 276
+        case .shortcut: return 540
+        case .board: return 76
+        case .access: return 470
+        case .ready: return 420
         }
     }
 
     var body: some View {
-        ZStack {
-            LinearGradient(colors: [Color.white.opacity(0.09), Color.white.opacity(0.05)], startPoint: .top, endPoint: .bottom)
+        let step = tour.step
+        ZStack(alignment: .top) {
+            LinearGradient(colors: [Color.white.opacity(0.085), Color.white.opacity(0.045)], startPoint: .top, endPoint: .bottom)
             Color(red: 0.055, green: 0.06, blue: 0.07).opacity(0.62)
             content
+                .frame(width: Self.width(for: tour.step))
+                .fixedSize(horizontal: false, vertical: true)
+                .background(GeometryReader { proxy in
+                    Color.clear.preference(key: ContentHeights.self, value: [step.rawValue: proxy.size.height])
+                })
                 .id(tour.step)
                 .transition(.asymmetric(
-                    insertion: .opacity.combined(with: .offset(y: 12)).animation(Tour.arrive.delay(0.1)),
-                    removal: .opacity.animation(.easeOut(duration: 0.12))
+                    insertion: .opacity.combined(with: .scale(scale: 0.985, anchor: .top)).animation(Tour.arrive.delay(0.08)),
+                    removal: .opacity.animation(.easeOut(duration: 0.1))
                 ))
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         .overlay(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
@@ -53,7 +93,12 @@ struct OnboardingView: View {
         )
         .foregroundStyle(Tour.ink)
         .environment(\.colorScheme, .dark)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onPreferenceChange(ContentHeights.self) { heights in
+            onMainActor {
+                let rounded = heights.mapValues { $0.rounded(.up) }
+                if tour.contentHeights != rounded { tour.contentHeights = rounded }
+            }
+        }
     }
 
     @ViewBuilder
@@ -72,34 +117,41 @@ struct OnboardingView: View {
 
 // MARK: - Pieces
 
-/// The one filled button: cool blue, dark text, an arrow when it moves on.
+/// The one filled button: cool blue, dark text, an arrow that leans forward
+/// on hover.
 private struct TourButton: View {
     let title: String
     var arrow = true
     var height: CGFloat = 36
+    var minWidth: CGFloat = 0
     let action: () -> Void
 
     @State private var isHovering = false
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 8) {
+            HStack(spacing: 7) {
                 Text(title)
                 if arrow {
                     Image(systemName: "arrow.right")
-                        .font(.system(size: 12, weight: .bold))
-                        .offset(x: isHovering ? 2 : 0)
+                        .font(.system(size: 11.5, weight: .bold))
+                        .offset(x: isHovering ? 2.5 : 0)
                 }
             }
             .font(.system(size: 13.5, weight: .semibold))
             .foregroundStyle(Tour.onCool)
             .padding(.horizontal, 18)
+            .frame(minWidth: minWidth)
             .frame(height: height)
-            .background(Tour.cool.opacity(isHovering ? 1 : 0.92), in: Capsule())
+            .background(
+                Capsule()
+                    .fill(Tour.cool.opacity(isHovering ? 1 : 0.92))
+                    .shadow(color: Tour.cool.opacity(isHovering ? 0.35 : 0), radius: 12, y: 4)
+            )
             .contentShape(Capsule())
         }
         .buttonStyle(PressScale())
-        .onHover { hovering in withAnimation(.easeOut(duration: 0.15)) { isHovering = hovering } }
+        .onHover { hovering in withAnimation(.easeOut(duration: 0.16)) { isHovering = hovering } }
         .keyboardShortcut(.defaultAction)
     }
 }
@@ -107,7 +159,7 @@ private struct TourButton: View {
 private struct PressScale: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .scaleEffect(configuration.isPressed ? 0.96 : 1)
+            .scaleEffect(configuration.isPressed ? 0.965 : 1)
             .animation(.easeOut(duration: 0.1), value: configuration.isPressed)
     }
 }
@@ -127,48 +179,75 @@ private struct TourLink: View {
                 .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
-        .onHover { isHovering = $0 }
+        .onHover { hovering in withAnimation(.easeOut(duration: 0.12)) { isHovering = hovering } }
     }
 }
 
-/// "STEP 2 OF 4", the four segments, and Skip.
+/// "STEP 2 OF 4", four segments (this step's fills in as it opens), and Skip.
 private struct StepHeader: View {
     let number: Int
     var skip: (() -> Void)?
 
+    @State private var filled = false
+
     var body: some View {
-        HStack(spacing: 10) {
+        HStack(spacing: 12) {
             Text("STEP \(number) OF 4")
-                .font(.system(size: 10, weight: .semibold))
-                .tracking(0.8)
+                .font(Tour.caption)
+                .tracking(0.9)
                 .foregroundStyle(Tour.ink3)
                 .fixedSize()
             HStack(spacing: 4) {
                 ForEach(1...4, id: \.self) { segment in
-                    Capsule()
-                        .fill(segment <= number ? Tour.cool : Color.white.opacity(0.12))
-                        .frame(height: 3)
+                    GeometryReader { proxy in
+                        ZStack(alignment: .leading) {
+                            Capsule().fill(Color.white.opacity(0.1))
+                            Capsule()
+                                .fill(Tour.cool)
+                                .frame(width: proxy.size.width * fill(segment))
+                        }
+                    }
+                    .frame(height: 3)
                 }
             }
             if let skip {
                 TourLink(title: "Skip", action: skip)
             }
         }
+        .onAppear {
+            withAnimation(.easeOut(duration: 0.7).delay(0.25)) { filled = true }
+        }
+    }
+
+    private func fill(_ segment: Int) -> CGFloat {
+        if segment < number { return 1 }
+        if segment == number { return filled ? 1 : 0 }
+        return 0
     }
 }
 
+/// A tick that pops in with a ring going out from it.
 private struct Tick: View {
     @State private var shown = false
 
     var body: some View {
-        Image(systemName: "checkmark")
-            .font(.system(size: 11, weight: .heavy))
-            .foregroundStyle(Tour.green)
-            .frame(width: 22, height: 22)
-            .background(Tour.green.opacity(0.18), in: Circle())
-            .scaleEffect(shown ? 1 : 0.4)
-            .opacity(shown ? 1 : 0)
-            .onAppear { withAnimation(.spring(response: 0.32, dampingFraction: 0.55)) { shown = true } }
+        ZStack {
+            Circle()
+                .strokeBorder(Tour.green.opacity(0.6), lineWidth: 1.5)
+                .scaleEffect(shown ? 1.9 : 0.8)
+                .opacity(shown ? 0 : 0.9)
+                .animation(.easeOut(duration: 0.7), value: shown)
+            Image(systemName: "checkmark")
+                .font(.system(size: 10.5, weight: .heavy))
+                .foregroundStyle(Tour.green)
+                .frame(width: 22, height: 22)
+                .background(Tour.green.opacity(0.18), in: Circle())
+                .scaleEffect(shown ? 1 : 0.4)
+                .opacity(shown ? 1 : 0)
+                .animation(.spring(response: 0.32, dampingFraction: 0.55), value: shown)
+        }
+        .frame(width: 22, height: 22)
+        .onAppear { shown = true }
     }
 }
 
@@ -190,11 +269,11 @@ private struct BigCap: View {
         ZStack {
             RoundedRectangle(cornerRadius: size * 0.18, style: .continuous)
                 .fill(LinearGradient(
-                    colors: [Color(red: 0.165, green: 0.172, blue: 0.196), Color(red: 0.13, green: 0.137, blue: 0.157)],
+                    colors: [Color(red: 0.17, green: 0.177, blue: 0.2), Color(red: 0.13, green: 0.137, blue: 0.157)],
                     startPoint: .top, endPoint: .bottom
                 ))
             RoundedRectangle(cornerRadius: size * 0.18, style: .continuous)
-                .strokeBorder(pressed ? Tour.cool.opacity(0.6) : Color.white.opacity(0.22), lineWidth: 1)
+                .strokeBorder(pressed ? Tour.cool.opacity(0.65) : Color.white.opacity(0.2), lineWidth: 1)
             if let name = key.name {
                 Text(key.symbol)
                     .font(.system(size: size * 0.24))
@@ -243,41 +322,76 @@ private struct BigCap: View {
                 .fill(Color(red: 0.047, green: 0.055, blue: 0.07))
                 .offset(y: pressed ? 1 : 4)
         )
-        .shadow(color: pressed ? Tour.cool.opacity(0.3) : Color.black.opacity(0.45), radius: pressed ? 14 : 12, y: pressed ? 0 : 10)
+        .shadow(color: pressed ? Tour.cool.opacity(0.32) : Color.black.opacity(0.45), radius: pressed ? 14 : 12, y: pressed ? 0 : 10)
         .offset(y: pressed ? 2 : 0)
         .animation(.easeOut(duration: 0.08), value: pressed)
         .animation(.easeOut(duration: 0.12), value: lit)
     }
 }
 
-/// A key drawn small, for the cheat sheet.
+/// The shortcut's keys, large. While waiting to be pressed they press
+/// themselves now and then, as an invitation.
+private struct CapsRow: View {
+    let caps: [OnboardingKey]
+    var pressed = false
+    var inviting = false
+    var size: CGFloat = 74
+
+    var body: some View {
+        if inviting, !pressed {
+            PhaseAnimator([0, 1, 2, 3]) { phase in
+                row(down: phase == 1, lit: false)
+            } animation: { phase in
+                switch phase {
+                case 1: return .easeOut(duration: 0.12)
+                case 2: return .easeOut(duration: 0.28)
+                case 3: return .linear(duration: 1.4)
+                default: return .linear(duration: 0.4)
+                }
+            }
+        } else {
+            row(down: pressed, lit: pressed)
+        }
+    }
+
+    private func row(down: Bool, lit: Bool) -> some View {
+        HStack(spacing: 8) {
+            ForEach(Array(caps.enumerated()), id: \.offset) { _, key in
+                BigCap(key: key, size: size, pressed: down, lit: lit && key.name != nil)
+            }
+        }
+    }
+}
+
+/// A key drawn small, in a line of text or the cheat sheet.
 private struct SmallCap: View {
     let label: String
+    var height: CGFloat = 22
 
     var body: some View {
         Text(label)
-            .font(.system(size: 11.5, weight: .medium, design: .monospaced))
-            .padding(.horizontal, 6)
-            .frame(minWidth: 24, minHeight: 24)
+            .font(.system(size: height * 0.5, weight: .medium, design: .monospaced))
+            .padding(.horizontal, height * 0.26)
+            .frame(minWidth: height, minHeight: height)
             .background(
                 LinearGradient(
-                    colors: [Color(red: 0.165, green: 0.172, blue: 0.196), Color(red: 0.13, green: 0.137, blue: 0.157)],
+                    colors: [Color(red: 0.17, green: 0.177, blue: 0.2), Color(red: 0.13, green: 0.137, blue: 0.157)],
                     startPoint: .top, endPoint: .bottom
                 ),
-                in: RoundedRectangle(cornerRadius: 6, style: .continuous)
+                in: RoundedRectangle(cornerRadius: height * 0.26, style: .continuous)
             )
-            .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(Color.white.opacity(0.22), lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: height * 0.26, style: .continuous).strokeBorder(Color.white.opacity(0.2), lineWidth: 1))
             .background(
-                RoundedRectangle(cornerRadius: 6, style: .continuous)
+                RoundedRectangle(cornerRadius: height * 0.26, style: .continuous)
                     .fill(Color(red: 0.047, green: 0.055, blue: 0.07))
-                    .offset(y: 2)
+                    .offset(y: 1.5)
             )
     }
 }
 
-/// Blink's mark, built up tile by tile, the lit one glowing.
+/// Blink's mark, built up tile by tile, the lit one glowing and breathing.
 private struct AnimatedMark: View {
-    var size: CGFloat = 76
+    var size: CGFloat = 72
     @State private var shown = false
 
     var body: some View {
@@ -290,38 +404,29 @@ private struct AnimatedMark: View {
                     .frame(height: size * 0.28)
                     .offset(x: shown ? 0 : -size * 0.2)
                     .opacity(shown ? 1 : 0)
-                    .animation(Tour.arrive.delay(0.15), value: shown)
+                    .animation(Tour.arrive.delay(0.12), value: shown)
                 RoundedRectangle(cornerRadius: radius, style: .continuous)
                     .fill(Color.white.opacity(0.42))
                     .offset(x: shown ? 0 : -size * 0.2)
                     .opacity(shown ? 1 : 0)
-                    .animation(Tour.arrive.delay(0.25), value: shown)
+                    .animation(Tour.arrive.delay(0.2), value: shown)
             }
             .frame(width: size * 0.37)
             RoundedRectangle(cornerRadius: radius * 1.1, style: .continuous)
-                .fill(Tour.lit)
+                .fill(LinearGradient(colors: [Tour.lit, Tour.lit.opacity(0.88)], startPoint: .top, endPoint: .bottom))
                 .phaseAnimator([false, true]) { tile, glowing in
-                    tile.shadow(color: Tour.lit.opacity(glowing ? 0.5 : 0.25), radius: glowing ? size * 0.38 : size * 0.22)
-                } animation: { _ in .easeInOut(duration: 1.8) }
+                    tile.shadow(color: Tour.lit.opacity(glowing ? 0.5 : 0.24), radius: glowing ? size * 0.38 : size * 0.22)
+                } animation: { _ in .easeInOut(duration: 2.2) }
                 .scaleEffect(shown ? 1 : 0.5, anchor: .bottom)
                 .opacity(shown ? 1 : 0)
-                .animation(.spring(response: 0.5, dampingFraction: 0.6).delay(0.4), value: shown)
+                .animation(.spring(response: 0.5, dampingFraction: 0.62).delay(0.34), value: shown)
         }
         .frame(width: size, height: size)
         .onAppear { shown = true }
     }
 }
 
-/// A gentle bob, for a hint waiting to be acted on.
-private struct Nudge: ViewModifier {
-    func body(content: Content) -> some View {
-        content.phaseAnimator([0.0, -3.0]) { view, offset in
-            view.offset(y: offset)
-        } animation: { _ in .easeInOut(duration: 0.8) }
-    }
-}
-
-/// Appears a moment after the view does, rising slightly.
+/// Appears a moment after the view does, rising a little.
 private struct Arrive: ViewModifier {
     let delay: Double
     @State private var shown = false
@@ -329,7 +434,7 @@ private struct Arrive: ViewModifier {
     func body(content: Content) -> some View {
         content
             .opacity(shown ? 1 : 0)
-            .offset(y: shown ? 0 : 8)
+            .offset(y: shown ? 0 : 7)
             .onAppear { withAnimation(Tour.arrive.delay(delay)) { shown = true } }
     }
 }
@@ -338,17 +443,57 @@ private extension View {
     func arrive(after delay: Double) -> some View { modifier(Arrive(delay: delay)) }
 }
 
-private struct CapsRow: View {
-    let caps: [OnboardingKey]
-    var pressed = false
-    var size: CGFloat = 74
+/// A heading and a line under it that cross-fade as they change.
+private struct ChangingWords: View {
+    let title: String
+    let detail: String
 
     var body: some View {
-        HStack(spacing: 8) {
-            ForEach(Array(caps.enumerated()), id: \.offset) { _, key in
-                BigCap(key: key, size: size, pressed: pressed, lit: pressed && key.name != nil)
+        VStack(alignment: .leading, spacing: 5) {
+            ZStack(alignment: .topLeading) {
+                Text(title)
+                    .font(Tour.coachTitle)
+                    .tracking(-0.3)
+                    .id(title)
+                    .transition(.asymmetric(
+                        insertion: .opacity.combined(with: .offset(y: 5)),
+                        removal: .opacity.combined(with: .offset(y: -5))
+                    ))
+            }
+            ZStack(alignment: .topLeading) {
+                Text(detail)
+                    .font(Tour.body)
+                    .lineSpacing(2.5)
+                    .foregroundStyle(Tour.ink2)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .id(detail)
+                    .transition(.opacity)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .animation(Tour.settle, value: title)
+        .animation(.easeOut(duration: 0.2), value: detail)
+    }
+}
+
+/// "Hold ⌥ ` on your keyboard", with the keys drawn as keys.
+private struct KeysHint: View {
+    let before: String
+    let caps: [OnboardingKey]
+    let after: String
+
+    var body: some View {
+        HStack(spacing: 6) {
+            Text(before)
+            HStack(spacing: 3) {
+                ForEach(Array(caps.enumerated()), id: \.offset) { _, key in
+                    SmallCap(label: key.symbol, height: 19)
+                }
+            }
+            Text(after)
+        }
+        .font(Tour.small)
+        .foregroundStyle(Tour.ink3)
     }
 }
 
@@ -361,57 +506,63 @@ private func capsPhrase(_ caps: [OnboardingKey]) -> String {
 private struct HelloStep: View {
     @ObservedObject var tour: OnboardingModel
 
+    private let ahead: [(symbol: String, label: String)] = [
+        ("eye", "Hold to peek"),
+        ("pin", "Tap to stay"),
+        ("keyboard", "Pick your key"),
+        ("square.grid.2x2", "Try a board"),
+    ]
+
     var body: some View {
         VStack(spacing: 0) {
             AnimatedMark()
-                .padding(.top, 50)
+                .padding(.top, 46)
             Text("Blink")
-                .font(.system(size: 42, weight: .semibold))
-                .tracking(-1)
+                .font(Tour.display)
+                .tracking(-1.4)
                 .padding(.top, 22)
-                .arrive(after: 0.5)
-            Text("Everything you check all day, one key away. Hold it to look, let go to get back to work.")
-                .font(.system(size: 15))
+                .arrive(after: 0.45)
+            Text("Everything you check all day,\none key away.")
+                .font(Tour.lead)
                 .lineSpacing(3)
-                .foregroundStyle(Tour.ink2)
                 .multilineTextAlignment(.center)
-                .frame(maxWidth: 380)
-                .fixedSize(horizontal: false, vertical: true)
+                .foregroundStyle(Tour.ink.opacity(0.9))
                 .padding(.top, 10)
-                .arrive(after: 0.6)
+                .arrive(after: 0.55)
+            Text("Hold it to look. Let go to get back to work.")
+                .font(Tour.body)
+                .foregroundStyle(Tour.ink3)
+                .padding(.top, 8)
+                .arrive(after: 0.62)
 
-            VStack(alignment: .leading, spacing: 10) {
-                ForEach(Array(["Hold to peek", "Tap to keep it open", "Choose your key and board", "Say what it may show"].enumerated()), id: \.offset) { index, label in
-                    HStack(spacing: 12) {
-                        Text("\(index + 1)")
-                            .font(.system(size: 11, weight: .semibold))
+            HStack(spacing: 10) {
+                ForEach(Array(ahead.enumerated()), id: \.offset) { index, item in
+                    VStack(spacing: 8) {
+                        Image(systemName: item.symbol)
+                            .font(.system(size: 14, weight: .medium))
                             .foregroundStyle(Tour.cool)
-                            .frame(width: 22, height: 22)
-                            .background(Tour.cool.opacity(0.14), in: Circle())
-                        Text(label)
-                            .font(.system(size: 13.5, weight: .medium))
-                            .foregroundStyle(Tour.ink.opacity(0.9))
+                            .frame(width: 36, height: 36)
+                            .background(Color.white.opacity(0.06), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                            .overlay(RoundedRectangle(cornerRadius: 10, style: .continuous).strokeBorder(Color.white.opacity(0.06)))
+                        Text(item.label)
+                            .font(.system(size: 11.5, weight: .medium))
+                            .foregroundStyle(Tour.ink2)
+                            .lineLimit(1)
                     }
+                    .frame(maxWidth: .infinity)
                     .arrive(after: 0.75 + Double(index) * 0.07)
                 }
             }
-            .padding(.top, 26)
+            .padding(.top, 30)
 
-            Spacer(minLength: 16)
-
-            HStack {
-                TourLink(title: "Skip the tour") { tour.skipTour() }
-                Spacer()
-                TourButton(title: "Get Started") { tour.advance() }
-            }
-            .arrive(after: 1.05)
-            Text("About a minute. Skip any step, and find the tour again in Blink’s menu.")
-                .font(.system(size: 11.5))
-                .foregroundStyle(Tour.ink3)
-                .padding(.top, 14)
-                .arrive(after: 1.1)
+            TourButton(title: "Get Started", height: 40, minWidth: 200) { tour.advance() }
+                .padding(.top, 32)
+                .arrive(after: 1.05)
+            TourLink(title: "Skip the tour") { tour.skipTour() }
+                .padding(.top, 10)
+                .arrive(after: 1.12)
         }
-        .padding(.horizontal, 32)
+        .padding(.horizontal, 36)
         .padding(.bottom, 24)
     }
 }
@@ -423,33 +574,25 @@ private struct HoldStep: View {
     @ObservedObject var hotkeys: HotkeyMonitor
 
     var body: some View {
-        let title = words.0
-        let detail = words.1
+        let words = self.words
         VStack(alignment: .leading, spacing: 0) {
             StepHeader(number: 1) { tour.advance() }
-            HStack(spacing: 22) {
-                CapsRow(caps: tour.caps, pressed: tour.isPeeking)
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(title)
-                        .font(.system(size: 21, weight: .semibold))
-                        .tracking(-0.3)
-                        .contentTransition(.opacity)
-                    Text(detail)
-                        .font(.system(size: 13.5))
-                        .lineSpacing(2)
-                        .foregroundStyle(Tour.ink2)
-                        .fixedSize(horizontal: false, vertical: true)
-                        .contentTransition(.opacity)
-                }
-                .animation(.easeOut(duration: 0.18), value: title)
+            HStack(alignment: .center, spacing: 22) {
+                CapsRow(caps: tour.caps, pressed: tour.isPeeking, inviting: tour.peeks == 0 && !tour.tappedInstead)
+                ChangingWords(title: words.0, detail: words.1)
             }
-            .padding(.top, 16)
-            Spacer(minLength: 10)
+            .padding(.top, 20)
+            Rectangle()
+                .fill(Tour.hairline)
+                .frame(height: 1)
+                .padding(.top, 20)
             footer
+                .frame(height: 36)
+                .padding(.top, 12)
         }
         .padding(.horizontal, 24)
         .padding(.top, 20)
-        .padding(.bottom, 18)
+        .padding(.bottom, 14)
     }
 
     private var words: (String, String) {
@@ -464,7 +607,7 @@ private struct HoldStep: View {
         }
         return (
             "Hold \(capsPhrase(tour.caps)) together",
-            "Blink comes up over whatever you are doing while the keys are down. Try it now, on your own desktop."
+            "Blink comes up over whatever you are doing, for as long as the keys are down."
         )
     }
 
@@ -474,47 +617,40 @@ private struct HoldStep: View {
             if hotkeys.status == .needsInputMonitoring {
                 Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Tour.warning)
                 Text("macOS has to let Blink see \(tour.shortcutText) first.")
-                    .font(.system(size: 12.5))
+                    .font(Tour.small)
                     .foregroundStyle(Tour.ink2)
                 Spacer()
                 TourLink(title: "Allow…") { hotkeys.requestInputMonitoring() }
             } else if hotkeys.status == .unavailable {
                 Image(systemName: "exclamationmark.triangle.fill").foregroundStyle(Tour.warning)
                 Text("Another app already uses \(tour.shortcutText). Choose a different key in step 3.")
-                    .font(.system(size: 12.5))
+                    .font(Tour.small)
                     .foregroundStyle(Tour.ink2)
                 Spacer()
                 TourButton(title: "Continue") { tour.advance() }
             } else if tour.isPeeking {
-                HStack(spacing: 8) {
-                    Image(systemName: "hand.raised")
-                        .font(.system(size: 12, weight: .semibold))
-                    Text("Let go to get back")
-                        .font(.system(size: 12.5))
-                }
-                .foregroundStyle(Tour.cool)
+                Label("Let go to get back", systemImage: "hand.raised")
+                    .font(Tour.small)
+                    .foregroundStyle(Tour.cool)
+                    .transition(.opacity)
                 Spacer()
             } else if tour.peeks > 0 {
                 Tick()
                 Text(tour.peeks == 1 ? "One peek. Try it again, or carry on." : "\(tour.peeks) peeks. You have the hang of it.")
                     .font(.system(size: 13))
-                    .foregroundStyle(Tour.ink.opacity(0.82))
+                    .foregroundStyle(Tour.ink.opacity(0.85))
                     .contentTransition(.numericText())
                 Spacer()
                 TourButton(title: "Continue") { tour.advance() }
+                    .transition(.opacity.combined(with: .offset(x: 8)))
             } else {
-                HStack(spacing: 8) {
-                    Image(systemName: "arrow.up")
-                        .font(.system(size: 12, weight: .semibold))
-                    Text("Press and hold the real keys")
-                        .font(.system(size: 12.5))
-                }
-                .foregroundStyle(Tour.ink3)
-                .modifier(Nudge())
+                KeysHint(before: "Hold", caps: tour.caps, after: "on your keyboard")
+                    .transition(.opacity)
                 Spacer()
             }
         }
-        .frame(height: 36)
+        .animation(Tour.settle, value: tour.isPeeking)
+        .animation(Tour.settle, value: tour.peeks)
     }
 }
 
@@ -524,101 +660,91 @@ private struct TapStep: View {
     @ObservedObject var tour: OnboardingModel
 
     var body: some View {
-        let title = words.0
-        let detail = words.1
+        let words = self.words
+        let done = tour.openedPinned && tour.closedAfterPin && !tour.isPinned
         VStack(alignment: .leading, spacing: 0) {
             StepHeader(number: 2) { tour.advance() }
-            HStack(spacing: 22) {
-                CapsRow(caps: tour.caps, pressed: tour.isPeeking || tour.isPinned)
-                    .overlay {
-                        if !tour.openedPinned {
-                            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                                .strokeBorder(Tour.cool.opacity(0.7), lineWidth: 1.5)
-                                .padding(-6)
-                                .phaseAnimator([false, true]) { ring, out in
-                                    ring.scaleEffect(out ? 1.08 : 1).opacity(out ? 0 : 0.9)
-                                } animation: { out in out ? .easeOut(duration: 1.2) : .linear(duration: 0.01) }
-                        }
-                    }
-                VStack(alignment: .leading, spacing: 6) {
-                    Text(title)
-                        .font(.system(size: 21, weight: .semibold))
-                        .tracking(-0.3)
-                    Text(detail)
-                        .font(.system(size: 13.5))
-                        .lineSpacing(2)
-                        .foregroundStyle(Tour.ink2)
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-                .animation(.easeOut(duration: 0.18), value: title)
+            HStack(alignment: .center, spacing: 22) {
+                CapsRow(caps: tour.caps, pressed: tour.isPeeking || tour.isPinned, inviting: !tour.openedPinned)
+                ChangingWords(title: words.0, detail: words.1)
             }
-            .padding(.top, 16)
+            .padding(.top, 20)
 
             HStack(spacing: 8) {
                 task("Tap to keep it open", done: tour.openedPinned)
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(Tour.ink3)
                 task("Tap again or esc to close", done: tour.closedAfterPin)
             }
-            .padding(.top, 16)
+            .padding(.top, 18)
 
-            Spacer(minLength: 10)
+            Rectangle()
+                .fill(Tour.hairline)
+                .frame(height: 1)
+                .padding(.top, 18)
             HStack(spacing: 10) {
-                if tour.openedPinned, tour.closedAfterPin, !tour.isPinned {
+                if done {
                     Tick()
                     Text("Both ways, done.")
                         .font(.system(size: 13))
-                        .foregroundStyle(Tour.ink.opacity(0.82))
+                        .foregroundStyle(Tour.ink.opacity(0.85))
                     Spacer()
                     TourButton(title: "Continue") { tour.advance() }
+                        .transition(.opacity.combined(with: .offset(x: 8)))
+                } else if tour.isPinned {
+                    KeysHint(before: "Tap", caps: tour.caps, after: "again, or press esc")
+                        .transition(.opacity)
+                    Spacer()
                 } else {
-                    HStack(spacing: 8) {
-                        Image(systemName: "arrow.up")
-                            .font(.system(size: 12, weight: .semibold))
-                        Text(tour.isPinned ? "Tap \(tour.shortcutText) again, or press esc" : "Press \(tour.shortcutText) and let go straight away")
-                            .font(.system(size: 12.5))
-                    }
-                    .foregroundStyle(Tour.ink3)
-                    .modifier(Nudge())
+                    KeysHint(before: "Press", caps: tour.caps, after: "and let go straight away")
+                        .transition(.opacity)
                     Spacer()
                 }
             }
             .frame(height: 36)
+            .padding(.top, 12)
+            .animation(Tour.settle, value: done)
+            .animation(Tour.settle, value: tour.isPinned)
         }
         .padding(.horizontal, 24)
         .padding(.top, 20)
-        .padding(.bottom, 18)
+        .padding(.bottom, 14)
     }
 
     private var words: (String, String) {
         if tour.isPinned {
-            return ("It stays open", "The bar along the top has Add, Templates, Arrange and Settings. Tap again, or press esc, to close.")
+            return ("It stays open", "Click, scroll and type in any tile. The bar along the top has Add, Templates, Edit and Settings.")
         }
         if tour.openedPinned, tour.closedAfterPin {
-            return ("Peek, or keep it open", "Hold when you only need a look; tap when you want to stay a while.")
+            return ("Peek, or stay a while", "Hold when you only need a look; tap when you want to stay.")
         }
-        return ("Now tap instead", "A quick tap keeps Blink open, so you can click, scroll and type in any tile. Holding still peeks.")
+        return ("Now tap instead", "A quick tap keeps Blink open, so you can click, scroll and type in it.")
     }
 
     private func task(_ label: String, done: Bool) -> some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 7) {
             ZStack {
                 Circle()
-                    .strokeBorder(done ? Tour.green : Tour.ink.opacity(0.4), lineWidth: 1.5)
+                    .strokeBorder(done ? Tour.green : Tour.ink.opacity(0.35), lineWidth: 1.5)
                 if done {
                     Image(systemName: "checkmark")
-                        .font(.system(size: 8, weight: .heavy))
+                        .font(.system(size: 7.5, weight: .heavy))
                         .foregroundStyle(Tour.green)
-                        .transition(.scale.combined(with: .opacity))
+                        .transition(.scale(scale: 0.3).combined(with: .opacity))
                 }
             }
-            .frame(width: 16, height: 16)
+            .frame(width: 15, height: 15)
             Text(label)
-                .font(.system(size: 12.5, weight: .medium))
+                .font(.system(size: 12, weight: .medium))
                 .foregroundStyle(done ? Tour.ink : Tour.ink2)
         }
-        .padding(.horizontal, 12)
-        .frame(height: 30)
+        .padding(.leading, 9)
+        .padding(.trailing, 11)
+        .frame(height: 28)
         .background(done ? Tour.green.opacity(0.12) : Color.white.opacity(0.05), in: Capsule())
-        .animation(.spring(response: 0.3, dampingFraction: 0.7), value: done)
+        .overlay(Capsule().strokeBorder(done ? Tour.green.opacity(0.25) : Color.clear, lineWidth: 1))
+        .animation(.spring(response: 0.3, dampingFraction: 0.65), value: done)
     }
 }
 
@@ -633,39 +759,41 @@ private struct ShortcutStep: View {
         VStack(alignment: .leading, spacing: 0) {
             StepHeader(number: 3) { tour.advance() }
             Text("The key that opens Blink")
-                .font(.system(size: 26, weight: .semibold))
-                .tracking(-0.5)
-                .padding(.top, 20)
-            Text("Pick something your fingers find without looking. You can change it any time in Settings.")
-                .font(.system(size: 14))
+                .font(Tour.title)
+                .tracking(-0.4)
+                .padding(.top, 22)
+            Text("Pick one your fingers find without looking. You can change it any time in Settings.")
+                .font(Tour.body)
+                .lineSpacing(2.5)
                 .foregroundStyle(Tour.ink2)
+                .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 6)
 
             // The shortcut, drawn as the keys themselves.
-            HStack(spacing: 10) {
-                CapsRow(caps: tour.caps, size: 64)
+            ZStack {
+                CapsRow(caps: tour.caps, size: 62)
                     .id(model.settings.shortcut)
                     .transition(.asymmetric(
-                        insertion: .scale(scale: 0.85).combined(with: .opacity).combined(with: .offset(y: -10)),
+                        insertion: .scale(scale: 0.85).combined(with: .opacity).combined(with: .offset(y: -8)),
                         removal: .opacity
                     ))
             }
             .frame(maxWidth: .infinity)
-            .frame(height: 108)
+            .frame(height: 104)
             .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color.white.opacity(0.06)))
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color.white.opacity(0.05)))
             .animation(.spring(response: 0.36, dampingFraction: 0.72), value: model.settings.shortcut)
-            .padding(.top, 20)
+            .padding(.top, 18)
 
             VStack(spacing: 8) {
-                option(.standard, "Option and the key above Tab", "Works the moment Blink opens. Nothing to allow.",
+                option(.standard, "Option and the key above Tab", "Works straight away. Nothing to allow.",
                        badge: "Recommended", keys: Shortcut.default.displayString)
                 option(.function, "fn on its own", "One key, easy to reach. macOS asks you to allow Input Monitoring first.",
                        keys: "fn")
                 option(.custom, "Something else", "Any combination, or one modifier on its own, such as the right ⌘.",
                        keys: tour.shortcutChoice == .custom ? tour.shortcutText : "Record…")
             }
-            .padding(.top, 16)
+            .padding(.top, 14)
 
             if tour.shortcutChoice == .custom {
                 HStack(spacing: 12) {
@@ -678,102 +806,109 @@ private struct ShortcutStep: View {
                     .frame(width: 210, height: 26)
                     Spacer()
                 }
-                .padding(.top, 10)
+                .padding(.top, 12)
                 .transition(.opacity.combined(with: .offset(y: -6)))
             }
 
             status
-                .padding(.top, 10)
 
-            Spacer(minLength: 8)
             HStack {
                 TourLink(title: "Back") { tour.back() }
                 Spacer()
                 TourButton(title: "Use \(tour.shortcutText)") { tour.advance() }
             }
+            .padding(.top, 22)
         }
-        .padding(.horizontal, 30)
-        .padding(.top, 26)
-        .padding(.bottom, 24)
+        .padding(.horizontal, 28)
+        .padding(.top, 24)
+        .padding(.bottom, 22)
+        .animation(Tour.settle, value: tour.shortcutChoice)
+        .animation(Tour.settle, value: hotkeys.status)
     }
 
     private func option(_ choice: OnboardingModel.ShortcutChoice, _ title: String, _ detail: String, badge: String? = nil, keys: String) -> some View {
         let on = tour.shortcutChoice == choice
         return Button {
-            withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) { tour.choose(choice) }
+            tour.choose(choice)
         } label: {
-            HStack(alignment: .top, spacing: 14) {
+            HStack(alignment: .top, spacing: 13) {
                 ZStack {
-                    Circle().strokeBorder(on ? Tour.cool : Tour.ink.opacity(0.4), lineWidth: 1.5)
-                    Circle().fill(Tour.cool).frame(width: 10, height: 10).scaleEffect(on ? 1 : 0.01)
+                    Circle().strokeBorder(on ? Tour.cool : Tour.ink.opacity(0.35), lineWidth: 1.5)
+                    Circle().fill(Tour.cool).frame(width: 9, height: 9).scaleEffect(on ? 1 : 0.01)
                 }
-                .frame(width: 20, height: 20)
+                .frame(width: 18, height: 18)
                 .padding(.top, 1)
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 8) {
-                        Text(title).font(.system(size: 14, weight: .semibold))
+                        Text(title).font(.system(size: 13.5, weight: .semibold))
                         if let badge {
                             Text(badge)
-                                .font(.system(size: 10.5, weight: .semibold))
+                                .font(.system(size: 10, weight: .semibold))
                                 .foregroundStyle(Tour.cool)
                                 .padding(.horizontal, 7)
                                 .padding(.vertical, 2)
-                                .background(Tour.cool.opacity(0.16), in: Capsule())
+                                .background(Tour.cool.opacity(0.15), in: Capsule())
                         }
                     }
                     Text(detail)
-                        .font(.system(size: 12.5))
+                        .font(.system(size: 12))
                         .foregroundStyle(Tour.ink2)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 Spacer(minLength: 8)
                 Text(keys)
-                    .font(.system(size: 12, weight: .medium, design: .monospaced))
-                    .foregroundStyle(Tour.ink2)
+                    .font(.system(size: 11.5, weight: .medium, design: .monospaced))
+                    .foregroundStyle(on ? Tour.ink : Tour.ink2)
                     .padding(.horizontal, 8)
                     .padding(.vertical, 3)
-                    .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(Color.white.opacity(0.16)))
+                    .overlay(RoundedRectangle(cornerRadius: 6, style: .continuous).strokeBorder(Color.white.opacity(on ? 0.24 : 0.14)))
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 12)
-            .background(on ? Tour.cool.opacity(0.10) : Color.white.opacity(0.03), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .padding(.horizontal, 14)
+            .padding(.vertical, 11)
+            .background(on ? Tour.cool.opacity(0.09) : Color.white.opacity(0.025), in: RoundedRectangle(cornerRadius: 13, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(on ? Tour.cool.opacity(0.45) : Color.white.opacity(0.08))
+                RoundedRectangle(cornerRadius: 13, style: .continuous)
+                    .strokeBorder(on ? Tour.cool.opacity(0.42) : Color.white.opacity(0.07))
             )
-            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .contentShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressScale())
     }
 
     @ViewBuilder
     private var status: some View {
         switch hotkeys.status {
         case .needsInputMonitoring:
-            HStack(spacing: 10) {
-                Text("macOS only shows \(tour.shortcutText) to apps allowed under Input Monitoring. Blink looks for the shortcut and nothing else.")
-                    .font(.system(size: 12))
-                    .foregroundStyle(Tour.warning)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 0)
-                TourLink(title: "Allow…") { hotkeys.requestInputMonitoring() }
-            }
+            notice(
+                "macOS only shows \(tour.shortcutText) to apps allowed under Input Monitoring. Blink looks for the shortcut and nothing else.",
+                tint: Tour.warning, action: "Allow…"
+            ) { hotkeys.requestInputMonitoring() }
         case .unavailable:
-            Text("Another app or the system already uses \(tour.shortcutText). Pick something else.")
-                .font(.system(size: 12))
-                .foregroundStyle(Tour.warning)
+            notice("Another app or the system already uses \(tour.shortcutText). Pick something else.", tint: Tour.warning)
         case .active, .inactive:
             if model.settings.shortcut.isFunctionKeyAlone, GlobeKey.hasSystemAction {
-                HStack(spacing: 10) {
-                    Text("fn also opens the emoji picker. Set “Press 🌐 key to” to “Do Nothing” so it only opens Blink.")
-                        .font(.system(size: 12))
-                        .foregroundStyle(Tour.ink2)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Spacer(minLength: 0)
-                    TourLink(title: "Keyboard Settings…") { SystemSettings.openKeyboard() }
-                }
+                notice(
+                    "fn also opens the emoji picker. Set “Press 🌐 key to” to “Do Nothing” so it only opens Blink.",
+                    tint: Tour.ink2, action: "Keyboard Settings…"
+                ) { SystemSettings.openKeyboard() }
             }
         }
+    }
+
+    private func notice(_ text: String, tint: Color, action: String? = nil, perform: @escaping () -> Void = {}) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Text(text)
+                .font(.system(size: 12))
+                .foregroundStyle(tint)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+            if let action {
+                TourLink(title: action, action: perform)
+                    .fixedSize()
+            }
+        }
+        .padding(.top, 12)
+        .transition(.opacity.combined(with: .offset(y: -4)))
     }
 }
 
@@ -785,8 +920,8 @@ private struct BoardStep: View {
     var body: some View {
         HStack(spacing: 16) {
             Text("STEP 4 OF 4")
-                .font(.system(size: 10, weight: .semibold))
-                .tracking(0.8)
+                .font(Tour.caption)
+                .tracking(0.9)
                 .foregroundStyle(Tour.ink3)
                 .fixedSize()
             if let kept = tour.kept {
@@ -806,16 +941,15 @@ private struct BoardStep: View {
                 TourButton(title: "Continue") { tour.advance() }
             } else if let trying = tour.trying {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("Try a starting board")
+                    Text(trying.name)
                         .font(.system(size: 13, weight: .semibold))
                     Text(trying.summary)
                         .font(.system(size: 12))
                         .foregroundStyle(Tour.ink2)
                         .lineLimit(2)
-                        .id(trying.id)
-                        .transition(.opacity)
                 }
-                .animation(.easeOut(duration: 0.18), value: trying.id)
+                .id(trying.id)
+                .transition(.opacity.combined(with: .offset(y: 4)))
                 Spacer(minLength: 8)
                 HStack(spacing: 6) {
                     ForEach(BoardTemplate.all) { template in
@@ -829,13 +963,14 @@ private struct BoardStep: View {
                         .help(template.name)
                     }
                 }
-                .animation(.spring(response: 0.3, dampingFraction: 0.8), value: trying.id)
                 TourLink(title: "Skip") { tour.advance() }
                 TourButton(title: "Use \(trying.name)", arrow: false, height: 32) { tour.keepTrying() }
             }
         }
+        .animation(Tour.settle, value: tour.trying?.id)
+        .animation(Tour.settle, value: tour.kept?.id)
         .padding(.horizontal, 20)
-        .frame(maxHeight: .infinity)
+        .frame(height: 76)
     }
 }
 
@@ -849,44 +984,49 @@ private struct AccessStep: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text("What Blink can show you")
-                .font(.system(size: 26, weight: .semibold))
-                .tracking(-0.5)
-            Text("Each is asked for once, here, and only if you want it. Your things stay on this Mac. Skip any of them; the widgets ask again when you add them.")
-                .font(.system(size: 14))
-                .lineSpacing(2)
+                .font(Tour.title)
+                .tracking(-0.4)
+            Text("Each is asked for once, and only if you want it. Your things stay on this Mac, and every widget asks again when you add it.")
+                .font(Tour.body)
+                .lineSpacing(2.5)
                 .foregroundStyle(Tour.ink2)
                 .fixedSize(horizontal: false, vertical: true)
-                .padding(.top, 8)
+                .padding(.top, 6)
 
-            VStack(spacing: 8) {
+            VStack(spacing: 0) {
                 row(symbol: "calendar", tint: Color(red: 0.74, green: 0.78, blue: 0.85), title: "Calendar",
                     detail: "Today’s events and the week ahead.") {
                     eventAccess(.event, allowed: events.canReadEvents, settings: SystemSettings.openCalendars)
                 }
-                .arrive(after: 0.1)
+                .arrive(after: 0.08)
+                divider
                 row(symbol: "checklist", tint: Color(red: 0.9, green: 0.7, blue: 0.43), title: "Reminders",
                     detail: "What is due, ready to tick off.") {
                     eventAccess(.reminder, allowed: events.canReadReminders, settings: SystemSettings.openReminders)
                 }
-                .arrive(after: 0.16)
+                .arrive(after: 0.14)
+                divider
                 row(symbol: "message.fill", tint: Tour.green, title: "Messages",
-                    detail: "Your conversations, and replies without switching apps. Asks for Contacts, for names, and Full Disk Access, to read Messages.") {
+                    detail: "Your conversations, and replies without switching apps. Needs Contacts, for names, and Full Disk Access.") {
                     messagesAccess
                 }
-                .arrive(after: 0.22)
+                .arrive(after: 0.2)
+                divider
                 row(symbol: "power", tint: Tour.ink, title: "Open at login",
                     detail: tour.loginProblem ?? "Blink is there whenever you reach for the keys.") {
                     Toggle("", isOn: $tour.opensAtLogin)
                         .toggleStyle(.switch)
                         .labelsHidden()
                         .tint(Tour.cool)
+                        .controlSize(.small)
                 }
-                .arrive(after: 0.28)
+                .arrive(after: 0.26)
             }
+            .background(Color.white.opacity(0.035), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.white.opacity(0.07)))
             .padding(.top, 20)
 
-            Spacer(minLength: 12)
-            HStack(spacing: 14) {
+            HStack(spacing: 16) {
                 TourLink(title: "Back") { tour.back() }
                 Spacer()
                 TourLink(title: "Skip for now") { tour.advance() }
@@ -895,10 +1035,14 @@ private struct AccessStep: View {
                     tour.advance()
                 }
             }
+            .padding(.top, 22)
         }
-        .padding(.horizontal, 30)
-        .padding(.top, 28)
-        .padding(.bottom, 24)
+        .padding(.horizontal, 28)
+        .padding(.top, 26)
+        .padding(.bottom, 22)
+        .animation(Tour.settle, value: events.canReadEvents)
+        .animation(Tour.settle, value: events.canReadReminders)
+        .animation(Tour.settle, value: messages.access)
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             // Back from System Settings: see what changed there.
             events.refreshAuthorization()
@@ -906,27 +1050,29 @@ private struct AccessStep: View {
         }
     }
 
+    private var divider: some View {
+        Rectangle().fill(Tour.hairline).frame(height: 1).padding(.leading, 64)
+    }
+
     private func row<Trailing: View>(symbol: String, tint: Color, title: String, detail: String, @ViewBuilder trailing: () -> Trailing) -> some View {
         HStack(spacing: 14) {
             Image(systemName: symbol)
-                .font(.system(size: 15, weight: .medium))
+                .font(.system(size: 14, weight: .medium))
                 .foregroundStyle(tint)
-                .frame(width: 36, height: 36)
-                .background(tint.opacity(0.16), in: RoundedRectangle(cornerRadius: 10, style: .continuous))
+                .frame(width: 34, height: 34)
+                .background(tint.opacity(0.15), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
             VStack(alignment: .leading, spacing: 2) {
-                Text(title).font(.system(size: 14, weight: .semibold))
+                Text(title).font(.system(size: 13.5, weight: .semibold))
                 Text(detail)
-                    .font(.system(size: 12.5))
+                    .font(.system(size: 12))
                     .foregroundStyle(Tour.ink2)
                     .fixedSize(horizontal: false, vertical: true)
             }
             Spacer(minLength: 12)
             trailing()
         }
-        .padding(.horizontal, 14)
+        .padding(.horizontal, 15)
         .padding(.vertical, 12)
-        .background(Color.white.opacity(0.04), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-        .overlay(RoundedRectangle(cornerRadius: 14, style: .continuous).strokeBorder(Color.white.opacity(0.07)))
     }
 
     @ViewBuilder
@@ -936,7 +1082,7 @@ private struct AccessStep: View {
         } else if events.isDenied(type) {
             pill("Open Settings…", action: settings)
         } else {
-            pill("Allow Access…") { events.requestAccess(to: type) }
+            pill("Allow…") { events.requestAccess(to: type) }
         }
     }
 
@@ -945,33 +1091,37 @@ private struct AccessStep: View {
         if messages.isAllowed, messages.access == .granted {
             allowedLabel
         } else if messages.isAllowed, messages.access == .needsFullDiskAccess {
-            pill("Turn On Full Disk Access…") { SystemSettings.openFullDiskAccess() }
+            pill("Turn On…") { SystemSettings.openFullDiskAccess() }
         } else {
-            pill("Allow Access…") { messages.allowAccess() }
+            pill("Allow…") { messages.allowAccess() }
         }
     }
 
     private var allowedLabel: some View {
-        HStack(spacing: 6) {
-            Image(systemName: "checkmark").font(.system(size: 10, weight: .heavy))
-            Text("Allowed").font(.system(size: 12.5, weight: .semibold))
+        HStack(spacing: 5) {
+            Image(systemName: "checkmark").font(.system(size: 9.5, weight: .heavy))
+            Text("Allowed").font(.system(size: 12, weight: .semibold))
         }
         .foregroundStyle(Tour.green)
-        .transition(.scale(scale: 0.8).combined(with: .opacity))
+        .padding(.horizontal, 10)
+        .frame(height: 26)
+        .background(Tour.green.opacity(0.1), in: Capsule())
+        .transition(.scale(scale: 0.85).combined(with: .opacity))
     }
 
     private func pill(_ title: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(title)
-                .font(.system(size: 12.5, weight: .semibold))
+                .font(.system(size: 12, weight: .semibold))
                 .foregroundStyle(Tour.cool)
                 .padding(.horizontal, 12)
-                .frame(height: 28)
-                .background(Tour.cool.opacity(0.14), in: Capsule())
+                .frame(height: 26)
+                .background(Tour.cool.opacity(0.13), in: Capsule())
                 .contentShape(Capsule())
         }
         .buttonStyle(PressScale())
         .fixedSize()
+        .transition(.opacity)
     }
 }
 
@@ -988,63 +1138,62 @@ private struct ReadyStep: View {
             (["esc"], "Close", "Or tap the keys again"),
             (["⌘", "N"], "Add", "A site, widget or file"),
             (["⌘", "E"], "Arrange", "Move, stack, resize"),
-            (["←", "→"], "Templates", "Flip while trying one"),
+            (["←", "→"], "Templates", "Step along the shelf"),
         ]
         VStack(spacing: 0) {
-            AnimatedMark(size: 60)
-                .padding(.top, 34)
+            AnimatedMark(size: 56)
+                .padding(.top, 36)
             Text("You are set")
-                .font(.system(size: 28, weight: .semibold))
-                .tracking(-0.6)
+                .font(.system(size: 30, weight: .bold))
+                .tracking(-0.8)
                 .padding(.top, 18)
                 .arrive(after: 0.3)
-            Text("Your board is ready. It is one key away, whatever you are doing.")
-                .font(.system(size: 14))
+            Text("Your board is one key away, whatever you are doing.")
+                .font(Tour.body)
                 .foregroundStyle(Tour.ink2)
-                .padding(.top, 8)
+                .padding(.top, 6)
                 .arrive(after: 0.38)
 
             VStack(alignment: .leading, spacing: 14) {
                 Text("YOUR KEYS")
-                    .font(.system(size: 10, weight: .semibold))
-                    .tracking(0.8)
+                    .font(Tour.caption)
+                    .tracking(0.9)
                     .foregroundStyle(Tour.ink3)
-                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 18, alignment: .leading), count: 3), alignment: .leading, spacing: 14) {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 18, alignment: .leading), count: 3), alignment: .leading, spacing: 16) {
                     ForEach(Array(keys.enumerated()), id: \.offset) { index, key in
                         HStack(spacing: 10) {
-                            HStack(spacing: 4) {
+                            HStack(spacing: 3) {
                                 ForEach(Array(key.0.enumerated()), id: \.offset) { _, cap in SmallCap(label: cap) }
                             }
-                            .frame(minWidth: 56, alignment: .leading)
+                            .frame(minWidth: 52, alignment: .leading)
                             VStack(alignment: .leading, spacing: 1) {
-                                Text(key.1).font(.system(size: 13, weight: .semibold))
+                                Text(key.1).font(.system(size: 12.5, weight: .semibold))
                                 Text(key.2)
                                     .font(.system(size: 11.5))
                                     .foregroundStyle(Tour.ink3)
                                     .lineLimit(1)
-                                    .minimumScaleFactor(0.85)
                             }
                         }
-                        .arrive(after: 0.55 + Double(index) * 0.05)
+                        .arrive(after: 0.5 + Double(index) * 0.05)
                     }
                 }
             }
             .padding(18)
             .background(Color.black.opacity(0.18), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color.white.opacity(0.06)))
-            .padding(.top, 24)
+            .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Color.white.opacity(0.05)))
+            .padding(.top, 26)
 
-            Spacer(minLength: 12)
             HStack(spacing: 12) {
-                Text("See this again any time: Blink Tour, in Blink’s menu.")
+                Text("The tour is in Blink’s menu whenever you want it again.")
                     .font(.system(size: 12))
                     .foregroundStyle(Tour.ink3)
                 Spacer()
                 TourButton(title: "Start Using Blink", arrow: false, height: 38) { tour.advance() }
             }
-            .arrive(after: 0.9)
+            .padding(.top, 22)
+            .arrive(after: 0.85)
         }
         .padding(.horizontal, 28)
-        .padding(.bottom, 24)
+        .padding(.bottom, 22)
     }
 }

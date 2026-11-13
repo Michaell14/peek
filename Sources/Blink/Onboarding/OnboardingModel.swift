@@ -54,6 +54,9 @@ final class OnboardingModel: ObservableObject {
     // The shortcut.
     @Published private(set) var shortcutChoice: ShortcutChoice = .standard
 
+    /// How tall each step's content is, as laid out; the window follows.
+    @Published var contentHeights: [Int: CGFloat] = [:]
+
     // Access.
     @Published var opensAtLogin = true
     @Published private(set) var loginProblem: String?
@@ -270,11 +273,14 @@ final class OnboardingController {
     init(model: AppModel, overlay: OverlayController, hotkeys: HotkeyMonitor) {
         tour = OnboardingModel(model: model, overlay: overlay, hotkeys: hotkeys)
         tour.onFinish = { [weak self] completed in self?.close(thenShowBoard: completed) }
+        // The window takes the size of whatever the step shows, once it has
+        // been laid out: on a new step, and when a step grows or shrinks.
         tour.$step
+            .combineLatest(tour.$contentHeights)
             .dropFirst()
-            .sink { [weak self] step in
-                // After the change, so the new step's size is measured.
-                DispatchQueue.main.async { onMainActor { self?.place(for: step, animated: true) } }
+            .debounce(for: .milliseconds(30), scheduler: RunLoop.main)
+            .sink { [weak self] step, _ in
+                onMainActor { self?.place(for: step, animated: true) }
             }
             .store(in: &cancellables)
     }
@@ -334,7 +340,11 @@ final class OnboardingController {
     private func place(for step: OnboardingModel.Step, animated: Bool) {
         guard let window,
               let screen = Displays.target(for: tour.model.settings.displayTarget) ?? NSScreen.main else { return }
-        let size = OnboardingView.size(for: step)
+        let measured = tour.contentHeights[step.rawValue] ?? 0
+        let size = CGSize(
+            width: OnboardingView.width(for: step),
+            height: measured > 40 ? measured : OnboardingView.estimatedHeight(for: step)
+        )
         let visible = screen.visibleFrame
         let origin: CGPoint
         if step.isCoach {
@@ -347,6 +357,7 @@ final class OnboardingController {
         // permission prompts they lead to can come up in front.
         window.level = step.isCoach ? NSWindow.Level(rawValue: NSWindow.Level.statusBar.rawValue + 2) : .normal
         let frame = CGRect(origin: origin, size: size).integral
+        guard frame != window.frame else { return }
         if animated {
             NSAnimationContext.runAnimationGroup({ context in
                 context.duration = 0.45
