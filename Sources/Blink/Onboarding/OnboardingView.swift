@@ -25,13 +25,13 @@ struct OnboardingView: View {
     /// The window's size for each step.
     static func size(for step: OnboardingModel.Step) -> CGSize {
         switch step {
-        case .hello: return CGSize(width: 520, height: 540)
+        case .hello: return CGSize(width: 520, height: 492)
         case .hold: return CGSize(width: 600, height: 236)
         case .tap: return CGSize(width: 600, height: 276)
         case .shortcut: return CGSize(width: 660, height: 610)
         case .board: return CGSize(width: 800, height: 76)
-        case .access: return CGSize(width: 640, height: 548)
-        case .ready: return CGSize(width: 680, height: 480)
+        case .access: return CGSize(width: 640, height: 488)
+        case .ready: return CGSize(width: 740, height: 430)
         }
     }
 
@@ -179,6 +179,13 @@ private struct BigCap: View {
     var pressed = false
     var lit = false
 
+    /// What a key prints above its own character, for the keys people
+    /// tend to choose.
+    static let shifted: [String: String] = [
+        "`": "~", "1": "!", "2": "@", "3": "#", "-": "_", "=": "+", "[": "{", "]": "}",
+        ";": ":", "'": "\"", ",": "<", ".": ">", "/": "?", "\\": "|",
+    ]
+
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: size * 0.18, style: .continuous)
@@ -210,6 +217,15 @@ private struct BigCap: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     .padding(.leading, size * 0.14)
                     .padding(.top, size * 0.15)
+            } else if let shifted = Self.shifted[key.symbol] {
+                VStack(spacing: size * 0.02) {
+                    Text(shifted)
+                        .font(.system(size: size * 0.2))
+                        .foregroundStyle(Tour.ink2)
+                    Text(key.symbol)
+                        .font(.system(size: size * 0.36, weight: .semibold))
+                }
+                .offset(y: size * 0.03)
             } else {
                 Text(key.symbol)
                     .font(.system(size: key.symbol.count > 2 ? size * 0.2 : size * 0.35, weight: .semibold))
@@ -469,7 +485,16 @@ private struct HoldStep: View {
                     .foregroundStyle(Tour.ink2)
                 Spacer()
                 TourButton(title: "Continue") { tour.advance() }
-            } else if tour.peeks > 0, !tour.isPeeking {
+            } else if tour.isPeeking {
+                HStack(spacing: 8) {
+                    Image(systemName: "hand.raised")
+                        .font(.system(size: 12, weight: .semibold))
+                    Text("Let go to get back")
+                        .font(.system(size: 12.5))
+                }
+                .foregroundStyle(Tour.cool)
+                Spacer()
+            } else if tour.peeks > 0 {
                 Tick()
                 Text(tour.peeks == 1 ? "One peek. Try it again, or carry on." : "\(tour.peeks) peeks. You have the hang of it.")
                     .font(.system(size: 13))
@@ -958,11 +983,11 @@ private struct ReadyStep: View {
     var body: some View {
         let shortcut = tour.caps.map(\.symbol)
         let keys: [([String], String, String)] = [
-            (shortcut, "Hold", "Peek, and let go to get back"),
-            (shortcut, "Tap", "Keep it open to click and type"),
+            (shortcut, "Hold", "Peek, then let go"),
+            (shortcut, "Tap", "Stay open to click"),
             (["esc"], "Close", "Or tap the keys again"),
-            (["⌘", "N"], "Add", "A website, widget or file"),
-            (["⌘", "E"], "Arrange", "Move, stack and resize tiles"),
+            (["⌘", "N"], "Add", "A site, widget or file"),
+            (["⌘", "E"], "Arrange", "Move, stack, resize"),
             (["←", "→"], "Templates", "Flip while trying one"),
         ]
         VStack(spacing: 0) {
