@@ -438,6 +438,17 @@ private struct MessagesSetupView: View {
     @ObservedObject private var service = MessagesService.shared
 
     var body: some View {
+        // Centred when there is room; scrolls in a short tile.
+        GeometryReader { geometry in
+            ScrollView {
+                content
+                    .frame(maxWidth: .infinity, minHeight: geometry.size.height)
+            }
+            .scrollIndicators(.never)
+        }
+    }
+
+    private var content: some View {
         VStack(spacing: 14) {
             Spacer(minLength: 0)
             // Messages' own icon: a white bubble on green.
@@ -498,7 +509,6 @@ private struct MessagesSetupView: View {
         }
         .padding(.horizontal, 18)
         .padding(.vertical, 12)
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private enum NeedState { case notYet, waiting, done, refused }

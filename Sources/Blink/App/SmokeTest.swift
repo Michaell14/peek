@@ -747,8 +747,7 @@ enum SmokeTest {
                 await capture("showcase")
             }
 
-            // Messages, fed with stand-in conversations: the list, then a thread.
-            MessagesService.shared.useSampleData(sampleMessages())
+            // Messages asks before it reads anything.
             model.update { workspace in
                 workspace.updateBoard(workspace.sharedBoardID) { board in
                     board.tiles = [Tile(content: .widget(.messages(MessagesConfig())))]
@@ -756,6 +755,15 @@ enum SmokeTest {
             }
             overlay.showPinned()
             await pause(1.0)
+            expect("messages-ask", [
+                ("Messages reads nothing before it is allowed", !MessagesService.shared.isAllowed
+                    && MessagesService.shared.conversations.isEmpty),
+            ])
+            await capture("messages-ask")
+
+            // Then, fed with stand-in conversations: the list, then a thread.
+            MessagesService.shared.useSampleData(sampleMessages())
+            await pause(0.6)
             expect("messages", [("the Messages widget is on the board", tileKinds() == ["widget:messages"])])
             await capture("messages")
             if let messages = framesByID().values.first {
