@@ -333,28 +333,38 @@ final class BoardView: FlippedView {
             for i in first...last { items[i].width = width.rounded() }
         }
 
-        // The bottom edge sizes this tile. The top edge is the bottom edge of
-        // the tile above it, so it sizes that one; at the top of a column
-        // there is nothing to size.
-        let target: Int?
-        if handle.movesBottom {
-            target = index
-        } else if handle.movesTop, index > first {
-            target = index - 1
-        } else {
-            target = nil
-        }
-        if let target, let start = session.startFrames[items[target].id] {
-            let id = items[target].id
-            let limit = FlowLayout.maxHeight(of: id, in: items, canvasHeight: size.height, options: flowOptions)
+        let minHeight = flowOptions.minHeight
+        if handle.movesBottom, let start = session.startFrames[session.tileID] {
+            // The bottom edge: the top stays put and the tiles below follow.
+            let limit = FlowLayout.maxHeight(of: session.tileID, in: items, canvasHeight: size.height, options: flowOptions)
             let wanted = start.height + delta.y
-            let othersFill = items[first...last].contains { $0.id != id && $0.height == nil }
-            if target == last, !othersFill, wanted >= limit - 12 {
+            let othersFill = items[first...last].contains { $0.id != session.tileID && $0.height == nil }
+            if index == last, !othersFill, wanted >= limit - 12 {
                 // Pulled to the bottom, the bottom tile fills its column again.
-                items[target].height = nil
+                items[index].height = nil
             } else {
-                items[target].height = min(max(wanted, flowOptions.minHeight), limit).rounded()
+                items[index].height = min(max(wanted, minHeight), limit).rounded()
             }
+        } else if handle.movesTop, let start = session.startFrames[session.tileID] {
+            // The top edge: the bottom stays put. Pulled down, the tile gets
+            // shorter and leaves space above it; pushed up, it takes that
+            // space back, and then room from the tile above, if there is one.
+            let startSpace = session.startItems[index].spaceAbove
+            let drop = min(delta.y, start.height - minHeight)
+            var space = startSpace + drop
+            var height = start.height - drop
+            if space < 0 {
+                var gained = startSpace
+                if index > first, let above = session.startFrames[items[index - 1].id] {
+                    let shrunk = max(above.height - (-space), minHeight)
+                    gained += above.height - shrunk
+                    items[index - 1].height = shrunk.rounded()
+                }
+                space = 0
+                height = start.height + gained
+            }
+            items[index].spaceAbove = space.rounded()
+            items[index].height = height.rounded()
         }
         session.flowItems = items
         drag = session

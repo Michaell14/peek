@@ -93,11 +93,15 @@ final class FlowLayoutTests: XCTestCase {
         var items: [FlowLayout.Item] = []
         for _ in 0..<count {
             let column = items.last.flatMap { Bool.random(using: &generator) ? $0.column : nil } ?? UUID()
-            items.append(item(
+            var next = item(
                 Double.random(in: 120...520, using: &generator).rounded(),
                 Bool.random(using: &generator) ? nil : Double.random(in: 60...700, using: &generator).rounded(),
                 column: column
-            ))
+            )
+            if Int.random(in: 0..<4, using: &generator) == 0 {
+                next.spaceAbove = Double.random(in: 10...200, using: &generator).rounded()
+            }
+            items.append(next)
         }
         return items
     }
@@ -147,7 +151,7 @@ final class FlowLayoutTests: XCTestCase {
             // A column that holds more than fits is squeezed below the
             // heights its tiles ask for, which cannot be read back exactly.
             let fits = FlowLayout.columns(for: items).allSatisfy { column in
-                let asked = column.reduce(0) { $0 + max($1.height ?? options.minHeight, options.minHeight) }
+                let asked = column.reduce(0) { $0 + max($1.height ?? options.minHeight, options.minHeight) + $1.spaceAbove }
                 return asked + options.gap * Double(column.count - 1) <= canvas.height
             }
             guard fits else { continue }
@@ -166,6 +170,51 @@ final class FlowLayoutTests: XCTestCase {
                 XCTAssertEqual(after.height, before.height, accuracy: 1.5)
             }
         }
+    }
+
+    // MARK: - Space above a tile
+
+    func testATileCanKeepSpaceAboveIt() {
+        let column = UUID()
+        let clock = item(300, 200, column: column)
+        var notes = item(300, 240, column: column)
+        notes.spaceAbove = 60
+        let frames = FlowLayout.layout([clock, notes], in: canvas, options: options)
+        XCTAssertEqual(frames[clock.id]?.minY, 0)
+        XCTAssertEqual(frames[notes.id]?.minY, 270, "200 + 10 gap + 60 space")
+        XCTAssertEqual(frames[notes.id]?.height, 240)
+
+        var lone = item(300, nil)
+        lone.spaceAbove = 100
+        let loneFrame = FlowLayout.layout([lone], in: canvas, options: options)[lone.id]
+        XCTAssertEqual(loneFrame?.minY, 100)
+        XCTAssertEqual(loneFrame?.maxY, 800, "a tile that fills still ends at the bottom")
+    }
+
+    func testSpaceGivesWayBeforeTilesWouldVanish() {
+        var a = item(300, nil)
+        a.spaceAbove = 5000
+        let frame = FlowLayout.layout([a], in: canvas, options: options)[a.id]!
+        XCTAssertEqual(frame.height, 50, accuracy: 0.5, "the shortest a tile is drawn")
+        XCTAssertEqual(frame.maxY, 800, accuracy: 0.5)
+    }
+
+    func testSpaceAboveCountsAgainstHowTallATileCanGrow() {
+        let column = UUID()
+        let clock = item(300, 200, column: column)
+        var notes = item(300, 240, column: column)
+        notes.spaceAbove = 60
+        XCTAssertEqual(FlowLayout.maxHeight(of: notes.id, in: [clock, notes], canvasHeight: 800, options: options), 530)
+    }
+
+    func testATileMovedSomewhereNewLosesItsSpace() {
+        let a = item(300, nil)
+        var m = item(300, 200)
+        m.spaceAbove = 300
+        // m is in the second column; drop it on a's lower half.
+        let result = drop(m.id, 395 + 150, 600, [a, m])
+        XCTAssertEqual(result.last?.column, a.column)
+        XCTAssertEqual(result.last?.spaceAbove, 0)
     }
 
     // MARK: - Resizing

@@ -55,6 +55,8 @@ final class LauncherModel: ObservableObject {
                  symbol: "checklist", kind: .widget, action: .widget(.reminders(RemindersConfig()))),
             Item(id: "widget.notes", title: "Notes", subtitle: "A scratchpad that is always there",
                  symbol: "note.text", kind: .widget, action: .widget(.notes(NotesConfig()))),
+            Item(id: "widget.messages", title: "Messages", subtitle: "Recent conversations, and replies without switching apps",
+                 symbol: "message", kind: .widget, action: .widget(.messages(MessagesConfig()))),
             Item(id: "file.choose", title: "PDF or HTML File…", subtitle: "Keep a document within reach",
                  symbol: "doc", kind: .file, action: .chooseFile),
         ]

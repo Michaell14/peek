@@ -13,8 +13,9 @@ public enum ResizeHandle: CaseIterable, Sendable {
 
 /// Tiles stand in columns, side by side. A column is a stack of one or more
 /// tiles, top to bottom. A tile keeps the height it was given; one without a
-/// height fills what its column has left. The row of columns is centred, and
-/// squeezed if it is too wide.
+/// height fills what its column has left. A tile can also keep some empty
+/// space above it, left when its top edge was pulled down. The row of
+/// columns is centred, and squeezed if it is too wide.
 public enum FlowLayout {
     public struct Item: Hashable, Sendable {
         public var id: UUID
@@ -23,12 +24,16 @@ public enum FlowLayout {
         public var height: Double?
         /// Neighbouring items with the same column are stacked in it.
         public var column: UUID
+        /// Empty space kept above the item, below the one before it (or the
+        /// top of the canvas).
+        public var spaceAbove: Double
 
-        public init(id: UUID, width: Double, height: Double?, column: UUID = UUID()) {
+        public init(id: UUID, width: Double, height: Double?, column: UUID = UUID(), spaceAbove: Double = 0) {
             self.id = id
             self.width = width
             self.height = height
             self.column = column
+            self.spaceAbove = spaceAbove
         }
     }
 
@@ -59,12 +64,43 @@ public enum FlowLayout {
         return columns
     }
 
-    /// The heights of one column's tiles, top to bottom. Tiles keep their own
-    /// heights and tiles without one share what is left. A column that holds
-    /// more than fits has its tiles give way in proportion.
+    /// The heights of one column's tiles, top to bottom.
     public static func heights(for column: [Item], available: Double, options: Options = Options()) -> [Double] {
+        placements(for: column, available: available, options: options).map(\.height)
+    }
+
+    /// Where each of a column's tiles starts and how tall it is, top to
+    /// bottom. Tiles keep their own heights and the space above them, and
+    /// tiles without a height share what is left. A column that holds more
+    /// than fits has its tiles give way in proportion; space above them goes
+    /// first, if even the shortest tiles would not fit.
+    public static func placements(
+        for column: [Item],
+        available: Double,
+        options: Options = Options()
+    ) -> [(top: Double, height: Double)] {
         guard !column.isEmpty else { return [] }
-        let room = max(available - options.gap * Double(column.count - 1), 0)
+        let gaps = options.gap * Double(column.count - 1)
+        var spaces = column.map { max($0.spaceAbove, 0) }
+        let spaceRoom = max(available - gaps - options.minHeight * Double(column.count), 0)
+        let spaceTotal = spaces.reduce(0, +)
+        if spaceTotal > spaceRoom, spaceTotal > 0 {
+            spaces = spaces.map { $0 * spaceRoom / spaceTotal }
+        }
+        let room = max(available - gaps - spaces.reduce(0, +), 0)
+        let heights = heights(for: column, room: room, available: available, options: options)
+
+        var y = 0.0
+        var result: [(top: Double, height: Double)] = []
+        for (space, height) in zip(spaces, heights) {
+            y += space
+            result.append((y, height))
+            y += height + options.gap
+        }
+        return result
+    }
+
+    private static func heights(for column: [Item], room: Double, available: Double, options: Options) -> [Double] {
         let fills = column.filter { $0.height == nil }.count
         var own = column.map { item in item.height.map { min(max($0, options.minHeight), available) } }
         let ownTotal = own.compactMap { $0 }.reduce(0, +)
@@ -113,10 +149,8 @@ public enum FlowLayout {
         var frames: [UUID: LayoutRect] = [:]
 
         for (column, width) in zip(columns, widths) {
-            var y = 0.0
-            for (item, height) in zip(column, heights(for: column, available: canvas.height, options: options)) {
-                frames[item.id] = LayoutRect(x: x, y: y, width: width, height: height).integral
-                y += height + options.gap
+            for (item, place) in zip(column, placements(for: column, available: canvas.height, options: options)) {
+                frames[item.id] = LayoutRect(x: x, y: place.top, width: width, height: place.height).integral
             }
             x += width + options.gap
         }
@@ -124,8 +158,8 @@ public enum FlowLayout {
     }
 
     /// The tallest `id` can be made while its column still fits: the others
-    /// in it keep their heights, and tiles that fill give way down to the
-    /// shortest a tile is drawn.
+    /// in it keep their heights and the space above them, and tiles that
+    /// fill give way down to the shortest a tile is drawn.
     public static func maxHeight(
         of id: UUID,
         in items: [Item],
@@ -135,7 +169,8 @@ public enum FlowLayout {
         guard let column = columns(for: items).first(where: { $0.contains { $0.id == id } }) else { return canvasHeight }
         let others = column.filter { $0.id != id }
         let taken = others.reduce(0) { $0 + max($1.height ?? options.minHeight, options.minHeight) }
-        return max(canvasHeight - taken - options.gap * Double(column.count - 1), options.minHeight)
+        let spaces = column.reduce(0) { $0 + max($1.spaceAbove, 0) }
+        return max(canvasHeight - taken - spaces - options.gap * Double(column.count - 1), options.minHeight)
     }
 
     /// The arrangement if the tile `id`, being dragged, were let go at
@@ -160,6 +195,8 @@ public enum FlowLayout {
         guard var moving = items.first(where: { $0.id == id }) else { return items }
         let frames = layout(items, in: canvas, options: options, originX: originX)
         if let own = frames[id], own.contains(point) { return items }
+        // Put somewhere new, it starts against the tile above it.
+        moving.spaceAbove = 0
 
         var columns = columns(for: items.filter { $0.id != id })
         guard !columns.isEmpty else { return items }
@@ -220,16 +257,20 @@ public enum FlowLayout {
         for column in columns {
             let columnID = UUID()
             let stack = column.sorted { $0.rect.y < $1.rect.y }
+            var bottom = -options.gap
             for (index, tile) in stack.enumerated() {
                 // The bottom tile of a column that reaches the bottom of the
                 // canvas was filling it.
                 let fills = index == stack.count - 1 && tile.rect.maxY >= canvasHeight - 1.5
+                let space = tile.rect.minY - (bottom + options.gap)
                 items.append(Item(
                     id: tile.id,
                     width: tile.rect.width,
                     height: fills ? nil : max(tile.rect.height, options.minHeight),
-                    column: columnID
+                    column: columnID,
+                    spaceAbove: space > 1.5 ? space : 0
                 ))
+                bottom = tile.rect.maxY
             }
         }
         return items

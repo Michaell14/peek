@@ -25,6 +25,7 @@ final class WidgetTileContentView: TileContentView {
         case .calendar: return "calendar"
         case .reminders: return "checklist"
         case .notes: return "note.text"
+        case .messages: return "message"
         }
     }
 
@@ -35,6 +36,14 @@ final class WidgetTileContentView: TileContentView {
         render()
     }
 
+    override func overlayWillShow() {
+        if case .messages = widget { MessagesService.shared.overlayVisibilityChanged(true) }
+    }
+
+    override func overlayDidHide() {
+        if case .messages = widget { MessagesService.shared.overlayVisibilityChanged(false) }
+    }
+
     override func openExternally() {
         let bundleID: String
         switch widget {
@@ -42,6 +51,7 @@ final class WidgetTileContentView: TileContentView {
         case .calendar: bundleID = "com.apple.iCal"
         case .reminders: bundleID = "com.apple.reminders"
         case .notes: return
+        case .messages: bundleID = "com.apple.MobileSMS"
         }
         if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) {
             NSWorkspace.shared.open(url)
@@ -66,6 +76,9 @@ final class WidgetTileContentView: TileContentView {
             menu.addItem("Open Reminders") { [weak self] in self?.openExternally() }
         case .notes:
             break
+        case .messages:
+            menu.addItem("Open Messages") { [weak self] in self?.openExternally() }
+            menu.addItem("Read Again") { MessagesService.shared.refresh() }
         }
     }
 
@@ -79,6 +92,8 @@ final class WidgetTileContentView: TileContentView {
             host.rootView = AnyView(RemindersWidgetView(config: config) { [weak self] in self?.save(.reminders($0)) })
         case .notes(let config):
             host.rootView = AnyView(NotesWidgetView(config: config) { [weak self] in self?.saveQuietly(.notes($0)) })
+        case .messages(let config):
+            host.rootView = AnyView(MessagesWidgetView(config: config))
         }
     }
 

@@ -56,6 +56,28 @@ enum SmokeTest {
         desktopStandIn = window
     }
 
+    /// A few conversations, as the Messages widget would read them.
+    private static func sampleMessages() -> MessagesService.SampleData {
+        let now = Date()
+        func ago(_ minutes: Double) -> Date { now.addingTimeInterval(-minutes * 60) }
+        let conversations = [
+            Conversation(id: 1, guid: "iMessage;-;maya@example.com", title: "Maya Chen", handles: ["maya@example.com"],
+                         isGroup: false, lastText: "Can we move the review to 3?", lastDate: ago(2), lastFromMe: false, unread: 1),
+            Conversation(id: 2, guid: "iMessage;+;chat1", title: "Design team", handles: ["leo@example.com", "ana@example.com"],
+                         isGroup: true, lastText: "Leo: The new build is up", lastDate: ago(18), lastFromMe: false, unread: 2),
+            Conversation(id: 3, guid: "iMessage;-;+15550102233", title: "Sam Okafor", handles: ["+15550102233"],
+                         isGroup: false, lastText: "Sounds good, see you then", lastDate: ago(70), lastFromMe: true, unread: 0),
+            Conversation(id: 4, guid: "SMS;-;+15550109999", title: "+1 555 010 9999", handles: ["+15550109999"],
+                         isGroup: false, lastText: "Your table is ready", lastDate: ago(60 * 30), lastFromMe: false, unread: 0),
+        ]
+        let thread = [
+            ChatMessage(id: 11, text: "Morning! Did you see the numbers?", date: ago(40), fromMe: false, sender: "Maya Chen"),
+            ChatMessage(id: 12, text: "Yes, sign-ups are up again", date: ago(35), fromMe: true, sender: nil),
+            ChatMessage(id: 13, text: "Can we move the review to 3?", date: ago(2), fromMe: false, sender: "Maya Chen"),
+        ]
+        return MessagesService.SampleData(conversations: conversations, threads: [1: thread])
+    }
+
     /// A plausible day: overlapping meetings, an all-day event, something
     /// tomorrow, and reminders in every state.
     private static func sampleData() -> EventKitService.SampleData {
@@ -545,6 +567,22 @@ enum SmokeTest {
                 await capture("shortened")
             }
 
+            // The top edge works the other way round: the bottom stays put
+            // and the top comes down, leaving space above the tile.
+            if let web = tileID(ofKind: "web"), let before = framesByID()[web] {
+                await drag(
+                    from: CGPoint(x: before.midX, y: before.minY + 4),
+                    to: CGPoint(x: before.midX, y: before.minY + 104)
+                )
+                let after = framesByID()[web] ?? .zero
+                expect("top-edge", [
+                    ("pulling the top edge down moves the top down", near(after.minY, before.minY + 100, within: 3)),
+                    ("and keeps the bottom where it was", near(after.maxY, before.maxY, within: 2)),
+                    ("every tile's inside fills the tile", insidesMatch()),
+                ])
+                await capture("top-edge")
+            }
+
             // Resizing: pull a tile's right edge out by 60 points. The row of
             // columns stays centred, so the tile widens by up to twice that;
             // less on a narrow screen, where the whole row is squeezed to fit.
@@ -704,6 +742,24 @@ enum SmokeTest {
                 await pause(3.0)
                 expect("showcase", [("the showcase board is laid out", tileKinds().count == 4 && flag("visible"))])
                 await capture("showcase")
+            }
+
+            // Messages, fed with stand-in conversations: the list, then a thread.
+            MessagesService.shared.useSampleData(sampleMessages())
+            model.update { workspace in
+                workspace.updateBoard(workspace.sharedBoardID) { board in
+                    board.tiles = [Tile(content: .widget(.messages(MessagesConfig())))]
+                }
+            }
+            overlay.showPinned()
+            await pause(1.0)
+            expect("messages", [("the Messages widget is on the board", tileKinds() == ["widget:messages"])])
+            await capture("messages")
+            if let messages = framesByID().values.first {
+                // The first conversation, just under the list's heading.
+                await click(at: CGPoint(x: messages.midX, y: messages.minY + 62))
+                await pause(0.8)
+                await capture("messages-thread")
             }
 
             // 10. A layout per display starts as a copy and then goes its own way.

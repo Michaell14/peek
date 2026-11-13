@@ -160,11 +160,18 @@ public struct NotesConfig: Codable, Hashable, Sendable {
     }
 }
 
+/// The Messages widget keeps nothing of its own yet; conversations are read
+/// from Messages each time.
+public struct MessagesConfig: Codable, Hashable, Sendable {
+    public init() {}
+}
+
 public enum WidgetContent: Hashable, Sendable {
     case clock(ClockConfig)
     case calendar(CalendarConfig)
     case reminders(RemindersConfig)
     case notes(NotesConfig)
+    case messages(MessagesConfig)
 
     public var displayName: String {
         switch self {
@@ -172,6 +179,7 @@ public enum WidgetContent: Hashable, Sendable {
         case .calendar: return "Calendar"
         case .reminders: return "Reminders"
         case .notes: return "Notes"
+        case .messages: return "Messages"
         }
     }
 }
@@ -182,7 +190,7 @@ extension WidgetContent: Codable {
     }
 
     private enum Kind: String, Codable {
-        case clock, calendar, reminders, notes
+        case clock, calendar, reminders, notes, messages
     }
 
     public init(from decoder: Decoder) throws {
@@ -192,6 +200,7 @@ extension WidgetContent: Codable {
         case .calendar: self = .calendar(c.value(.config, default: CalendarConfig()))
         case .reminders: self = .reminders(c.value(.config, default: RemindersConfig()))
         case .notes: self = .notes(c.value(.config, default: NotesConfig()))
+        case .messages: self = .messages(c.value(.config, default: MessagesConfig()))
         }
     }
 
@@ -209,6 +218,9 @@ extension WidgetContent: Codable {
             try c.encode(config, forKey: .config)
         case .notes(let config):
             try c.encode(Kind.notes, forKey: .kind)
+            try c.encode(config, forKey: .config)
+        case .messages(let config):
+            try c.encode(Kind.messages, forKey: .kind)
             try c.encode(config, forKey: .config)
         }
     }
@@ -266,6 +278,9 @@ public struct Tile: Codable, Hashable, Identifiable, Sendable {
     /// Neighbouring tiles with the same column are stacked in it. A new
     /// tile starts a column of its own.
     public var column: UUID
+    /// Empty space in points kept above the tile, left when its top edge was
+    /// pulled down.
+    public var spaceAbove: Double
 
     public init(id: UUID = UUID(), content: TileContent) {
         self.id = id
@@ -274,6 +289,7 @@ public struct Tile: Codable, Hashable, Identifiable, Sendable {
         self.flowWidth = defaults.width
         self.flowHeight = defaults.height
         self.column = UUID()
+        self.spaceAbove = 0
     }
 
     public init(from decoder: Decoder) throws {
@@ -284,11 +300,12 @@ public struct Tile: Codable, Hashable, Identifiable, Sendable {
         flowWidth = c.value(.flowWidth, default: defaults.width)
         flowHeight = (try? c.decodeIfPresent(Double.self, forKey: .flowHeight)) ?? nil
         column = c.value(.column, default: UUID())
+        spaceAbove = c.value(.spaceAbove, default: 0)
     }
 
     /// The tile as the layout sees it.
     public var flowItem: FlowLayout.Item {
-        FlowLayout.Item(id: id, width: flowWidth, height: flowHeight, column: column)
+        FlowLayout.Item(id: id, width: flowWidth, height: flowHeight, column: column, spaceAbove: spaceAbove)
     }
 
     /// Natural size, in points, for a freshly added tile of this kind.
@@ -304,6 +321,7 @@ public struct Tile: Codable, Hashable, Identifiable, Sendable {
         case .widget(.calendar): return (300, nil)
         case .widget(.reminders): return (300, 360)
         case .widget(.notes): return (300, 240)
+        case .widget(.messages): return (320, nil)
         }
     }
 }
@@ -387,6 +405,7 @@ public struct Board: Codable, Hashable, Identifiable, Sendable {
             tile.flowWidth = max(item.width.rounded(), 160)
             tile.flowHeight = item.height?.rounded()
             tile.column = item.column
+            tile.spaceAbove = item.spaceAbove.rounded()
             return tile
         }
     }

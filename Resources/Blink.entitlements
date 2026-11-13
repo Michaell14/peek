@@ -7,5 +7,11 @@
 	     widgets) is refused without this. -->
 	<key>com.apple.security.personal-information.calendars</key>
 	<true/>
+	<!-- Names in the Messages widget come from Contacts. -->
+	<key>com.apple.security.personal-information.addressbook</key>
+	<true/>
+	<!-- Replies in the Messages widget are sent through Messages. -->
+	<key>com.apple.security.automation.apple-events</key>
+	<true/>
 </dict>
 </plist>

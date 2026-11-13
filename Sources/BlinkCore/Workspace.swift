@@ -122,6 +122,7 @@ public struct Workspace: Codable, Hashable, Sendable {
                 tile.flowWidth = item.width
                 tile.flowHeight = item.height
                 tile.column = item.column
+                tile.spaceAbove = item.spaceAbove
                 arranged.append(tile)
             }
             arranged += board.tiles.filter { remaining[$0.id] != nil }

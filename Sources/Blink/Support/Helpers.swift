@@ -130,6 +130,7 @@ enum SystemSettings {
         }
     }
     static func openCalendars() { open("Privacy_Calendars") }
+    static func openFullDiskAccess() { open("Privacy_AllFiles") }
     static func openReminders() { open("Privacy_Reminders") }
 }
 

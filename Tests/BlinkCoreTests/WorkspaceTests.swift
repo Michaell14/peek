@@ -25,6 +25,7 @@ final class WorkspaceTests: XCTestCase {
         var tile = Tile(content: .web(web))
         tile.flowWidth = 512
         tile.flowHeight = 300
+        tile.spaceAbove = 40
         workspace.addTile(tile, to: boardID)
         workspace.addTile(Tile(content: .file(FileContent(path: "/tmp/report.pdf", kind: .pdf))), to: boardID)
         workspace.addTile(Tile(content: .widget(.calendar(CalendarConfig(mode: .agenda)))), to: boardID)
