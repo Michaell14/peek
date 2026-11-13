@@ -8,7 +8,7 @@ struct ToolbarView: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            if let name = state.previewName {
+            if let name = state.previewName, !state.isShelfOpen {
                 ToolbarIconButton(symbol: "chevron.left") { actions.previewStep(-1) }
                     .help("The template before (←)")
                 VStack(spacing: 0) {
@@ -47,8 +47,8 @@ struct ToolbarView: View {
                 ToolbarIconButton(symbol: "plus", action: actions.add)
                     .help("Add a website, file or widget (⌘N)")
 
-                ToolbarIconButton(symbol: "square.grid.2x2", action: actions.templates)
-                    .help("Templates: ready-made boards to start from")
+                ToolbarIconButton(symbol: "square.grid.2x2", isOn: state.isShelfOpen, action: actions.templates)
+                    .help("Templates: point at one to see it on your board")
 
                 if state.isEditing {
                     Button("Done", action: actions.toggleEditing)
@@ -96,6 +96,7 @@ struct BrandView: View {
     }
 
     private var hint: String {
+        if state.isShelfOpen { return "Your tiles come back if you do not choose one" }
         if state.previewName != nil { return "Trying a template: your tiles come back if you cancel" }
         if state.isEditing { return "Drag a tile to move or stack it, or an edge to resize it" }
         return "\(state.shortcutText) or esc to close"
@@ -104,13 +105,16 @@ struct BrandView: View {
 
 private struct ToolbarIconButton: View {
     let symbol: String
+    var isOn = false
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
             Image(systemName: symbol)
                 .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(isOn ? Color.blinkAccent : Color.primary)
                 .frame(width: 26, height: 24)
+                .background(isOn ? Color.blinkAccent.opacity(0.16) : Color.clear, in: Capsule())
                 .contentShape(Capsule())
         }
         .buttonStyle(.plain)

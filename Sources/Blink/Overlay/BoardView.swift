@@ -10,14 +10,39 @@ final class BoardView: FlippedView {
     private var settings: AppSettings
     private let context: TileContext
     private var tileViews: [UUID: TileView] = [:]
+    /// Tiles taken off the board while a template is being tried, kept
+    /// alive (and hidden) so that putting the board back is instant and
+    /// their pages do not load again.
+    private var parked: [UUID: TileView] = [:]
     /// Shown while the board has no tiles: templates to start from.
     private let emptyView: NSView
+    /// Which template card is under the pointer, on an empty board.
+    let gallery: GalleryPointer
     private var drag: DragSession?
 
     /// Height kept clear at the top for the menu bar strip and toolbar.
     var topInset: CGFloat = 0 {
         didSet {
             if topInset != oldValue { needsLayout = true }
+        }
+    }
+
+    /// Room kept clear along the bottom, for the shelf of templates.
+    private(set) var bottomInset: CGFloat = 0
+
+    /// While true, tiles taken off the board are parked rather than torn down.
+    var parksRemovedTiles = false {
+        didSet {
+            if !parksRemovedTiles { flushParked() }
+        }
+    }
+
+    /// Tiles on trial glow, so a template being tried never passes for the
+    /// board itself.
+    var isPreviewing = false {
+        didSet {
+            guard isPreviewing != oldValue else { return }
+            tileViews.values.forEach { $0.isPreviewing = isPreviewing }
         }
     }
 
@@ -62,8 +87,11 @@ final class BoardView: FlippedView {
         self.board = board
         self.settings = settings
         self.context = context
+        let gallery = GalleryPointer()
+        self.gallery = gallery
         emptyView = NSHostingView(rootView: TemplateGallery(
-            onChoose: context.previewTemplate,
+            pointer: gallery,
+            onChoose: context.useTemplate,
             onAdd: context.presentLauncher
         ))
         super.init(frame: .zero)
@@ -84,31 +112,66 @@ final class BoardView: FlippedView {
         self.settings = settings
 
         var seen = Set<UUID>()
+        var appearing = Set<UUID>()
         for tile in board.tiles {
             seen.insert(tile.id)
             if let view = tileViews[tile.id] {
                 view.apply(tile: tile, settings: settings)
+            } else if let view = parked.removeValue(forKey: tile.id) {
+                view.isHidden = false
+                view.apply(tile: tile, settings: settings)
+                view.isInteractive = isInteractive
+                view.isEditing = isEditing
+                view.isPreviewing = isPreviewing
+                tileViews[tile.id] = view
+                appearing.insert(tile.id)
             } else {
                 let view = TileView(tile: tile, settings: settings, context: context)
                 view.board = self
                 view.isInteractive = isInteractive
                 view.isEditing = isEditing
+                view.isPreviewing = isPreviewing
                 tileViews[tile.id] = view
                 addSubview(view)
+                appearing.insert(tile.id)
             }
         }
         for (id, view) in tileViews where !seen.contains(id) {
-            view.tearDown()
-            view.removeFromSuperview()
+            if parksRemovedTiles {
+                view.isHidden = true
+                view.isHovering = false
+                parked[id] = view
+            } else {
+                view.tearDown()
+                view.removeFromSuperview()
+            }
             tileViews[id] = nil
         }
 
         emptyView.isHidden = !board.tiles.isEmpty
-        layoutTiles(animated: window?.isVisible == true && drag == nil)
+        if !emptyView.isHidden { gallery.update(pointer: nil) }
+        layoutTiles(animated: window?.isVisible == true && drag == nil, appearing: appearing)
+    }
+
+    private func flushParked() {
+        for view in parked.values {
+            view.tearDown()
+            view.removeFromSuperview()
+        }
+        parked = [:]
+    }
+
+    /// Makes room along the bottom (for the shelf), moving the tiles up.
+    func setBottomInset(_ inset: CGFloat, animated: Bool) {
+        guard inset != bottomInset else { return }
+        bottomInset = inset
+        emptyView.frame = canvasFrame
+        layoutTiles(animated: animated && window?.isVisible == true && drag == nil, duration: 0.34)
     }
 
     func tearDown() {
         tileViews.values.forEach { $0.tearDown() }
+        flushParked()
     }
 
     func removeTile(_ id: UUID) {
@@ -195,6 +258,22 @@ final class BoardView: FlippedView {
         for (id, view) in tileViews {
             view.isHovering = id == hovered
         }
+        updateGalleryPointer()
+    }
+
+    /// Tells the gallery where the pointer is, on an empty board.
+    private func updateGalleryPointer() {
+        guard !emptyView.isHidden, isInteractive, let window else {
+            gallery.update(pointer: nil)
+            return
+        }
+        let point = emptyView.convert(window.mouseLocationOutsideOfEventStream, from: nil)
+        guard emptyView.bounds.contains(point) else {
+            gallery.update(pointer: nil)
+            return
+        }
+        // SwiftUI measures from the top left.
+        gallery.update(pointer: emptyView.isFlipped ? point : CGPoint(x: point.x, y: emptyView.bounds.height - point.y))
     }
 
     // MARK: - Layout
@@ -209,7 +288,7 @@ final class BoardView: FlippedView {
             x: padding,
             y: top,
             width: max(bounds.width - 2 * padding, 1),
-            height: max(bounds.height - top - padding, 1)
+            height: max(bounds.height - top - padding - bottomInset, 1)
         )
     }
 
@@ -242,10 +321,18 @@ final class BoardView: FlippedView {
         layoutTiles(animated: false)
     }
 
-    private func layoutTiles(animated: Bool) {
+    private func layoutTiles(animated: Bool, duration: Double = 0.18, appearing: Set<UUID> = []) {
         let frames = canvasFrames()
         // A tile being moved follows the pointer, not the layout.
         let floating = drag.flatMap { $0.handle == nil ? $0.tileID : nil }
+
+        // New tiles start where they belong and fade in, rather than growing
+        // out of a corner.
+        for id in appearing {
+            guard let view = tileViews[id], let rect = frames[id] else { continue }
+            view.frame = viewFrame(rect)
+            view.alphaValue = animated ? 0 : 1
+        }
 
         func place() {
             for (id, view) in tileViews where id != floating {
@@ -255,10 +342,14 @@ final class BoardView: FlippedView {
                     (animated ? view.animator() : view).frame = target
                 }
             }
+            if animated {
+                for id in appearing { tileViews[id]?.animator().alphaValue = 1 }
+            }
         }
         if animated {
             NSAnimationContext.runAnimationGroup { context in
-                context.duration = 0.18
+                context.duration = appearing.isEmpty ? duration : max(duration, 0.24)
+                context.timingFunction = CAMediaTimingFunction(controlPoints: 0.2, 0.8, 0.2, 1)
                 context.allowsImplicitAnimation = true
                 place()
             }

@@ -11,6 +11,13 @@ final class OverlayState: ObservableObject {
     /// in the list ("2 of 6").
     @Published var previewName: String?
     @Published var previewPosition = ""
+    /// The shelf of templates along the bottom: whether it is open, the
+    /// card under the pointer, and the template it has put on the board.
+    @Published var isShelfOpen = false
+    @Published var shelfPointed: String?
+    @Published var shelfShowing: String?
+    /// "Using My Day", for a few seconds after a template is kept, with Undo.
+    @Published var keptName: String?
 }
 
 /// What the toolbar and launcher can ask the overlay to do.
@@ -21,6 +28,9 @@ struct OverlayActions {
     var previewStep: (Int) -> Void = { _ in }
     var keepPreview: () -> Void = {}
     var cancelPreview: () -> Void = {}
+    var chooseFromShelf: (BoardTemplate) -> Void = { _ in }
+    var closeShelf: () -> Void = {}
+    var undoTemplate: () -> Void = {}
     var toggleEditing: () -> Void = {}
     var stopPicking: () -> Void = {}
     var openSettings: () -> Void = {}

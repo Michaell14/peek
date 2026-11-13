@@ -25,6 +25,8 @@ final class OverlayRootView: FlippedView {
     private var toolbar: NSView?
     private var brand: NSView?
     private var launcher: NSView?
+    private(set) var shelf: NSView?
+    private var notice: NSView?
 
     init() {
         super.init(frame: .zero)
@@ -90,6 +92,43 @@ final class OverlayRootView: FlippedView {
         }
     }
 
+    /// The shelf of templates along the bottom.
+    func setShelf(_ view: NSView?) {
+        shelf?.removeFromSuperview()
+        shelf = view
+        if let view {
+            addSubview(view)
+            // Placed now, and again only when the screen changes size, so
+            // the way it slides in is not cut short by other layout.
+            view.frame = shelfFrame
+            shelfLaidOutFor = bounds.size
+        }
+    }
+
+    private var shelfLaidOutFor: CGSize = .zero
+
+    /// Where the shelf sits, whether or not it is showing.
+    var shelfFrame: CGRect {
+        let width = TemplateShelf.width(in: bounds.width)
+        let height = TemplateShelf.height(width)
+        return CGRect(
+            x: ((bounds.width - width) / 2).rounded(),
+            y: bounds.height - height - TemplateShelf.bottomMargin,
+            width: width,
+            height: height
+        )
+    }
+
+    /// "Using My Day · Undo", in the middle of the top strip.
+    func setNotice(_ view: NSView?) {
+        notice?.removeFromSuperview()
+        notice = view
+        if let view {
+            addSubview(view)
+            needsLayout = true
+        }
+    }
+
     override func layout() {
         super.layout()
         blur.frame = bounds
@@ -116,6 +155,19 @@ final class OverlayRootView: FlippedView {
             let size = brand.fittingSize
             brand.frame = CGRect(
                 x: 18,
+                y: max((topInset - size.height) / 2, 3),
+                width: size.width,
+                height: size.height
+            )
+        }
+        if let shelf, bounds.size != shelfLaidOutFor {
+            shelf.frame = shelfFrame
+            shelfLaidOutFor = bounds.size
+        }
+        if let notice {
+            let size = notice.fittingSize
+            notice.frame = CGRect(
+                x: ((bounds.width - size.width) / 2).rounded(),
                 y: max((topInset - size.height) / 2, 3),
                 width: size.width,
                 height: size.height

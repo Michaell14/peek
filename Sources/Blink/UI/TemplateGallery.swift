@@ -76,58 +76,153 @@ struct TemplateMap: View {
     }
 }
 
-/// Shown on an empty board: ready-made boards to start from.
+/// Which card of an empty board's gallery is under the pointer. The board
+/// samples the pointer and passes it in, since a window in a background app
+/// is not reliably told when the pointer moves.
+@MainActor
+final class GalleryPointer: ObservableObject {
+    @Published private(set) var hot: String?
+    /// Each card's frame in the gallery and the point it grows from.
+    var cards: [String: CardSpot] = [:]
+
+    static let scale: CGFloat = 1.3
+
+    func update(pointer: CGPoint?) {
+        guard let pointer else { return set(nil) }
+        // The card that has grown keeps the pointer while it is over it,
+        // even where it now covers a neighbour.
+        if let hot, let card = cards[hot], card.grown.contains(pointer) { return }
+        set(cards.first { $0.value.frame.contains(pointer) }?.key)
+    }
+
+    /// For the self-check.
+    func point(at id: String?) { set(id) }
+
+    private func set(_ id: String?) {
+        if hot != id { hot = id }
+    }
+}
+
+struct CardSpot: Equatable {
+    var frame: CGRect
+    var anchor: UnitPoint
+
+    var grown: CGRect {
+        let width = frame.width * GalleryPointer.scale
+        let height = frame.height * GalleryPointer.scale
+        return CGRect(
+            x: frame.minX + (frame.width - width) * anchor.x,
+            y: frame.minY + (frame.height - height) * anchor.y,
+            width: width,
+            height: height
+        )
+    }
+}
+
+private struct CardSpots: PreferenceKey {
+    static let defaultValue: [String: CardSpot] = [:]
+    static func reduce(value: inout [String: CardSpot], nextValue: () -> [String: CardSpot]) {
+        value.merge(nextValue()) { $1 }
+    }
+}
+
+/// Shown on an empty board: ready-made boards to start from. Resting on a
+/// card magnifies it in place, growing toward the middle so the card stays
+/// under the pointer; a click fills the board with it.
 struct TemplateGallery: View {
+    @ObservedObject var pointer: GalleryPointer
     let onChoose: @MainActor (BoardTemplate) -> Void
     let onAdd: @MainActor () -> Void
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 18) {
-                VStack(spacing: 5) {
-                    Text("Start with a template")
-                        .font(.system(size: 20, weight: .semibold))
-                    Text("Each one is a starting point: move, resize, add or remove anything afterwards.")
-                        .font(.system(size: 12.5))
-                        .foregroundStyle(.secondary)
-                }
-                .multilineTextAlignment(.center)
-
-                LazyVGrid(columns: [GridItem(.adaptive(minimum: 230, maximum: 280), spacing: 14)], spacing: 14) {
-                    ForEach(BoardTemplate.all) { template in
-                        TemplateCard(template: template) { onChoose(template) }
+        GeometryReader { geometry in
+            let columns = geometry.size.width >= 940 ? 3 : 2
+            let gap: CGFloat = 18
+            let cardWidth = min(280, (min(geometry.size.width - 48, 920) - CGFloat(columns - 1) * gap) / CGFloat(columns))
+            let all = BoardTemplate.all
+            let rows = stride(from: 0, to: all.count, by: columns).map { Array(all[$0..<min($0 + columns, all.count)]) }
+            ScrollView {
+                VStack(spacing: 22) {
+                    VStack(spacing: 5) {
+                        Text("Start with a template")
+                            .font(.system(size: 20, weight: .semibold))
+                        Text("Rest on one to look closer. Each is a starting point: move, resize, add or remove anything.")
+                            .font(.system(size: 12.5))
+                            .foregroundStyle(.secondary)
                     }
-                }
-                .frame(maxWidth: 900)
+                    .multilineTextAlignment(.center)
 
-                Button(action: onAdd) {
-                    Label("Or add a website, widget or file", systemImage: "plus")
-                        .font(.system(size: 12.5, weight: .medium))
+                    VStack(spacing: gap) {
+                        ForEach(Array(rows.enumerated()), id: \.offset) { rowIndex, row in
+                            HStack(spacing: gap) {
+                                ForEach(Array(row.enumerated()), id: \.element.id) { column, template in
+                                    MagnifyingCard(
+                                        template: template,
+                                        width: cardWidth,
+                                        anchor: UnitPoint(
+                                            x: column == 0 ? 0 : (column == columns - 1 ? 1 : 0.5),
+                                            y: rowIndex == 0 ? 0 : (rowIndex == rows.count - 1 ? 1 : 0.5)
+                                        ),
+                                        isHot: pointer.hot == template.id,
+                                        isDimmed: pointer.hot != nil && pointer.hot != template.id
+                                    ) { onChoose(template) }
+                                    .zIndex(pointer.hot == template.id ? 1 : 0)
+                                }
+                            }
+                            // A row with a grown card in it goes over the others.
+                            .zIndex(row.contains { $0.id == pointer.hot } ? 1 : 0)
+                        }
+                    }
+
+                    Button(action: onAdd) {
+                        Label("Or add a website, widget or file", systemImage: "plus")
+                            .font(.system(size: 12.5, weight: .medium))
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .opacity(pointer.hot == nil ? 1 : 0.4)
                 }
-                .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
+                .padding(.vertical, 30)
+                .padding(.horizontal, 24)
+                .frame(maxWidth: .infinity)
             }
-            .padding(.vertical, 28)
-            .padding(.horizontal, 20)
-            .frame(maxWidth: .infinity)
+            .scrollIndicators(.never)
         }
-        .scrollIndicators(.never)
+        .coordinateSpace(name: "gallery")
+        .onPreferenceChange(CardSpots.self) { spots in
+            onMainActor { pointer.cards = spots }
+        }
     }
 }
 
-private struct TemplateCard: View {
+private struct MagnifyingCard: View {
     let template: BoardTemplate
+    let width: CGFloat
+    let anchor: UnitPoint
+    let isHot: Bool
+    let isDimmed: Bool
     let choose: @MainActor () -> Void
-
-    @State private var isHovering = false
 
     var body: some View {
         Button(action: choose) {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 9) {
                 TemplateMap(template: template)
-                    .frame(height: 112)
                     .padding(8)
+                    .frame(height: ((width - 24) * 0.5).rounded())
                     .background(Color.black.opacity(0.25), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                    .overlay(alignment: .bottomTrailing) {
+                        if isHot {
+                            Text("Use \(template.name)")
+                                .font(.system(size: 10.5, weight: .semibold))
+                                .foregroundStyle(Color.black.opacity(0.85))
+                                .padding(.horizontal, 9)
+                                .frame(height: 20)
+                                .background(Color.blinkAccent, in: Capsule())
+                                .shadow(color: .black.opacity(0.35), radius: 6, y: 3)
+                                .padding(7)
+                                .transition(.opacity.combined(with: .offset(y: 4)))
+                        }
+                    }
                 HStack(spacing: 6) {
                     Image(systemName: template.symbol)
                         .font(.system(size: 12, weight: .semibold))
@@ -142,18 +237,33 @@ private struct TemplateCard: View {
                     .multilineTextAlignment(.leading)
             }
             .padding(12)
+            .frame(width: width, alignment: .leading)
             .background(
-                Color.white.opacity(isHovering ? 0.1 : 0.05),
+                isHot ? Color(white: 0.12).opacity(0.97) : Color.white.opacity(0.05),
                 in: RoundedRectangle(cornerRadius: 14, style: .continuous)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: 14, style: .continuous)
-                    .strokeBorder(Color.white.opacity(isHovering ? 0.22 : 0.1), lineWidth: 0.5)
+                    .strokeBorder(isHot ? Color.blinkAccent.opacity(0.45) : Color.white.opacity(0.1), lineWidth: isHot ? 1 : 0.5)
             )
-            .contentShape(Rectangle())
+            .contentShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
         .buttonStyle(.plain)
-        .onHover { isHovering = $0 }
         .help("Use the \(template.name) template")
+        // A short pause before growing keeps a sweep across the grid calm.
+        .scaleEffect(isHot ? GalleryPointer.scale : (isDimmed ? 0.98 : 1), anchor: anchor)
+        .shadow(color: .black.opacity(isHot ? 0.5 : 0), radius: isHot ? 28 : 0, y: isHot ? 14 : 0)
+        .opacity(isDimmed ? 0.5 : 1)
+        .animation(.spring(response: 0.36, dampingFraction: 0.82).delay(isHot ? 0.06 : 0), value: isHot)
+        .animation(.easeOut(duration: 0.2), value: isDimmed)
+        // Measured outside the magnification, so the frame is where the card sits.
+        .background(
+            GeometryReader { proxy in
+                Color.clear.preference(
+                    key: CardSpots.self,
+                    value: [template.id: CardSpot(frame: proxy.frame(in: .named("gallery")), anchor: anchor)]
+                )
+            }
+        )
     }
 }

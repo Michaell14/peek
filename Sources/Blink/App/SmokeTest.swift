@@ -784,6 +784,13 @@ enum SmokeTest {
             await pause(1.0)
             expect("templates", [("an empty board offers templates", flag("templatesShown"))])
             await capture("templates")
+            // Resting on a card magnifies it.
+            overlay.pointGallery(at: "inbox")
+            await pause(0.9)
+            expect("templates-magnified", [("resting on a card picks it out", overlay.snapshot()["galleryHot"] as? String == "inbox")])
+            await capture("templates-magnified")
+            overlay.pointGallery(at: nil)
+            await pause(0.4)
             if let day = BoardTemplate.all.first(where: { $0.id == "day" }) {
                 overlay.applyTemplate(day)
                 await pause(1.2)
@@ -792,8 +799,15 @@ enum SmokeTest {
                      tileKinds() == ["widget:calendar", "widget:messages", "widget:reminders", "widget:notes"]),
                     ("and the templates step aside", !flag("templatesShown")),
                     ("every tile's inside fills the tile", insidesMatch()),
+                    ("it says which, with Undo", overlay.snapshot()["keptNotice"] as? String == day.name),
                 ])
                 await capture("template-day")
+                overlay.undoTemplate()
+                await pause(0.9)
+                let undone = tileIDs().isEmpty && flag("templatesShown")
+                overlay.applyTemplate(day)
+                await pause(1.2)
+                expect("template-undo", [("Undo empties the board again", undone)])
             }
             // Trying a template: it goes on the board, → flips to the next one,
             // and esc puts the board back as it was.
@@ -817,13 +831,45 @@ enum SmokeTest {
                 ])
             }
 
-            // The Templates button opens the palette with only templates in it.
+            // The Templates button: a shelf along the bottom. Pointing at a
+            // template puts it on the board, moving away puts the board back,
+            // and a click keeps it.
+            let beforeShelf = tileKinds()
+            let beforeShelfIDs = tileIDs()
             overlay.presentTemplates()
-            await pause(0.8)
-            expect("templates-palette", [("the Templates button opens them in the palette", flag("launcherOpen"))])
-            await capture("templates-palette")
-            overlay.closeLauncher()
-            await pause(0.3)
+            await pause(1.0)
+            let shelfOpened = flag("shelfOpen")
+            let shelfFrame = overlay.snapshot()["shelfFrame"] as? [Double] ?? []
+            let roomMade = shelfFrame.count == 4 && !tileFrames().isEmpty
+                && tileFrames().allSatisfy { Double($0.maxY) <= shelfFrame[1] + 1 }
+            await capture("templates-shelf")
+            let shelfAll = BoardTemplate.all
+            overlay.pointShelf(at: 1, insideShelf: true)
+            await pause(1.0)
+            let showingSecond = overlay.snapshot()["shelfShowing"] as? String == shelfAll[1].id
+                && tileIDs().count == shelfAll[1].makeTiles().count
+            await capture("templates-shelf-preview")
+            overlay.pointShelf(at: nil, insideShelf: false)
+            await pause(1.0)
+            let cameBack = tileIDs() == beforeShelfIDs && (overlay.snapshot()["shelfShowing"] as? String ?? "x").isEmpty
+            overlay.pointShelf(at: 2, insideShelf: true)
+            await pause(1.0)
+            overlay.chooseFromShelf(shelfAll[2])
+            await pause(1.0)
+            expect("templates-shelf", [
+                ("the Templates button opens the shelf", shelfOpened),
+                ("the board makes room above it", roomMade),
+                ("pointing at a template puts it on the board", showingSecond),
+                ("moving away puts the board back", cameBack),
+                ("a click keeps it and puts the shelf away",
+                 !flag("shelfOpen") && tileIDs().count == shelfAll[2].makeTiles().count),
+                ("it says which, with Undo", overlay.snapshot()["keptNotice"] as? String == shelfAll[2].name),
+                ("the board has its full height back", tileFrames().contains { Double($0.maxY) > (shelfFrame.count == 4 ? shelfFrame[1] + 20 : 0) }),
+            ])
+            await capture("templates-kept")
+            overlay.undoTemplate()
+            await pause(0.9)
+            expect("templates-undo", [("Undo puts the board back", tileKinds() == beforeShelf)])
 
             // 10. A layout per display starts as a copy and then goes its own way.
             let sharedIDs = Set(tileIDs())

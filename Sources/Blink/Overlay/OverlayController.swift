@@ -36,6 +36,20 @@ final class OverlayController: NSObject {
     /// A template being tried on a board, and the tiles to put back if it
     /// is not kept.
     private var preview: (template: BoardTemplate, boardID: UUID, previousTiles: [Tile])?
+    private var actions = OverlayActions()
+    private var noticeHost: NSView?
+    /// The shelf of templates, while it is open.
+    private var shelfHost: NSView?
+    /// Each template's tiles for as long as the shelf is open, so pointing
+    /// back at one brings back the same tiles, pages already loaded.
+    private var shelfTiles: [String: [Tile]] = [:]
+    /// A template about to go on the board (or nil: the board about to come
+    /// back), waiting for the pointer to settle.
+    private var shelfPending: (target: String?, work: DispatchWorkItem)?
+    private var lastShelfSample: (index: Int?, inside: Bool)?
+    /// The board before the last template was kept, for Undo.
+    private var lastKept: (boardID: UUID, previous: [Tile])?
+    private var keptTimer: Timer?
     /// Bumped on every show and hide so a finishing fade-out can tell whether
     /// the overlay has been reopened in the meantime.
     private var visibilityGeneration = 0
@@ -177,7 +191,9 @@ final class OverlayController: NSObject {
         let generation = visibilityGeneration
 
         // Going away without choosing is not choosing.
+        closeShelf(animated: false)
         cancelPreview()
+        clearKeptNotice()
         closeLauncher()
         setEditing(false)
         setInteractive(false)
@@ -202,6 +218,7 @@ final class OverlayController: NSObject {
         activeBoardView?.isInteractive = interactive
         toolbarHost?.isHidden = !interactive
         brandHost?.isHidden = !interactive
+        noticeHost?.isHidden = !interactive
         hoverTimer?.invalidate()
         hoverTimer = nil
         if interactive {
@@ -217,7 +234,10 @@ final class OverlayController: NSObject {
     /// does not reliably send to a window whose app is in the background.
     private func trackPointer() {
         let timer = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in
-            onMainActor { self?.activeBoardView?.updateHover() }
+            onMainActor {
+                self?.activeBoardView?.updateHover()
+                self?.updateShelfPointer()
+            }
         }
         timer.tolerance = 0.03
         // .common, so it keeps running while a menu or a drag is tracking.
@@ -247,7 +267,7 @@ final class OverlayController: NSObject {
                 web: web,
                 pickerDidChange: { [weak self] in self?.pickerDidChange() },
                 presentLauncher: { [weak self] in self?.presentLauncher() },
-                previewTemplate: { [weak self] template in self?.previewTemplate(template) }
+                useTemplate: { [weak self] template in self?.applyTemplate(template) }
             )
             view = BoardView(board: board, settings: model.settings, context: context)
             boardViews[boardID] = view
@@ -320,6 +340,7 @@ final class OverlayController: NSObject {
 
     func setEditing(_ editing: Bool) {
         if editing {
+            closeShelf()
             activeBoardView?.stopPicking()
             // Arranging a template is keeping it.
             keepPreview()
@@ -341,13 +362,15 @@ final class OverlayController: NSObject {
     }
 
     /// The palette, with only templates in it.
+    /// The Templates button: the shelf along the bottom.
     func presentTemplates() {
-        presentLauncher(scope: .template)
+        openShelf()
     }
 
     private func presentLauncher(scope: LauncherModel.Item.Kind?) {
         if !isVisible || !isInteractive { showPinned() }
         setEditing(false)
+        closeShelf()
         closeLauncher()
 
         let launcher = LauncherModel(searchTemplate: model.settings.searchTemplate, scope: scope)
@@ -390,7 +413,20 @@ final class OverlayController: NSObject {
         // Flipping between templates still goes back to what was there first.
         let previous = preview?.boardID == boardID ? preview?.previousTiles ?? board.tiles : board.tiles
         preview = (template, boardID, previous)
-        model.update { $0.applyTemplate(template, to: boardID) }
+        let tiles: [Tile]
+        if state.isShelfOpen {
+            tiles = shelfTiles[template.id] ?? template.makeTiles()
+            shelfTiles[template.id] = tiles
+        } else {
+            tiles = template.makeTiles()
+        }
+        // The board's own tiles are set aside, not torn down, until the
+        // template is kept: putting them back is then instant.
+        boardViews[boardID]?.parksRemovedTiles = true
+        boardViews[boardID]?.isPreviewing = true
+        model.update { workspace in
+            workspace.updateBoard(boardID) { $0.tiles = tiles }
+        }
         let all = BoardTemplate.all
         let index = all.firstIndex { $0.id == template.id } ?? 0
         state.previewName = template.name
@@ -416,6 +452,9 @@ final class OverlayController: NSObject {
         state.previewName = nil
         lastKeptTemplate = preview.template
         templatesKept += 1
+        stopTrying(on: preview.boardID)
+        lastKept = (preview.boardID, preview.previousTiles)
+        showKeptNotice(preview.template.name)
         announceChange()
     }
 
@@ -427,7 +466,188 @@ final class OverlayController: NSObject {
         model.update { workspace in
             workspace.updateBoard(preview.boardID) { $0.tiles = preview.previousTiles }
         }
+        stopTrying(on: preview.boardID)
         announceChange()
+    }
+
+    private func stopTrying(on boardID: UUID) {
+        boardViews[boardID]?.isPreviewing = false
+        // With the shelf open, the tiles set aside may yet be pointed at again.
+        if !state.isShelfOpen { boardViews[boardID]?.parksRemovedTiles = false }
+    }
+
+    // MARK: - Undo
+
+    private func showKeptNotice(_ name: String) {
+        state.keptName = name
+        keptTimer?.invalidate()
+        keptTimer = Timer.scheduledTimer(withTimeInterval: 7, repeats: false) { [weak self] _ in
+            onMainActor { self?.clearKeptNotice() }
+        }
+    }
+
+    private func clearKeptNotice() {
+        keptTimer?.invalidate()
+        keptTimer = nil
+        if state.keptName != nil { state.keptName = nil }
+        lastKept = nil
+    }
+
+    /// Puts the board back as it was before the last template was kept.
+    func undoTemplate() {
+        guard let lastKept else { return }
+        clearKeptNotice()
+        model.update { workspace in
+            workspace.updateBoard(lastKept.boardID) { $0.tiles = lastKept.previous }
+        }
+    }
+
+    // MARK: - The shelf of templates
+
+    func openShelf() {
+        if !isVisible || !isInteractive { showPinned() }
+        closeLauncher()
+        setEditing(false)
+        if preview != nil { cancelPreview() }
+        guard shelfHost == nil, let board = activeBoardView else { return }
+        shelfTiles = [:]
+        lastShelfSample = nil
+        state.shelfPointed = nil
+        state.shelfShowing = nil
+        state.isShelfOpen = true
+
+        let host = NSHostingView(rootView: TemplateShelf(state: state, actions: actions))
+        host.sizingOptions = []
+        shelfHost = host
+        root.setShelf(host)
+        let frame = root.shelfFrame
+        host.frame = frame.offsetBy(dx: 0, dy: 28)
+        host.alphaValue = 0
+        NSAnimationContext.runAnimationGroup { context in
+            context.duration = 0.34
+            context.timingFunction = CAMediaTimingFunction(controlPoints: 0.2, 0.8, 0.2, 1)
+            host.animator().frame = frame
+            host.animator().alphaValue = 1
+        }
+
+        // The board moves up to make room, so all of it shows above the shelf.
+        board.parksRemovedTiles = true
+        let padding = CGFloat(model.settings.canvasPadding.rounded())
+        board.setBottomInset(max(root.bounds.height - frame.minY + 10 - padding, 0), animated: true)
+        announceChange()
+    }
+
+    func closeShelf(animated: Bool = true) {
+        guard let host = shelfHost else { return }
+        shelfPending?.work.cancel()
+        shelfPending = nil
+        if preview != nil { cancelPreview() }
+        shelfHost = nil
+        state.isShelfOpen = false
+        state.shelfPointed = nil
+        state.shelfShowing = nil
+        shelfTiles = [:]
+        for board in boardViews.values {
+            board.parksRemovedTiles = false
+            board.setBottomInset(0, animated: animated)
+        }
+        if animated {
+            NSAnimationContext.runAnimationGroup({ context in
+                context.duration = 0.2
+                host.animator().alphaValue = 0
+            }, completionHandler: { [weak self] in
+                onMainActor {
+                    guard let self, self.root.shelf === host else { return }
+                    self.root.setShelf(nil)
+                }
+            })
+        } else {
+            root.setShelf(nil)
+        }
+        announceChange()
+    }
+
+    /// Keeps a template from the shelf and puts the shelf away.
+    func chooseFromShelf(_ template: BoardTemplate) {
+        shelfPending?.work.cancel()
+        shelfPending = nil
+        if preview?.template.id != template.id { previewTemplate(template) }
+        keepPreview()
+        closeShelf()
+    }
+
+    /// Where the pointer is over the shelf, sampled with the tiles' hover.
+    private func updateShelfPointer() {
+        guard let host = shelfHost, state.isShelfOpen else { return }
+        let point = host.convert(panel.mouseLocationOutsideOfEventStream, from: nil)
+        let inside = host.bounds.contains(point)
+        let local = host.isFlipped ? point : CGPoint(x: point.x, y: host.bounds.height - point.y)
+        let index = inside ? TemplateShelf.card(at: local, width: host.bounds.width) : nil
+        // Only a change counts, so a template chosen with the arrow keys
+        // stays until the pointer moves somewhere new.
+        if let last = lastShelfSample, last.index == index, last.inside == inside { return }
+        lastShelfSample = (index, inside)
+        pointShelf(at: index, insideShelf: inside)
+    }
+
+    /// The pointer is over a card (or between cards, or off the shelf). A
+    /// template goes on the board once the pointer rests on it, so a sweep
+    /// across the shelf does not flicker; leaving the shelf puts the board back.
+    func pointShelf(at index: Int?, insideShelf: Bool) {
+        guard state.isShelfOpen else { return }
+        let pointed = index.flatMap { BoardTemplate.all.indices.contains($0) ? BoardTemplate.all[$0].id : nil }
+        if state.shelfPointed != pointed { state.shelfPointed = pointed }
+        if pointed == nil, insideShelf {
+            // Between cards, or on the shelf's heading, nothing changes.
+            shelfPending?.work.cancel()
+            shelfPending = nil
+            return
+        }
+        // Off the shelf, the target is nil: the board as it was.
+        let target = pointed
+        if target == state.shelfShowing {
+            shelfPending?.work.cancel()
+            shelfPending = nil
+            return
+        }
+        if let pending = shelfPending, pending.target == target { return }
+        shelfPending?.work.cancel()
+        let work = DispatchWorkItem { [weak self] in
+            onMainActor { self?.showOnShelf(target) }
+        }
+        shelfPending = (target, work)
+        DispatchQueue.main.asyncAfter(deadline: .now() + (target == nil ? 0.22 : 0.12), execute: work)
+    }
+
+    private func showOnShelf(_ id: String?) {
+        shelfPending = nil
+        guard state.isShelfOpen else { return }
+        if let id, let template = BoardTemplate.all.first(where: { $0.id == id }) {
+            previewTemplate(template)
+            state.shelfShowing = id
+        } else {
+            cancelPreview()
+            state.shelfShowing = nil
+        }
+    }
+
+    private func stepShelf(by offset: Int) {
+        let all = BoardTemplate.all
+        let next: Int
+        if let current = all.firstIndex(where: { $0.id == state.shelfShowing }) {
+            next = (current + offset + all.count) % all.count
+        } else {
+            next = offset > 0 ? 0 : all.count - 1
+        }
+        shelfPending?.work.cancel()
+        shelfPending = nil
+        showOnShelf(all[next].id)
+    }
+
+    /// For the self-check: as if the pointer rested on a card of an empty
+    /// board's gallery.
+    func pointGallery(at id: String?) {
+        activeBoardView?.gallery.point(at: id)
     }
 
     /// Fills the board on screen with a template, without trying it first.
@@ -480,6 +700,8 @@ final class OverlayController: NSObject {
             // Escape backs out one step at a time.
             if root.isShowingLauncher {
                 closeLauncher()
+            } else if state.isShelfOpen {
+                closeShelf()
             } else if preview != nil {
                 cancelPreview()
             } else if activeBoardView?.isPicking == true {
@@ -490,6 +712,24 @@ final class OverlayController: NSObject {
                 dismiss()
             }
             return true
+        }
+
+        // With the shelf open, the arrow keys go along it and Return keeps
+        // the template on the board.
+        if state.isShelfOpen, !root.isShowingLauncher, flags.isEmpty {
+            switch event.keyCode {
+            case 123:
+                stepShelf(by: -1)
+                return true
+            case 124:
+                stepShelf(by: 1)
+                return true
+            case 36, 76:
+                if let template = preview?.template { chooseFromShelf(template) }
+                return true
+            default:
+                break
+            }
         }
 
         // While a template is being tried: the arrow keys flip between
@@ -572,14 +812,23 @@ final class OverlayController: NSObject {
         actions.previewStep = { [weak self] offset in self?.stepPreview(by: offset) }
         actions.keepPreview = { [weak self] in self?.keepPreview() }
         actions.cancelPreview = { [weak self] in self?.cancelPreview() }
+        actions.chooseFromShelf = { [weak self] template in self?.chooseFromShelf(template) }
+        actions.closeShelf = { [weak self] in self?.closeShelf() }
+        actions.undoTemplate = { [weak self] in self?.undoTemplate() }
         actions.toggleEditing = { [weak self] in self?.toggleEditing() }
         actions.stopPicking = { [weak self] in self?.activeBoardView?.stopPicking() }
         actions.openSettings = { [weak self] in self?.onOpenSettings?() }
 
+        self.actions = actions
         let host = NSHostingView(rootView: ToolbarView(state: state, actions: actions))
         host.isHidden = true
         toolbarHost = host
         root.setToolbar(host)
+
+        let notice = NSHostingView(rootView: KeptNoticeView(state: state) { [weak self] in self?.undoTemplate() })
+        notice.isHidden = true
+        noticeHost = notice
+        root.setNotice(notice)
 
         let brand = PassthroughHostingView(rootView: BrandView(state: state))
         brand.isHidden = true
@@ -632,6 +881,11 @@ final class OverlayController: NSObject {
             "launcherOpen": root.isShowingLauncher,
             "templatesShown": activeBoardView?.isShowingTemplates ?? false,
             "previewing": state.previewName ?? "",
+            "shelfOpen": state.isShelfOpen,
+            "shelfShowing": state.shelfShowing ?? "",
+            "shelfFrame": shelfHost.map { _ in [root.shelfFrame.minX, root.shelfFrame.minY, root.shelfFrame.width, root.shelfFrame.height].map { Double($0) } } ?? [],
+            "keptNotice": state.keptName ?? "",
+            "galleryHot": activeBoardView?.gallery.hot ?? "",
             "tiles": tiles,
         ]
     }

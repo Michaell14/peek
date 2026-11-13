@@ -156,9 +156,24 @@ final class TileView: FlippedView {
     }
 
     private func updateBorder() {
+        if isPreviewing {
+            // On trial: a warm edge, so it never passes for the board itself.
+            clip.layer?.borderColor = Theme.accent.withAlphaComponent(0.55).cgColor
+            clip.layer?.borderWidth = 1.5
+            return
+        }
         // A tile brightens a touch under the pointer.
         let lifted = isHovering && isInteractive && !isEditing
         clip.layer?.borderColor = (lifted ? NSColor(white: 1, alpha: 0.24) : Theme.stroke).cgColor
+        clip.layer?.borderWidth = 1
+    }
+
+    /// Part of a template being tried.
+    var isPreviewing = false {
+        didSet {
+            guard isPreviewing != oldValue else { return }
+            updateBorder()
+        }
     }
 
     override func layout() {
