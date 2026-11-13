@@ -10,11 +10,14 @@ final class LauncherModel: ObservableObject {
             case website(URL)
             case widget(WidgetContent)
             case chooseFile
+            /// A ready-made board, by its id.
+            case template(String)
         }
 
         enum Kind: String {
             case widget = "Widget"
             case file = "File"
+            case template = "Template"
             case website = "Website"
             case search = "Search"
         }
@@ -38,11 +41,15 @@ final class LauncherModel: ObservableObject {
     var onWebsite: (URL) -> Void = { _ in }
     var onWidget: (WidgetContent) -> Void = { _ in }
     var onChooseFile: () -> Void = {}
+    var onTemplate: (BoardTemplate) -> Void = { _ in }
 
     private let searchTemplate: String
+    /// Set to show only one kind of item, such as templates.
+    let scope: Item.Kind?
 
-    init(searchTemplate: String) {
+    init(searchTemplate: String, scope: Item.Kind? = nil) {
         self.searchTemplate = searchTemplate
+        self.scope = scope
     }
 
     private static let catalog: [Item] = {
@@ -60,6 +67,10 @@ final class LauncherModel: ObservableObject {
             Item(id: "file.choose", title: "PDF or HTML File…", subtitle: "Keep a document within reach",
                  symbol: "doc", kind: .file, action: .chooseFile),
         ]
+        for template in BoardTemplate.all {
+            items.append(Item(id: "template.\(template.id)", title: template.name, subtitle: template.summary,
+                              symbol: template.symbol, kind: .template, action: .template(template.id)))
+        }
         let sites: [(String, String, String)] = [
             ("GitHub", "github.com", "chevron.left.forwardslash.chevron.right"),
             ("Gmail", "mail.google.com", "envelope"),
@@ -80,18 +91,20 @@ final class LauncherModel: ObservableObject {
 
     /// The rows to show for the current query, best match first.
     var items: [Item] {
+        let catalog = scope.map { kind in Self.catalog.filter { $0.kind == kind } } ?? Self.catalog
         let text = query.trimmingCharacters(in: .whitespaces)
-        guard !text.isEmpty else { return Self.catalog }
+        guard !text.isEmpty else { return catalog }
 
         let needle = text.lowercased()
-        let starts = Self.catalog.filter { $0.title.lowercased().hasPrefix(needle) }
-        let contains = Self.catalog.filter { item in
+        let starts = catalog.filter { $0.title.lowercased().hasPrefix(needle) }
+        let contains = catalog.filter { item in
             !item.title.lowercased().hasPrefix(needle)
-                && (item.title.lowercased().contains(needle) || item.subtitle.lowercased().contains(needle))
+                && (item.title.lowercased().contains(needle) || item.subtitle.lowercased().contains(needle)
+                    || item.kind.rawValue.lowercased().hasPrefix(needle))
         }
 
         var typed: [Item] = []
-        if let url = URLInput.resolve(text, searchTemplate: searchTemplate) {
+        if scope == nil, let url = URLInput.resolve(text, searchTemplate: searchTemplate) {
             let isSearch = url == URLInput.search(text, template: searchTemplate)
             typed.append(Item(
                 id: "typed",
@@ -124,6 +137,8 @@ final class LauncherModel: ObservableObject {
         case .website(let url): onWebsite(url)
         case .widget(let widget): onWidget(widget)
         case .chooseFile: onChooseFile()
+        case .template(let id):
+            if let template = BoardTemplate.all.first(where: { $0.id == id }) { onTemplate(template) }
         }
     }
 }
@@ -145,7 +160,7 @@ struct LauncherView: View {
                 Image(systemName: "plus.magnifyingglass")
                     .font(.system(size: 17, weight: .medium))
                     .foregroundStyle(.secondary)
-                TextField("Add a website, a widget or a file", text: $model.query)
+                TextField(model.scope == .template ? "Choose a template" : "Add a website, a widget or a file", text: $model.query)
                     .textFieldStyle(.plain)
                     .font(.system(size: 19))
                     .focused($isFieldFocused)
@@ -162,7 +177,7 @@ struct LauncherView: View {
                 ScrollView {
                     LazyVStack(alignment: .leading, spacing: 2) {
                         ForEach(Array(items.enumerated()), id: \.element.id) { index, item in
-                            if model.query.isEmpty, index == 0 || items[index - 1].kind != item.kind {
+                            if model.query.isEmpty, model.scope == nil, index == 0 || items[index - 1].kind != item.kind {
                                 SectionLabel(item.kind.rawValue + "s")
                                     .padding(.horizontal, 10)
                                     .padding(.top, index == 0 ? 4 : 12)
@@ -226,6 +241,7 @@ private struct LauncherRow: View {
         switch item.kind {
         case .widget: return .blinkAccent
         case .file: return Color(red: 0.45, green: 0.85, blue: 0.7)
+        case .template: return Color(red: 0.78, green: 0.66, blue: 1.0)
         case .website: return .blinkCool
         case .search: return Color.white.opacity(0.7)
         }

@@ -13,6 +13,7 @@ final class OverlayState: ObservableObject {
 @MainActor
 struct OverlayActions {
     var add: () -> Void = {}
+    var templates: () -> Void = {}
     var toggleEditing: () -> Void = {}
     var stopPicking: () -> Void = {}
     var openSettings: () -> Void = {}

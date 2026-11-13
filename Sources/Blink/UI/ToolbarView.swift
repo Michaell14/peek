@@ -25,6 +25,9 @@ struct ToolbarView: View {
                 ToolbarIconButton(symbol: "plus", action: actions.add)
                     .help("Add a website, file or widget (⌘N)")
 
+                ToolbarIconButton(symbol: "square.grid.2x2", action: actions.templates)
+                    .help("Templates: ready-made boards to start from")
+
                 if state.isEditing {
                     Button("Done", action: actions.toggleEditing)
                         .buttonStyle(AccentButtonStyle())

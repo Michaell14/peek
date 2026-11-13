@@ -9,7 +9,8 @@ final class BoardView: FlippedView {
     private var settings: AppSettings
     private let context: TileContext
     private var tileViews: [UUID: TileView] = [:]
-    private let emptyView: MessageView
+    /// Shown while the board has no tiles: templates to start from.
+    private let emptyView: NSView
     private var drag: DragSession?
 
     /// Height kept clear at the top for the menu bar strip and toolbar.
@@ -60,12 +61,12 @@ final class BoardView: FlippedView {
         self.board = board
         self.settings = settings
         self.context = context
-        emptyView = MessageView(
-            symbol: "rectangle.3.group",
-            text: "Nothing here yet.\nAdd a website, a file or a widget to get started.",
-            buttonTitle: "Add Something",
-            action: context.presentLauncher
-        )
+        let id = board.id
+        let model = context.model
+        emptyView = NSHostingView(rootView: TemplateGallery(
+            onChoose: { template in model.update { $0.applyTemplate(template, to: id) } },
+            onAdd: context.presentLauncher
+        ))
         super.init(frame: .zero)
         addSubview(emptyView)
         apply(board: board, settings: settings)
@@ -114,6 +115,9 @@ final class BoardView: FlippedView {
     func removeTile(_ id: UUID) {
         context.model.update { $0.removeTile(id, from: boardID) }
     }
+
+    /// Whether the templates are showing, for the self-check.
+    var isShowingTemplates: Bool { !emptyView.isHidden }
 
     var contentViews: [TileContentView] {
         board.tiles.compactMap { tileViews[$0.id]?.content }

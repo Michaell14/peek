@@ -773,6 +773,33 @@ enum SmokeTest {
                 await capture("messages-thread")
             }
 
+            // Templates: an empty board offers them; choosing one fills it.
+            model.update { workspace in
+                workspace.updateBoard(workspace.sharedBoardID) { $0.tiles = [] }
+            }
+            overlay.showPinned()
+            await pause(1.0)
+            expect("templates", [("an empty board offers templates", flag("templatesShown"))])
+            await capture("templates")
+            if let day = BoardTemplate.all.first(where: { $0.id == "day" }) {
+                overlay.applyTemplate(day)
+                await pause(1.2)
+                expect("template-applied", [
+                    ("choosing a template fills the board",
+                     tileKinds() == ["widget:calendar", "widget:messages", "widget:reminders", "widget:notes"]),
+                    ("and the templates step aside", !flag("templatesShown")),
+                    ("every tile's inside fills the tile", insidesMatch()),
+                ])
+                await capture("template-day")
+            }
+            // The Templates button opens the palette with only templates in it.
+            overlay.presentTemplates()
+            await pause(0.8)
+            expect("templates-palette", [("the Templates button opens them in the palette", flag("launcherOpen"))])
+            await capture("templates-palette")
+            overlay.closeLauncher()
+            await pause(0.3)
+
             // 10. A layout per display starts as a copy and then goes its own way.
             let sharedIDs = Set(tileIDs())
             overlay.dismiss()

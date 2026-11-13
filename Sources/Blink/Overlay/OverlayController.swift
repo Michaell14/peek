@@ -315,13 +315,24 @@ final class OverlayController: NSObject {
     // MARK: - Adding content
 
     func presentLauncher() {
+        presentLauncher(scope: nil)
+    }
+
+    /// The palette, with only templates in it.
+    func presentTemplates() {
+        presentLauncher(scope: .template)
+    }
+
+    private func presentLauncher(scope: LauncherModel.Item.Kind?) {
         if !isVisible || !isInteractive { showPinned() }
         setEditing(false)
+        closeLauncher()
 
-        let launcher = LauncherModel(searchTemplate: model.settings.searchTemplate)
+        let launcher = LauncherModel(searchTemplate: model.settings.searchTemplate, scope: scope)
         launcher.onWebsite = { [weak self] url in self?.addTile(.web(WebContent(url: url))) }
         launcher.onWidget = { [weak self] widget in self?.addTile(.widget(widget)) }
         launcher.onChooseFile = { [weak self] in self?.chooseFiles() }
+        launcher.onTemplate = { [weak self] template in self?.applyTemplate(template) }
         launcherModel = launcher
 
         let host = NSHostingView(rootView: LauncherView(model: launcher))
@@ -341,6 +352,27 @@ final class OverlayController: NSObject {
         closeLauncher()
         guard let boardID = activeBoardID, boardViews[boardID] != nil else { return }
         model.update { $0.addTile(Tile(content: content), to: boardID) }
+    }
+
+    /// Fills the board on screen with a template. A board that already has
+    /// tiles is only replaced once the person says so.
+    func applyTemplate(_ template: BoardTemplate) {
+        if !isVisible { showPinned() }
+        closeLauncher()
+        guard let boardID = activeBoardID, let board = model.workspace.board(boardID) else { return }
+        guard !board.tiles.isEmpty else {
+            model.update { $0.applyTemplate(template, to: boardID) }
+            return
+        }
+        let alert = NSAlert()
+        alert.messageText = "Use the \u{201C}\(template.name)\u{201D} template?"
+        alert.informativeText = "The tiles on this board are replaced with the template's. Websites stay signed in."
+        alert.addButton(withTitle: "Replace Tiles")
+        alert.addButton(withTitle: "Cancel")
+        alert.beginSheetModal(for: panel) { [weak self] response in
+            guard response == .alertFirstButtonReturn else { return }
+            onMainActor { self?.model.update { $0.applyTemplate(template, to: boardID) } }
+        }
     }
 
     /// Adds local PDF and HTML files; anything else is ignored.
@@ -455,6 +487,7 @@ final class OverlayController: NSObject {
     private func installToolbar() {
         var actions = OverlayActions()
         actions.add = { [weak self] in self?.presentLauncher() }
+        actions.templates = { [weak self] in self?.presentTemplates() }
         actions.toggleEditing = { [weak self] in self?.toggleEditing() }
         actions.stopPicking = { [weak self] in self?.activeBoardView?.stopPicking() }
         actions.openSettings = { [weak self] in self?.onOpenSettings?() }
@@ -513,6 +546,7 @@ final class OverlayController: NSObject {
             "panelLevel": panel.level.rawValue,
             "windowNumber": panel.windowNumber,
             "launcherOpen": root.isShowingLauncher,
+            "templatesShown": activeBoardView?.isShowingTemplates ?? false,
             "tiles": tiles,
         ]
     }

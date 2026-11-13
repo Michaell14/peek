@@ -19,6 +19,7 @@ full-screen ones — and disappears when you release it.
 | **Local files** | PDF and HTML. Add from the launcher or Finder's *Open With → Blink*. Reloads when the file changes. |
 | **Widgets** | Clock (multiple time zones), Calendar (day timeline or next 7 days), Reminders (today / scheduled / overdue / all, tick off, add), Notes, Messages (recent conversations, styled as in Messages; read a thread and reply). |
 | **Less noise** | Blocks third-party ads and trackers, hides cookie banners, and lets you click page elements to hide them for good. Accepts your own Adblock Plus-style filters. |
+| **Templates** | Ready-made boards to start from: My Day (calendar, Messages in the middle, reminders and a note), Inbox, Engineering, Remote Team, Markets and Study. An empty board offers them; the grid button beside `+` opens them any time, and asks before replacing tiles. |
 | **Layout** | Tiles stand in columns. Drop one under another to stack them; pull any edge to resize a tile. The top edge moves the top and keeps the bottom where it is. |
 | **Displays** | Opens on the display with the pointer, the active window, or one you pick. One layout everywhere, or one per display. |
 | **Shortcut** | Any key combination, or modifier keys alone — including a specific left or right one (`Right ⌘`, `fn`). |
