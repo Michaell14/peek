@@ -6,7 +6,6 @@ import BlinkCore
 final class OverlayState: ObservableObject {
     @Published var isEditing = false
     @Published var isPicking = false
-    @Published var mode: LayoutMode = .flow
     @Published var shortcutText = ""
 }
 
@@ -15,7 +14,6 @@ final class OverlayState: ObservableObject {
 struct OverlayActions {
     var add: () -> Void = {}
     var toggleEditing: () -> Void = {}
-    var setMode: (LayoutMode) -> Void = { _ in }
     var stopPicking: () -> Void = {}
     var openSettings: () -> Void = {}
 }

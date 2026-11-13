@@ -50,7 +50,7 @@ public struct Workspace: Codable, Hashable, Sendable {
         if let url = URL(string: "https://en.m.wikipedia.org/wiki/Main_Page") {
             tiles.append(Tile(content: .web(WebContent(url: url))))
         }
-        return Workspace(board: Board(name: "Main", mode: .flow, tiles: tiles))
+        return Workspace(board: Board(name: "Main", tiles: tiles))
     }
 
     // MARK: - Boards
@@ -114,14 +114,6 @@ public struct Workspace: Codable, Hashable, Sendable {
             guard let from = board.tiles.firstIndex(where: { $0.id == tileID }) else { return }
             let tile = board.tiles.remove(at: from)
             board.tiles.insert(tile, at: min(max(index, 0), board.tiles.count))
-        }
-    }
-
-    public mutating func bringTileToFront(_ tileID: UUID, in boardID: UUID) {
-        updateBoard(boardID) { board in
-            guard let from = board.tiles.firstIndex(where: { $0.id == tileID }),
-                  from != board.tiles.count - 1 else { return }
-            board.tiles.append(board.tiles.remove(at: from))
         }
     }
 

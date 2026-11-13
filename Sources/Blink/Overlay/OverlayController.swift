@@ -27,6 +27,8 @@ final class OverlayController: NSObject {
     private var cancellables: Set<AnyCancellable> = []
     private var keyMonitor: Any?
     private var hoverTimer: Timer?
+    /// The settings the overlay was last brought in line with.
+    private var appliedSettings: AppSettings?
     /// Bumped on every show and hide so a finishing fade-out can tell whether
     /// the overlay has been reopened in the meantime.
     private var visibilityGeneration = 0
@@ -210,6 +212,7 @@ final class OverlayController: NSObject {
         let boardID = model.boardID(forDisplay: screen.displayKey, name: screen.localizedName)
         if panel.frame != screen.frame {
             panel.setFrame(screen.frame, display: false)
+            root.needsLayout = true
         }
         root.topInset = max(screen.menuBarHeight, Theme.minimumTopInset)
         activate(boardID)
@@ -231,16 +234,20 @@ final class OverlayController: NSObject {
             view = BoardView(board: board, settings: model.settings, context: context)
             boardViews[boardID] = view
             root.boardContainer.addSubview(view)
+            root.needsLayout = true
         }
         // Every board stays in the window so its pages keep loading and
         // refreshing; only the active one is visible.
-        for (id, other) in boardViews {
-            other.isHidden = id != boardID
+        if boardID != activeBoardID {
+            for (id, other) in boardViews {
+                other.isHidden = id != boardID
+            }
+            activeBoardID = boardID
+            root.needsLayout = true
         }
         view.topInset = root.topInset
-        activeBoardID = boardID
-        state.mode = board.mode
-        root.needsLayout = true
+        // Showing the same board again finds nothing to lay out: this is on
+        // the way to every peek, so it should cost next to nothing.
         root.layoutSubtreeIfNeeded()
     }
 
@@ -250,26 +257,33 @@ final class OverlayController: NSObject {
 
     // MARK: - Model changes
 
+    /// Brings the boards in line with the model. A change usually touches
+    /// one tile on one board (typing in a note saves on every keystroke), so
+    /// only boards that differ, or all of them when settings changed, are
+    /// visited.
     private func workspaceDidChange(_ workspace: Workspace) {
-        applySettings(workspace.settings)
+        let settingsChanged = workspace.settings != appliedSettings
+        if settingsChanged { applySettings(workspace.settings) }
         for (id, view) in boardViews {
             if let board = workspace.board(id) {
-                view.apply(board: board, settings: workspace.settings)
+                if settingsChanged || board != view.board {
+                    view.apply(board: board, settings: workspace.settings)
+                }
             } else {
                 view.tearDown()
                 view.removeFromSuperview()
                 boardViews[id] = nil
+                if activeBoardID == id { activeBoardID = nil }
             }
-        }
-        if let id = activeBoardID, let board = workspace.board(id) {
-            state.mode = board.mode
         }
     }
 
     private func applySettings(_ settings: AppSettings) {
+        appliedSettings = settings
         machine.tapThreshold = settings.tapThreshold
         root.setBackdrop(opacity: settings.backdropOpacity, blurred: settings.backdropBlur)
-        state.shortcutText = settings.shortcut.displayString
+        let shortcutText = settings.shortcut.displayString
+        if state.shortcutText != shortcutText { state.shortcutText = shortcutText }
         web.configure(for: settings)
     }
 
@@ -280,14 +294,17 @@ final class OverlayController: NSObject {
     }
 
     private func pickerDidChange() {
-        state.isPicking = boardViews.values.contains { $0.isPicking }
+        let isPicking = boardViews.values.contains { $0.isPicking }
+        if state.isPicking != isPicking { state.isPicking = isPicking }
     }
 
     // MARK: - Arranging
 
     func setEditing(_ editing: Bool) {
         if editing { activeBoardView?.stopPicking() }
-        state.isEditing = editing
+        // Every hide passes through here. An unchanged value must not wake
+        // the toolbar, which would lay itself out again for nothing.
+        if state.isEditing != editing { state.isEditing = editing }
         activeBoardView?.isEditing = editing
     }
 
@@ -322,9 +339,8 @@ final class OverlayController: NSObject {
     func addTile(_ content: TileContent) {
         if !isVisible { showPinned() }
         closeLauncher()
-        guard let boardID = activeBoardID, let boardView = boardViews[boardID] else { return }
-        let tile = Tile(content: content, frame: boardView.frameForNewTile(content))
-        model.update { $0.addTile(tile, to: boardID) }
+        guard let boardID = activeBoardID, boardViews[boardID] != nil else { return }
+        model.update { $0.addTile(Tile(content: content), to: boardID) }
     }
 
     /// Adds local PDF and HTML files; anything else is ignored.
@@ -440,7 +456,6 @@ final class OverlayController: NSObject {
         var actions = OverlayActions()
         actions.add = { [weak self] in self?.presentLauncher() }
         actions.toggleEditing = { [weak self] in self?.toggleEditing() }
-        actions.setMode = { [weak self] mode in self?.setLayoutMode(mode) }
         actions.stopPicking = { [weak self] in self?.activeBoardView?.stopPicking() }
         actions.openSettings = { [weak self] in self?.onOpenSettings?() }
 
@@ -461,10 +476,6 @@ final class OverlayController: NSObject {
 
     var firstWebTile: WebTileContentView? {
         activeBoardView?.contentViews.lazy.compactMap { $0 as? WebTileContentView }.first
-    }
-
-    func setLayoutMode(_ mode: LayoutMode) {
-        activeBoardView?.setMode(mode)
     }
 
     /// A description of what is on screen, for the automated self-check.
@@ -500,7 +511,6 @@ final class OverlayController: NSObject {
             "panelFrame": [panel.frame.minX, panel.frame.minY, panel.frame.width, panel.frame.height].map { Double($0) },
             "panelLevel": panel.level.rawValue,
             "windowNumber": panel.windowNumber,
-            "mode": activeBoardView?.board.mode.rawValue ?? "",
             "launcherOpen": root.isShowingLauncher,
             "tiles": tiles,
         ]

@@ -16,6 +16,10 @@ final class WebEnvironment {
     var onChange: (() -> Void)?
 
     private var appliedKey: String?
+    /// What the rules were last built from. Encoding them takes a few
+    /// milliseconds, and parsing a long filter list far more, so it is only
+    /// done when one of these changes, not on every change to the layout.
+    private var appliedInputs: (options: ContentBlocker.Options, filters: String)?
     private var generation = 0
 
     private struct Request {
@@ -25,6 +29,12 @@ final class WebEnvironment {
     }
 
     func configure(for settings: AppSettings) {
+        let options = settings.contentBlocking
+        if let applied = appliedInputs, applied.options == options, applied.filters == settings.customFilters {
+            return
+        }
+        appliedInputs = (options, settings.customFilters)
+
         let builtIn = ContentBlocker.encode(ContentBlocker.builtInRules(for: settings.contentBlocking))
         let custom = ContentBlocker.encode(FilterListParser.parse(settings.customFilters).rules)
         let key = (builtIn ?? "") + "\u{0}" + (custom ?? "")

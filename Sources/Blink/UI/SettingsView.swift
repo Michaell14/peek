@@ -222,7 +222,6 @@ private struct AppearanceSettingsView: View {
                     Slider(value: model.binding(\.canvasPadding), in: 0...120)
                         .frame(width: 240)
                 }
-                Toggle("Snap to edges and other tiles in Freeform", isOn: model.binding(\.snapToGuides))
             }
         }
         .formStyle(.grouped)

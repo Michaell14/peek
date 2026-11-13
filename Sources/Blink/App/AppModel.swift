@@ -17,6 +17,8 @@ final class AppModel: ObservableObject {
     private let store: WorkspaceStore
     private let persists: Bool
     private var saveGeneration = 0
+    /// Writes happen here, in order, so the main thread never waits on the disk.
+    private let saveQueue = DispatchQueue(label: "Blink.save", qos: .utility)
 
     /// - Parameter persists: false keeps everything in memory (self-checks).
     init(directory: URL, persists: Bool = true) {
@@ -77,9 +79,23 @@ final class AppModel: ObservableObject {
         return id
     }
 
+    /// Saves and waits until it is on disk: for quitting and updating.
     func saveNow() {
         saveGeneration += 1
         guard persists else { return }
+        let snapshot = workspace
+        let store = store
+        saveQueue.sync { AppModel.write(snapshot, to: store) }
+    }
+
+    private func saveInBackground() {
+        guard persists else { return }
+        let snapshot = workspace
+        let store = store
+        saveQueue.async { AppModel.write(snapshot, to: store) }
+    }
+
+    nonisolated private static func write(_ workspace: Workspace, to store: WorkspaceStore) {
         do {
             try store.save(workspace)
         } catch {
@@ -94,7 +110,7 @@ final class AppModel: ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
             onMainActor {
                 guard let self, self.saveGeneration == generation else { return }
-                self.saveNow()
+                self.saveInBackground()
             }
         }
     }

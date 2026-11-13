@@ -33,6 +33,9 @@ final class EventKitService: ObservableObject {
     @Published private(set) var canReadReminders = false
 
     private let store = EKEventStore()
+    /// Calendar reads can take a while with many calendars; they run here,
+    /// one after another, so results arrive in the order they were asked for.
+    private let fetchQueue = DispatchQueue(label: "Blink.calendar", qos: .userInitiated)
     private var observer: NSObjectProtocol?
     /// Stand-in data, used instead of the real stores once set.
     private var sample: SampleData?
@@ -98,11 +101,30 @@ final class EventKitService: ObservableObject {
 
     // MARK: - Calendar
 
-    func events(from start: Date, to end: Date) -> [EventItem] {
+    /// The events between `start` and `end`, read off the main thread.
+    func fetchEvents(
+        from start: Date,
+        to end: Date,
+        completion: @escaping @MainActor @Sendable ([EventItem]) -> Void
+    ) {
         if let sample {
-            return sample.events.filter { $0.end > start && $0.start < end }.sorted { $0.start < $1.start }
+            completion(sample.events.filter { $0.end > start && $0.start < end }.sorted { $0.start < $1.start })
+            return
         }
-        guard canReadEvents else { return [] }
+        guard canReadEvents else {
+            completion([])
+            return
+        }
+        let store = store
+        fetchQueue.async {
+            let items = EventKitService.events(in: store, from: start, to: end)
+            DispatchQueue.main.async {
+                onMainActor { completion(items) }
+            }
+        }
+    }
+
+    nonisolated private static func events(in store: EKEventStore, from start: Date, to end: Date) -> [EventItem] {
         let predicate = store.predicateForEvents(withStart: start, end: end, calendars: nil)
         return store.events(matching: predicate)
             .map { event in

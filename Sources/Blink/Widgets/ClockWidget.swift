@@ -19,7 +19,9 @@ struct ClockWidgetView: View {
     }
 
     var body: some View {
-        TimelineView(.periodic(from: .now, by: 1)) { timeline in
+        // The face shows hours and minutes, so it changes on the minute and
+        // not in between.
+        TimelineView(.everyMinute) { timeline in
             let rows = config.zones.compactMap {
                 WorldClock.row(identifier: $0, at: timeline.date, local: .current, uses24Hour: uses24Hour)
             }

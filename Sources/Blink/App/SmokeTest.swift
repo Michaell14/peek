@@ -118,6 +118,7 @@ enum SmokeTest {
         Task { @MainActor in
             var failures: [String] = []
             var snapshots: [String: Any] = [:]
+            var performance: [String: Any] = [:]
 
             @MainActor func pause(_ seconds: Double) async {
                 try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
@@ -468,7 +469,7 @@ enum SmokeTest {
             // Flow: drag the first tile past the last one to reorder.
             let kindsBefore = tileKinds()
             let idsBefore = tileIDs()
-            var layout = framesByID()
+            let layout = framesByID()
             if let first = idsBefore.first.flatMap({ layout[$0] }),
                let last = idsBefore.last.flatMap({ layout[$0] }) {
                 await drag(
@@ -482,70 +483,29 @@ enum SmokeTest {
                 ("no tile was lost", Set(tileIDs()) == Set(idsBefore)),
             ])
 
-            // Freeform: the switch keeps tiles in place, then resize and move.
-            let flowFrames = framesByID()
-            overlay.setLayoutMode(.freeform)
-            await pause(0.6)
-            layout = framesByID()
-            let stayedPut = flowFrames.count == layout.count && flowFrames.allSatisfy { id, before in
-                guard let after = layout[id] else { return false }
-                return near(before.minX, after.minX, within: 2) && near(before.minY, after.minY, within: 2)
-                    && near(before.width, after.width, within: 2) && near(before.height, after.height, within: 2)
-            }
-            expect("freeform", [
-                ("the board is in freeform mode", overlay.snapshot()["mode"] as? String == "freeform"),
-                ("switching mode leaves tiles where they were", stayedPut),
-            ])
-
-            if let id = tileIDs().first, let before = layout[id] {
-                // Pull the bottom edge up by 200 points.
+            // Resizing: pull a tile's right edge out by 60 points. The row of
+            // columns stays centred, so the tile widens by about twice that.
+            if let id = tileIDs().first, let before = framesByID()[id] {
                 await drag(
-                    from: CGPoint(x: before.midX, y: before.maxY - 5),
-                    to: CGPoint(x: before.midX, y: before.maxY - 205)
+                    from: CGPoint(x: before.maxX - 5, y: before.midY),
+                    to: CGPoint(x: before.maxX + 55, y: before.midY)
                 )
                 let resized = framesByID()[id] ?? .zero
                 expect("resized", [
-                    ("dragging the bottom edge changes the height", near(resized.height, before.height - 200)),
-                    ("the top edge stays put", near(resized.minY, before.minY, within: 1)),
-                    ("the width is unchanged", near(resized.width, before.width, within: 1)),
+                    ("dragging the right edge widens the tile", resized.width > before.width + 60),
+                    ("the height is unchanged", near(resized.height, before.height, within: 1)),
+                    ("every tile is still on the board", Set(tileIDs()) == Set(idsBefore)),
                 ])
-
-                // Then drag it by its middle.
-                await drag(
-                    from: CGPoint(x: resized.midX, y: resized.midY),
-                    to: CGPoint(x: resized.midX + 60, y: resized.midY + 40)
-                )
-                let moved = framesByID()[id] ?? .zero
-                expect("moved", [
-                    ("dragging the middle moves the tile", near(moved.minX, resized.minX + 60) && near(moved.minY, resized.minY + 40)),
-                    ("moving does not resize", near(moved.width, resized.width, within: 1) && near(moved.height, resized.height, within: 1)),
-                ])
-                await capture("freeform")
+                await capture("resized")
 
                 // Its remove button takes it off the board.
                 let countBefore = tileIDs().count
                 let remove = TileEditCover.removeButtonFrame
-                await click(at: CGPoint(x: moved.minX + remove.midX, y: moved.minY + remove.midY))
+                await click(at: CGPoint(x: resized.minX + remove.midX, y: resized.minY + remove.midY))
                 expect("removed", [
                     ("the remove button removes the tile", tileIDs().count == countBefore - 1 && !tileIDs().contains(id)),
                 ])
             }
-
-            // Back to flow: the tiles that were not touched return to
-            // exactly where flow had them.
-            let beforeFlow = framesByID()
-            overlay.setLayoutMode(.flow)
-            await pause(0.6)
-            let afterFlow = framesByID()
-            let untouched = afterFlow.keys.filter { flowFrames[$0] != nil }
-            expect("flow", [
-                ("the board is back in flow mode", overlay.snapshot()["mode"] as? String == "flow"),
-                ("every remaining tile is still on the board", Set(afterFlow.keys) == Set(beforeFlow.keys)),
-                ("tiles keep their heights and vertical positions", untouched.allSatisfy { id in
-                    guard let was = flowFrames[id], let now = afterFlow[id] else { return false }
-                    return near(was.minY, now.minY, within: 2) && near(was.height, now.height, within: 2)
-                }),
-            ])
 
             // Escape backs out one step at a time: first out of edit mode.
             await press("\u{1b}", keyCode: 53)
@@ -644,7 +604,6 @@ enum SmokeTest {
             EventKitService.shared.useSampleData(sampleData())
             model.update { workspace in
                 workspace.updateBoard(workspace.sharedBoardID) { board in
-                    board.mode = .flow
                     board.tiles = [
                         Tile(content: .widget(.calendar(CalendarConfig(mode: .day)))),
                         Tile(content: .widget(.calendar(CalendarConfig(mode: .agenda)))),
@@ -702,6 +661,66 @@ enum SmokeTest {
             ])
             overlay.dismiss()
             await pause(0.5)
+
+            // Timings, for the report rather than as pass or fail: how long the
+            // main thread is busy opening the overlay, and with each keystroke
+            // in a note (each one is saved to the layout).
+            func milliseconds(_ body: () -> Void) -> Double {
+                let start = DispatchTime.now().uptimeNanoseconds
+                body()
+                return Double(DispatchTime.now().uptimeNanoseconds - start) / 1_000_000
+            }
+            func median(_ values: [Double]) -> Double {
+                let sorted = values.sorted()
+                return sorted.isEmpty ? 0 : sorted[sorted.count / 2]
+            }
+            func rounded(_ value: Double) -> Double { (value * 100).rounded() / 100 }
+
+            var opens: [Double] = []
+            for _ in 0..<8 {
+                opens.append(milliseconds { overlay.showPinned() })
+                await pause(0.4)
+                overlay.dismiss()
+                await pause(0.4)
+            }
+
+            // With a long list of filters of one's own, as some people paste in.
+            let ownFilters = model.settings.customFilters
+            let longList = (0..<3000).map { "||ads\($0).example.com^" }.joined(separator: "\n")
+            model.updateSettings { $0.customFilters = longList }
+            let boardID = model.workspace.sharedBoardID
+            let note = Tile(content: .widget(.notes(NotesConfig(text: ""))))
+            model.update { $0.addTile(note, to: boardID) }
+            overlay.showPinned()
+            await pause(1.0)
+            var keystrokes: [Double] = []
+            var typed = ""
+            for character in "Call Sam about the launch" {
+                typed.append(character)
+                let text = typed
+                keystrokes.append(milliseconds {
+                    model.updateTile(note.id, in: boardID) { $0.content = .widget(.notes(NotesConfig(text: text))) }
+                })
+                await pause(0.03)
+            }
+            // What each keystroke used to cost on top: building the blocking
+            // rules again from scratch.
+            let settings = model.settings
+            let rebuild = milliseconds {
+                _ = ContentBlocker.encode(ContentBlocker.builtInRules(for: settings.contentBlocking))
+                _ = ContentBlocker.encode(FilterListParser.parse(settings.customFilters).rules)
+            }
+            model.update { $0.removeTile(note.id, from: boardID) }
+            model.updateSettings { $0.customFilters = ownFilters }
+            overlay.dismiss()
+            await pause(0.5)
+            performance = [
+                "openMedianMs": rounded(median(opens)),
+                "openMaxMs": rounded(opens.max() ?? 0),
+                "keystrokeMedianMs": rounded(median(keystrokes)),
+                "keystrokeMaxMs": rounded(keystrokes.max() ?? 0),
+                "ruleRebuildNoLongerPerKeystrokeMs": rounded(rebuild),
+            ]
 
             // 11. The settings window.
             overlay.onOpenSettings?()
@@ -776,6 +795,7 @@ enum SmokeTest {
                 "hotkey": String(describing: hotkeys.status),
                 "shortcut": hotkeys.shortcut.displayString,
                 "update": update,
+                "performance": performance,
                 "snapshots": snapshots,
             ]
             if let data = try? JSONSerialization.data(withJSONObject: report, options: [.prettyPrinted, .sortedKeys]) {

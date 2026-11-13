@@ -22,7 +22,7 @@ final class WorkspaceTests: XCTestCase {
         web.zoom = 0.8
         web.prefersMobileSite = true
         web.hiddenElements = [HiddenElement(host: "example.com", selector: "div > .ad")]
-        var tile = Tile(content: .web(web), frame: LayoutRect(x: 0.1, y: 0.2, width: 0.3, height: 0.4))
+        var tile = Tile(content: .web(web))
         tile.flowWidth = 512
         tile.flowHeight = 300
         workspace.addTile(tile, to: boardID)
@@ -103,14 +103,11 @@ final class WorkspaceTests: XCTestCase {
         workspace.moveTile(c.id, in: board, to: 99)
         XCTAssertEqual(workspace.board(board)?.tiles.map(\.id), [a.id, b.id, c.id])
 
-        workspace.bringTileToFront(a.id, in: board)
-        XCTAssertEqual(workspace.board(board)?.tiles.map(\.id), [b.id, c.id, a.id])
-
         workspace.updateTile(b.id, in: board) { $0.flowWidth = 999 }
         XCTAssertEqual(workspace.board(board)?.tile(b.id)?.flowWidth, 999)
 
         workspace.removeTile(b.id, from: board)
-        XCTAssertEqual(workspace.board(board)?.tiles.map(\.id), [c.id, a.id])
+        XCTAssertEqual(workspace.board(board)?.tiles.map(\.id), [a.id, c.id])
 
         // Unknown ids are ignored rather than trapping.
         workspace.removeTile(UUID(), from: board)
@@ -161,6 +158,65 @@ final class WorkspaceTests: XCTestCase {
         XCTAssertEqual(FileContent(path: "/a/b/Report.PDF")?.fileName, "Report.PDF")
         XCTAssertNil(FileContent(path: "/a/notes.txt"))
         XCTAssertNil(FileContent(path: "/a/noextension"))
+    }
+    // MARK: - Boards saved in Freeform
+
+    private func savedBoard(mode: String, tiles: [(id: String, frame: [Double]?)]) throws -> Board {
+        let entries = tiles.map { tile -> [String: Any] in
+            var entry: [String: Any] = [
+                "id": tile.id,
+                "content": ["type": "widget", "widget": ["kind": "notes", "config": ["text": ""]]],
+                "flowWidth": 300,
+            ]
+            if let f = tile.frame {
+                entry["frame"] = ["x": f[0], "y": f[1], "width": f[2], "height": f[3]]
+            }
+            return entry
+        }
+        let json: [String: Any] = ["id": UUID().uuidString, "name": "Main", "mode": mode, "tiles": entries]
+        return try JSONDecoder().decode(Board.self, from: JSONSerialization.data(withJSONObject: json))
+    }
+
+    private let ids = (0..<4).map { _ in UUID().uuidString }
+
+    /// Two tiles stacked on the left, one wide tile on the right, saved back
+    /// to front in a different order.
+    func testAFreeformBoardOpensAsColumnsThatFollowWhereTilesWere() throws {
+        let board = try savedBoard(mode: "freeform", tiles: [
+            (ids[2], [0.5, 0.0, 0.45, 1.0]),
+            (ids[1], [0.0, 0.5, 0.25, 0.5]),
+            (ids[0], [0.0, 0.0, 0.25, 0.45]),
+        ])
+        XCTAssertEqual(board.tiles.map(\.id.uuidString), [ids[0], ids[1], ids[2]], "left to right, top to bottom")
+        XCTAssertEqual(board.tiles[0].flowWidth, 360, "a quarter of the canvas it is read off")
+        XCTAssertEqual(board.tiles[0].flowHeight, 378)
+        XCTAssertNil(board.tiles[2].flowHeight, "a full-height tile fills its column")
+        XCTAssertEqual(board.tiles[2].flowWidth, 648)
+
+        let canvas = LayoutSize(width: 1440, height: 840)
+        let frames = FlowLayout.layout(
+            board.tiles.map { FlowLayout.Item(id: $0.id, width: $0.flowWidth, height: $0.flowHeight) }, in: canvas
+        )
+        XCTAssertEqual(frames.count, 3)
+        XCTAssertEqual(frames[board.tiles[0].id]?.x, frames[board.tiles[1].id]?.x, "the stack stays one column")
+    }
+
+    func testAFlowBoardKeepsItsOrderAndSizes() throws {
+        let board = try savedBoard(mode: "flow", tiles: [
+            (ids[2], [0.5, 0.0, 0.45, 1.0]),
+            (ids[0], nil),
+        ])
+        XCTAssertEqual(board.tiles.map(\.id.uuidString), [ids[2], ids[0]])
+        XCTAssertEqual(board.tiles.map(\.flowWidth), [300, 300])
+    }
+
+    func testBoardsNoLongerSaveAModeOrFreeformFrames() throws {
+        var board = Board(name: "Main")
+        board.tiles = [Tile(content: .widget(.notes(NotesConfig(text: ""))))]
+        let json = try XCTUnwrap(String(data: JSONEncoder().encode(board), encoding: .utf8))
+        XCTAssertFalse(json.contains("\"mode\""))
+        XCTAssertFalse(json.contains("\"frame\""))
+        XCTAssertEqual(try JSONDecoder().decode(Board.self, from: Data(json.utf8)), board)
     }
 }
 

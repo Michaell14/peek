@@ -98,7 +98,7 @@ final class FlowLayoutTests: XCTestCase {
         XCTAssertEqual(FlowLayout.layout(derived, in: canvas, options: options), frames)
     }
 
-    /// Flow -> freeform -> flow must not move anything.
+    /// Laying out, reading positions back and laying out again must not move anything.
     func testRoundTripThroughPositionsIsStable() {
         var generator = SeededGenerator(seed: 2026)
         for _ in 0..<300 {

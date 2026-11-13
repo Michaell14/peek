@@ -17,15 +17,6 @@ struct Lossy<T: Decodable>: Decodable {
     }
 }
 
-// MARK: - Layout
-
-public enum LayoutMode: String, Codable, CaseIterable, Sendable {
-    /// Tiles sit wherever the user dragged them.
-    case freeform
-    /// Tiles are packed into full-height columns in order.
-    case flow
-}
-
 // MARK: - Web
 
 /// A page element the user chose to hide, scoped to the site it was picked on.
@@ -268,19 +259,15 @@ extension TileContent: Codable {
 public struct Tile: Codable, Hashable, Identifiable, Sendable {
     public var id: UUID
     public var content: TileContent
-    /// Freeform placement as fractions of the canvas (0...1), so a layout
-    /// survives a change of display or resolution.
-    public var frame: LayoutRect
-    /// Preferred width in points when the board is in flow mode.
+    /// Preferred width in points; columns are as wide as their widest tile.
     public var flowWidth: Double
-    /// Preferred height in points in flow mode; nil fills the column.
+    /// Preferred height in points; nil fills the column.
     public var flowHeight: Double?
 
-    public init(id: UUID = UUID(), content: TileContent, frame: LayoutRect? = nil) {
+    public init(id: UUID = UUID(), content: TileContent) {
         self.id = id
         self.content = content
         let defaults = Tile.defaultSizing(for: content)
-        self.frame = frame ?? LayoutRect(x: 0.05, y: 0.05, width: 0.3, height: 0.6)
         self.flowWidth = defaults.width
         self.flowHeight = defaults.height
     }
@@ -290,7 +277,6 @@ public struct Tile: Codable, Hashable, Identifiable, Sendable {
         id = c.value(.id, default: UUID())
         content = try c.decode(TileContent.self, forKey: .content)
         let defaults = Tile.defaultSizing(for: content)
-        frame = c.value(.frame, default: LayoutRect(x: 0.05, y: 0.05, width: 0.3, height: 0.6))
         flowWidth = c.value(.flowWidth, default: defaults.width)
         flowHeight = (try? c.decodeIfPresent(Double.self, forKey: .flowHeight)) ?? nil
     }
@@ -315,25 +301,76 @@ public struct Tile: Codable, Hashable, Identifiable, Sendable {
 public struct Board: Codable, Hashable, Identifiable, Sendable {
     public var id: UUID
     public var name: String
-    public var mode: LayoutMode
-    /// In flow mode this is the packing order; in freeform it is back-to-front.
+    /// The order tiles are packed into columns.
     public var tiles: [Tile]
 
-    public init(id: UUID = UUID(), name: String, mode: LayoutMode = .flow, tiles: [Tile] = []) {
+    public init(id: UUID = UUID(), name: String, tiles: [Tile] = []) {
         self.id = id
         self.name = name
-        self.mode = mode
         self.tiles = tiles
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, name, tiles
+        /// Only in boards saved before Freeform was removed.
+        case mode
     }
 
     public init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         id = c.value(.id, default: UUID())
         name = c.value(.name, default: "Board")
-        mode = c.value(.mode, default: .flow)
         // One unreadable tile (say, a kind added by a newer version) must not
         // take the rest of the board down with it.
-        tiles = c.value(.tiles, default: [Lossy<Tile>]()).compactMap(\.value)
+        let saved = c.value(.tiles, default: [Lossy<SavedTile>]()).compactMap(\.value)
+        if c.value(.mode, default: "flow") == "freeform" {
+            tiles = Board.columns(fromFreeform: saved)
+        } else {
+            tiles = saved.map(\.tile)
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(name, forKey: .name)
+        try c.encode(tiles, forKey: .tiles)
+    }
+
+    /// A tile as saved, with the spot it had on a Freeform board, if any.
+    private struct SavedTile: Decodable {
+        let tile: Tile
+        let freeformFrame: LayoutRect?
+
+        private enum Key: String, CodingKey { case frame }
+
+        init(from decoder: Decoder) throws {
+            tile = try Tile(from: decoder)
+            freeformFrame = try? decoder.container(keyedBy: Key.self).decodeIfPresent(LayoutRect.self, forKey: .frame)
+        }
+    }
+
+    /// The canvas a Freeform board is read off when it becomes columns: a
+    /// typical laptop screen, since the real one is not known yet.
+    static let migrationCanvas = LayoutSize(width: 1440, height: 840)
+
+    /// Blink used to have a Freeform mode, where tiles sat wherever they were
+    /// dragged. A board saved that way opens as columns that follow where its
+    /// tiles were: left to right, top to bottom, at about the same widths.
+    private static func columns(fromFreeform saved: [SavedTile]) -> [Tile] {
+        let canvas = migrationCanvas
+        let frames = saved.map { item -> (id: UUID, rect: LayoutRect) in
+            let unit = item.freeformFrame ?? LayoutRect(x: 0, y: 0, width: 0.3, height: 1)
+            return (item.tile.id, unit.scaled(to: canvas))
+        }
+        let items = FlowLayout.items(from: frames, canvasHeight: canvas.height)
+        let byID = Dictionary(saved.map { ($0.tile.id, $0.tile) }, uniquingKeysWith: { first, _ in first })
+        return items.compactMap { item in
+            guard var tile = byID[item.id] else { return nil }
+            tile.flowWidth = max(item.width.rounded(), 160)
+            tile.flowHeight = item.height?.rounded()
+            return tile
+        }
     }
 
     public func tile(_ id: UUID) -> Tile? {

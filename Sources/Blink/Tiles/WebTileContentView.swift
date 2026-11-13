@@ -279,11 +279,16 @@ final class WebTileContentView: TileContentView {
     /// Pages follow the system's light/dark setting (or the user's override)
     /// rather than the always-dark overlay around them.
     private func applyAppearance() {
+        let wanted: NSAppearance?
         switch settings.webColorScheme {
-        case .system: webView.appearance = NSApp.effectiveAppearance
-        case .light: webView.appearance = NSAppearance(named: .aqua)
-        case .dark: webView.appearance = NSAppearance(named: .darkAqua)
+        case .system: wanted = NSApp.effectiveAppearance
+        case .light: wanted = NSAppearance(named: .aqua)
+        case .dark: wanted = NSAppearance(named: .darkAqua)
         }
+        // This runs every time the overlay opens. Setting the same look again
+        // still makes the page work out its styles anew.
+        guard webView.appearance?.name != wanted?.name else { return }
+        webView.appearance = wanted
     }
 
     private func observeWebView() {

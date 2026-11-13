@@ -1,36 +1,14 @@
 import AppKit
 import BlinkCore
 
-/// Draws the alignment lines that appear while a tile snaps into place.
-private final class GuideOverlayView: FlippedView {
-    var lines: [(from: CGPoint, to: CGPoint)] = [] {
-        didSet { needsDisplay = true }
-    }
-
-    override func hitTest(_ point: NSPoint) -> NSView? { nil }
-
-    override func draw(_ dirtyRect: NSRect) {
-        guard !lines.isEmpty else { return }
-        let path = NSBezierPath()
-        for line in lines {
-            path.move(to: line.from)
-            path.line(to: line.to)
-        }
-        path.lineWidth = 1
-        NSColor.controlAccentColor.setStroke()
-        path.stroke()
-    }
-}
-
-/// One board's canvas: creates a view per tile, positions them according to
-/// the board's layout mode, and handles moving and resizing while arranging.
+/// One board's canvas: creates a view per tile, packs them into columns, and
+/// handles moving and resizing while arranging.
 final class BoardView: FlippedView {
     let boardID: UUID
     private(set) var board: Board
     private var settings: AppSettings
     private let context: TileContext
     private var tileViews: [UUID: TileView] = [:]
-    private let guideView = GuideOverlayView()
     private let emptyView: MessageView
     private var drag: DragSession?
 
@@ -66,7 +44,7 @@ final class BoardView: FlippedView {
         /// The tile's frame when the drag began, relative to the canvas.
         let startFrame: LayoutRect
         var currentFrame: LayoutRect
-        /// Flow mode: order and sizes as they would be if the drag ended now.
+        /// Order and sizes as they would be if the drag ended now.
         var flowItems: [FlowLayout.Item]
     }
 
@@ -83,10 +61,6 @@ final class BoardView: FlippedView {
         )
         super.init(frame: .zero)
         addSubview(emptyView)
-        addSubview(guideView)
-        // Guides stay visible above a tile that is lifted while dragging.
-        guideView.wantsLayer = true
-        guideView.layer?.zPosition = 2
         apply(board: board, settings: settings)
     }
 
@@ -113,7 +87,7 @@ final class BoardView: FlippedView {
                 view.isInteractive = isInteractive
                 view.isEditing = isEditing
                 tileViews[tile.id] = view
-                addSubview(view, positioned: .below, relativeTo: guideView)
+                addSubview(view)
             }
         }
         for (id, view) in tileViews where !seen.contains(id) {
@@ -122,7 +96,6 @@ final class BoardView: FlippedView {
             tileViews[id] = nil
         }
 
-        restack()
         emptyView.isHidden = !board.tiles.isEmpty
         layoutTiles(animated: window?.isVisible == true && drag == nil)
     }
@@ -225,27 +198,13 @@ final class BoardView: FlippedView {
         FlowLayout.Options(gap: settings.tileGap.rounded(), minWidth: 180, minHeight: 90)
     }
 
-    private var snapOptions: SnapOptions {
-        SnapOptions(isEnabled: settings.snapToGuides, threshold: 8, gap: settings.tileGap.rounded())
-    }
-
     private var savedFlowItems: [FlowLayout.Item] {
         board.tiles.map { FlowLayout.Item(id: $0.id, width: $0.flowWidth, height: $0.flowHeight) }
     }
 
     /// Where every tile belongs, relative to the canvas.
     private func canvasFrames() -> [UUID: LayoutRect] {
-        let size = LayoutSize(canvasFrame.size)
-        switch board.mode {
-        case .flow:
-            return FlowLayout.layout(drag?.flowItems ?? savedFlowItems, in: size, options: flowOptions)
-        case .freeform:
-            var frames: [UUID: LayoutRect] = [:]
-            for tile in board.tiles {
-                frames[tile.id] = FreeformLayout.clamp(tile.frame.scaled(to: size), to: size).integral
-            }
-            return frames
-        }
+        FlowLayout.layout(drag?.flowItems ?? savedFlowItems, in: LayoutSize(canvasFrame.size), options: flowOptions)
     }
 
     private func viewFrame(_ rect: LayoutRect) -> CGRect {
@@ -255,7 +214,6 @@ final class BoardView: FlippedView {
 
     override func layout() {
         super.layout()
-        guideView.frame = bounds
         emptyView.frame = canvasFrame
         layoutTiles(animated: false)
     }
@@ -285,83 +243,6 @@ final class BoardView: FlippedView {
         }
     }
 
-    /// Keeps the view order matching the tile order (which is back-to-front
-    /// in freeform mode), touching the hierarchy only when it is wrong.
-    private func restack() {
-        let wanted = board.tiles.compactMap { tileViews[$0.id] }
-        let current = subviews.compactMap { $0 as? TileView }
-        guard wanted.map(\.tileID) != current.map(\.tileID) else { return }
-        for view in wanted {
-            addSubview(view, positioned: .below, relativeTo: guideView)
-        }
-    }
-
-    // MARK: - Changing layout mode
-
-    /// Switches mode while keeping tiles where they currently appear, so the
-    /// change is a starting point rather than a reshuffle.
-    func setMode(_ mode: LayoutMode) {
-        guard mode != board.mode else { return }
-        let canvas = canvasFrame
-        let size = LayoutSize(canvas.size)
-        let current = canvasFrames()
-
-        // Would the tiles' saved flow sizes put them where they are now?
-        let saved = FlowLayout.layout(savedFlowItems, in: size, options: flowOptions)
-        let isUnchangedSinceFlow = board.tiles.allSatisfy { tile in
-            guard let now = current[tile.id], let then = saved[tile.id] else { return false }
-            return abs(now.x - then.x) <= 1.5 && abs(now.y - then.y) <= 1.5
-                && abs(now.width - then.width) <= 1.5 && abs(now.height - then.height) <= 1.5
-        }
-
-        context.model.update { workspace in
-            workspace.updateBoard(boardID) { board in
-                switch mode {
-                case .freeform:
-                    for index in board.tiles.indices {
-                        if let rect = current[board.tiles[index].id] {
-                            board.tiles[index].frame = rect.normalized(in: size)
-                        }
-                    }
-                case .flow:
-                    // Nothing was rearranged while in freeform: the flow
-                    // settings from before still describe the board exactly.
-                    if isUnchangedSinceFlow { break }
-                    // Otherwise read columns, order and sizes off the canvas.
-                    let items = FlowLayout.items(
-                        from: board.tiles.compactMap { tile in current[tile.id].map { (tile.id, $0) } },
-                        canvasHeight: size.height,
-                        options: flowOptions
-                    )
-                    var byID: [UUID: Tile] = [:]
-                    for tile in board.tiles {
-                        byID[tile.id] = tile
-                    }
-                    board.tiles = items.compactMap { item in
-                        guard var tile = byID[item.id] else { return nil }
-                        tile.flowWidth = item.width
-                        tile.flowHeight = item.height
-                        return tile
-                    }
-                }
-                board.mode = mode
-            }
-        }
-    }
-
-    /// A free spot for a new tile, as fractions of the canvas.
-    func frameForNewTile(_ content: TileContent) -> LayoutRect {
-        let size = LayoutSize(canvasFrame.size)
-        let sizing = Tile.defaultSizing(for: content)
-        let wanted = LayoutSize(
-            width: min(sizing.width, size.width),
-            height: min(sizing.height ?? size.height * 0.8, size.height)
-        )
-        let existing = Array(canvasFrames().values)
-        return FreeformLayout.placeNew(size: wanted, in: size, existing: existing, gap: settings.tileGap.rounded())
-            .normalized(in: size)
-    }
-
     // MARK: - Dragging
 
     func beginDrag(_ tileView: TileView, handle: ResizeHandle?, event: NSEvent) {
@@ -388,24 +269,8 @@ final class BoardView: FlippedView {
         let canvas = canvasFrame
         let size = LayoutSize(canvas.size)
 
-        switch (board.mode, session.handle) {
-        case (.freeform, let handle):
-            let others = canvasFrames().filter { $0.key != session.tileID }.map(\.value)
-            let result: FreeformLayout.Result
-            if let handle {
-                result = FreeformLayout.resize(
-                    session.startFrame, handle: handle, by: delta, in: size, others: others, snap: snapOptions
-                )
-            } else {
-                result = FreeformLayout.move(session.startFrame, by: delta, in: size, others: others, snap: snapOptions)
-            }
-            session.currentFrame = result.rect
-            drag = session
-            tileView.frame = viewFrame(result.rect.integral)
-            if handle != nil { tileView.setDragging(true, size: tileView.frame.size) }
-            showGuides(result.guides)
-
-        case (.flow, nil):
+        switch session.handle {
+        case nil:
             session.currentFrame = session.startFrame.offsetBy(dx: delta.x, dy: delta.y)
             tileView.frame = viewFrame(session.currentFrame)
 
@@ -423,7 +288,7 @@ final class BoardView: FlippedView {
             drag = session
             if reordered { layoutTiles(animated: true) }
 
-        case (.flow, let handle?):
+        case let handle?:
             guard let index = session.flowItems.firstIndex(where: { $0.id == session.tileID }) else { return }
             var item = session.flowItems[index]
             // The row of columns is centred, so an edge moves half as far as
@@ -447,23 +312,16 @@ final class BoardView: FlippedView {
     func endDrag() {
         guard let session = drag else { return }
         drag = nil
-        guideView.lines = []
         tileViews[session.tileID]?.layer?.zPosition = 0
         tileViews[session.tileID]?.setDragging(false)
-        let size = LayoutSize(canvasFrame.size)
         let id = session.tileID
 
-        switch (board.mode, session.handle) {
-        case (.freeform, _):
-            context.model.update { workspace in
-                workspace.updateTile(id, in: boardID) { $0.frame = session.currentFrame.normalized(in: size) }
-                workspace.bringTileToFront(id, in: boardID)
-            }
-        case (.flow, nil):
+        switch session.handle {
+        case nil:
             if let index = session.flowItems.firstIndex(where: { $0.id == id }) {
                 context.model.update { $0.moveTile(id, in: boardID, to: index) }
             }
-        case (.flow, _?):
+        case _?:
             if let item = session.flowItems.first(where: { $0.id == id }) {
                 context.model.updateTile(id, in: boardID) { tile in
                     tile.flowWidth = item.width
@@ -478,24 +336,8 @@ final class BoardView: FlippedView {
     private func cancelDrag() {
         guard let session = drag else { return }
         drag = nil
-        guideView.lines = []
         tileViews[session.tileID]?.layer?.zPosition = 0
         tileViews[session.tileID]?.setDragging(false)
-        restack()
         layoutTiles(animated: true)
-    }
-
-    private func showGuides(_ guides: [SnapGuide]) {
-        let canvas = canvasFrame
-        guideView.lines = guides.map { guide in
-            switch guide.axis {
-            case .vertical:
-                let x = canvas.minX + CGFloat(guide.position)
-                return (CGPoint(x: x, y: canvas.minY), CGPoint(x: x, y: canvas.maxY))
-            case .horizontal:
-                let y = canvas.minY + CGFloat(guide.position)
-                return (CGPoint(x: canvas.minX, y: y), CGPoint(x: canvas.maxX, y: y))
-            }
-        }
     }
 }

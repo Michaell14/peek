@@ -47,7 +47,6 @@ public struct AppSettings: Codable, Hashable, Sendable {
     public var tileGap: Double
     public var canvasPadding: Double
     public var fadeDuration: Double
-    public var snapToGuides: Bool
 
     public var blockAds: Bool
     public var blockTrackers: Bool
@@ -75,7 +74,6 @@ public struct AppSettings: Codable, Hashable, Sendable {
         tileGap = 14
         canvasPadding = 28
         fadeDuration = 0.14
-        snapToGuides = true
         blockAds = true
         blockTrackers = true
         hideCookieBanners = true
@@ -106,7 +104,6 @@ public struct AppSettings: Codable, Hashable, Sendable {
         tileGap = min(max(c.value(.tileGap, default: d.tileGap), 0), 60)
         canvasPadding = min(max(c.value(.canvasPadding, default: d.canvasPadding), 0), 200)
         fadeDuration = min(max(c.value(.fadeDuration, default: d.fadeDuration), 0), 1)
-        snapToGuides = c.value(.snapToGuides, default: d.snapToGuides)
         blockAds = c.value(.blockAds, default: d.blockAds)
         blockTrackers = c.value(.blockTrackers, default: d.blockTrackers)
         hideCookieBanners = c.value(.hideCookieBanners, default: d.hideCookieBanners)

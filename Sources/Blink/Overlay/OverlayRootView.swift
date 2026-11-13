@@ -14,7 +14,9 @@ final class OverlayRootView: FlippedView {
 
     /// Height of the strip along the top that tiles stay out of.
     var topInset: CGFloat = Theme.minimumTopInset {
-        didSet { needsLayout = true }
+        didSet {
+            if topInset != oldValue { needsLayout = true }
+        }
     }
 
     private let blur = NSVisualEffectView()

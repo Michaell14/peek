@@ -103,7 +103,9 @@ struct CalendarWidgetView: View {
         let calendar = Calendar.current
         let days = config.mode == .day ? 1 : 7
         let end = calendar.date(byAdding: .day, value: days, to: today) ?? today.addingTimeInterval(Double(days) * 86_400)
-        events = service.events(from: today, to: end)
+        service.fetchEvents(from: today, to: end) { fetched in
+            events = fetched
+        }
     }
 }
 

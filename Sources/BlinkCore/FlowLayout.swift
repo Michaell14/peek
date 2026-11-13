@@ -1,6 +1,17 @@
 import Foundation
 
-/// Flow mode: tiles are packed, in order, into columns that fill the height of
+/// The edge or corner of a tile being dragged to resize it.
+public enum ResizeHandle: CaseIterable, Sendable {
+    case left, right, top, bottom
+    case topLeft, topRight, bottomLeft, bottomRight
+
+    public var movesLeft: Bool { self == .left || self == .topLeft || self == .bottomLeft }
+    public var movesRight: Bool { self == .right || self == .topRight || self == .bottomRight }
+    public var movesTop: Bool { self == .top || self == .topLeft || self == .topRight }
+    public var movesBottom: Bool { self == .bottom || self == .bottomLeft || self == .bottomRight }
+}
+
+/// Tiles are packed, in order, into columns that fill the height of
 /// the canvas. Short tiles stack; a tile with no height of its own takes a
 /// whole column. The row of columns is centred, and squeezed if it is too wide.
 public enum FlowLayout {
@@ -104,8 +115,8 @@ public enum FlowLayout {
 
     /// Reads a flow arrangement back out of tile positions: which tiles share
     /// a column, in what order, and how big each wants to be. Laying the
-    /// result out again reproduces the positions it was read from, which is
-    /// what lets a board switch to freeform and back without reshuffling.
+    /// result out again reproduces the positions it was read from. Boards
+    /// saved in the old Freeform mode become columns this way.
     public static func items(
         from frames: [(id: UUID, rect: LayoutRect)],
         canvasHeight: Double,
