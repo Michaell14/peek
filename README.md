@@ -19,7 +19,7 @@ full-screen ones — and disappears when you release it.
 | **Local files** | PDF and HTML. Add from the launcher or Finder's *Open With → Blink*. Reloads when the file changes. |
 | **Widgets** | Clock (multiple time zones), Calendar (day timeline or next 7 days), Reminders (today / scheduled / overdue / all, tick off, add), Notes. |
 | **Less noise** | Blocks third-party ads and trackers, hides cookie banners, and lets you click page elements to hide them for good. Accepts your own Adblock Plus-style filters. |
-| **Layouts** | *Flow* packs tiles into columns for you; *Freeform* lets you drag and resize anywhere with snapping. |
+| **Layout** | Tiles pack into columns for you. Drag one to reorder it; pull an edge to resize it. |
 | **Displays** | Opens on the display with the pointer, the active window, or one you pick. One layout everywhere, or one per display. |
 | **Shortcut** | Any key combination, or modifier keys alone — including a specific left or right one (`Right ⌘`, `fn`). |
 | **Hand off** | Open any tile in your browser or its default app from its `…` menu. |
@@ -72,7 +72,6 @@ With the overlay open (tap the shortcut), the controls are in the top-right corn
 |---|---|
 | `+` or `⌘N` | Open the palette: type an address or filter the list, `↑` `↓` to choose, `↩` to add |
 | **Edit** or `⌘E` | Move, resize and remove tiles |
-| **Flow / Freeform** | Switch layout mode; tiles stay where they are |
 | Hover a tile | Back, forward, reload and a `…` menu with everything else |
 | `⌘R` `⌘[` `⌘]` | Reload / back / forward for the web tile under the pointer |
 | `⌘`-click a link | Open it in your browser instead |

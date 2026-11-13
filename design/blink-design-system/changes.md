@@ -1,5 +1,9 @@
 # What changes
 
+## Columns only
+
+**Draft:** Freeform is gone. Tiles always pack into columns; Arrange reorders and resizes them. The `CommandBar` loses its layout switch, so it reads: the mark, Add, Arrange, Settings, `esc`.
+
 ## Graphite is the system
 
 **Draft:** frosted Graphite becomes the look every token describes: smoked glass, cool and precise, a quiet rim and the cobalt `accent`, over a slate wallpaper. Liquid moves to **Directions** beside Champagne and Porcelain. Keycaps and hints show the shortcut as ⌥ `, Blink's default again.
@@ -36,7 +40,7 @@ These are the drafts for Blink's next look, set against what 0.1 does today. The
 
 **Now:** the brand and “⌥` or esc to close” hug the top-left corner; Flow/Freeform, `+`, Edit and the gear hug the top-right, 6px from the edge, all at the same weight.
 
-**Draft:** one `CommandBar` capsule centred at the top while pinned: the mark and name, the layout switch, then Add, Arrange and Settings, with the `esc` hint at its end. One place to look, grouped by what the controls do, and clear of the menu bar's corners where the pointer often rests. It only exists while pinned, so a glance stays chrome-free.
+**Draft:** one `CommandBar` capsule centred at the top while pinned: the mark and name, then Add, Arrange and Settings, with the `esc` hint at its end. One place to look, grouped by what the controls do, and clear of the menu bar's corners where the pointer often rests. It only exists while pinned, so a glance stays chrome-free.
 
 ## Pages get a title strip; widgets stay clean
 

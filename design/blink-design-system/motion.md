@@ -9,7 +9,7 @@ Motion in Blink confirms what just happened and then gets out of the way. Every 
 | Pin (key tapped) | Tiles stay; the `CommandBar` drops 6px into place and fades in, after the tiles have settled | `duration-move`, `ease-arrive`, starting `duration-fade` after Arrive |
 | Unpin (tap again, esc) | Same as Leave; the bar goes with the tiles | `duration-leave`, `ease-leave` |
 | Tile head | A tile's head and tools fade in under a resting pointer and out when it leaves | in `duration-fade` after `hover-delay`; out `duration-leave` |
-| Layout mode | The selected segment slides; tiles glide to their new frames | segment `spring-select`; tiles `spring-reflow` |
+| Segments | The selected segment's thumb slides to its new place | `spring-select` |
 | Arrange on | Tiles dim to 55%, handles and remove buttons fade in; content keeps its place | `duration-fade` |
 | Lift (drag starts) | The tile scales to 1.02, gains `shadow-lifted` and a 1.5px `accent` edge | `duration-move`, `ease-arrive` |
 | Reflow | Other tiles make room; a dashed slot shows where the tile will land | `spring-reflow` |

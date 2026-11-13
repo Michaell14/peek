@@ -64,23 +64,24 @@
   const CAMERA = [[4.12, [1, 640, 400]], [4.38, [1.42, 628, 330]], [4.92, [1.42, 628, 330]], [5.12, [1, 640, 400]]];
 
   // Tile frames on the board, [x, y, w, h], in screen pixels.
-  // Arranging (beat 9): resize the page, move the file, move the clock, then
-  // back to Flow, which packs everything into columns again.
+  // Arranging (beat 9), in columns as the app does it: pull the page's edge
+  // in (the row stays centred, so every column shifts), then lift the PDF
+  // above the calendar in its column.
   const FRAMES = {
-    clock: [[8.54, [0, 0, 330, 212]], [8.64, [902, 394, 330, 212]], [8.79, [902, 394, 330, 212]], [8.93, [0, 0, 330, 212]]],
-    reminders: [[0, [0, 226, 330, 504]]],
-    web: [[8.2, [344, 0, 520, 730]], [8.3, [344, 0, 520, 380]], [8.79, [344, 0, 520, 380]], [8.93, [344, 0, 520, 730]]],
-    calendar: [[6.1, [878, 0, 354, 730]], [6.36, [878, 0, 354, 380]]],
-    pdf: [[6.14, [878, 780, 354, 336]], [6.4, [878, 394, 354, 336]], [8.37, [878, 394, 354, 336]], [8.47, [344, 394, 354, 336]], [8.79, [344, 394, 354, 336]], [8.93, [878, 394, 354, 336]]],
+    clock: [[8.2, [0, 0, 330, 212]], [8.3, [50, 0, 330, 212]]],
+    reminders: [[8.2, [0, 226, 330, 504]], [8.3, [50, 226, 330, 504]]],
+    web: [[8.2, [344, 0, 520, 730]], [8.3, [394, 0, 420, 730]]],
+    calendar: [[6.1, [878, 0, 354, 730]], [6.36, [878, 0, 354, 380]], [8.2, [878, 0, 354, 380]], [8.3, [828, 0, 354, 380]], [8.41, [828, 0, 354, 380]], [8.48, [828, 350, 354, 380]]],
+    pdf: [[6.14, [878, 780, 354, 336]], [6.4, [878, 394, 354, 336]], [8.2, [878, 394, 354, 336]], [8.3, [828, 394, 354, 336]], [8.37, [828, 394, 354, 336]], [8.47, [828, 0, 354, 336]]],
   };
-  const HELD = { web: [8.2, 8.31], pdf: [8.37, 8.48], clock: [8.54, 8.65] };
+  const HELD = { web: [8.2, 8.31], pdf: [8.37, 8.48] };
   const TILE_ORDER = ['clock', 'reminders', 'web', 'calendar', 'pdf'];
 
   // The pointer, in two acts. Points that depend on layout are measured.
   const P = {};
   let POINTER = [];
   const POINTER_SHOWN = [[0.98, 0], [1.02, 1], [2.0, 1], [2.06, 0], [7.22, 0], [7.27, 1], [8.94, 1], [9.0, 0]];
-  const CLICKS = [1.18, 1.43, 1.67, 1.92, 7.45, 8.09, 8.16, 8.71, 8.77];
+  const CLICKS = [1.18, 1.43, 1.67, 1.92, 7.45, 8.12, 8.71];
 
   function buildPointerPath() {
     POINTER = [
@@ -93,13 +94,10 @@
       [2.04, [620, 500]],
       [7.22, P.boardMid], [7.42, P.room], [7.5, P.room],
       [7.62, P.webMid], [7.98, P.webMid],
-      [8.07, P.free], [8.1, P.free],
-      [8.14, P.edit], [8.17, P.edit],
-      [8.19, P.webEdge], [8.2, P.webEdge], [8.3, [P.webEdge[0], 46 + 380]], [8.31, [P.webEdge[0], 46 + 380]],
-      [8.36, P.pdf], [8.37, P.pdf], [8.47, [P.pdf[0] - 534, P.pdf[1]]], [8.48, [P.pdf[0] - 534, P.pdf[1]]],
-      [8.53, P.clock], [8.54, P.clock], [8.64, [P.clock[0] + 902, P.clock[1] + 394]], [8.65, [P.clock[0] + 902, P.clock[1] + 394]],
-      [8.7, P.edit], [8.72, P.edit],
-      [8.76, P.flow], [8.9, P.flow],
+      [8.09, P.edit], [8.14, P.edit],
+      [8.19, P.webEdge], [8.2, P.webEdge], [8.3, [P.webEdge[0] - 50, P.webEdge[1]]], [8.31, [P.webEdge[0] - 50, P.webEdge[1]]],
+      [8.36, P.pdf], [8.37, P.pdf], [8.47, [P.pdf[0], P.pdf[1] - 394]], [8.48, [P.pdf[0], P.pdf[1] - 394]],
+      [8.66, P.edit], [8.72, P.edit], [8.9, P.edit],
     ];
   }
 
@@ -326,8 +324,6 @@
       ov: q('[data-ov]'),
       strip: q('[data-strip]'),
       stripHint: q('[data-strip-hint]'),
-      segFlow: q('[data-seg-flow]'),
-      segFree: q('[data-seg-free]'),
       edit: q('[data-edit]'),
       board: q('[data-board]'),
       tiles: {},
@@ -428,10 +424,7 @@
     css(scene, scene.strip, 'opacity', Math.max(track(STRIP, T, linear), pinned ? 1 : 0).toFixed(3));
 
     // Arranging.
-    const freeform = T >= 8.09 && T < 8.77;
-    const editing = T >= 8.16 && T < 8.71;
-    flag(scene.segFlow, 'is-on', !freeform);
-    flag(scene.segFree, 'is-on', freeform);
+    const editing = T >= 8.13 && T < 8.71;
     flag(scene.board, 'is-editing', editing);
     flag(scene.edit, 'is-on', editing);
     text(scene.edit, editing ? 'Done' : 'Edit');
@@ -786,14 +779,11 @@
     };
     const box = $('i', scene.rem.room);
     P.room = centre(box);
-    P.free = centre(scene.segFree);
-    P.flow = centre(scene.segFlow);
     P.edit = centre(scene.edit);
     P.boardMid = [700, 600];
     P.webMid = [24 + 344 + 300, 46 + 420];
-    P.webEdge = [24 + 344 + 260, 46 + 730];
-    P.pdf = [24 + 878 + 177, 46 + 394 + 150];
-    P.clock = [24 + 190, 46 + 120];
+    P.webEdge = [24 + 344 + 520, 46 + 365];
+    P.pdf = [24 + 828 + 177, 46 + 394 + 168];
     buildPointerPath();
   }
 

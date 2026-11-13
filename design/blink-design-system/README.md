@@ -5,7 +5,7 @@ The drafts of the redesigned overlay are the **Overlay**, **First run** and **Ho
 ## Principles
 
 1. **The content is the interface.** While the key is held, show tiles and nothing else. Chrome — the `CommandBar`, a tile's head and tools — appears only once the overlay is pinned (tapped open), and a tile's tools only on the tile under the pointer.
-2. **One clear accent.** `accent` means *on, new, or the one thing to do*: the selected layout mode, the primary button, unread and due counts, messages you sent, keyboard focus. Never use it for decoration, and never show more than one filled `accent` element per tile. Blink's amber, `brand`, lights the mark and nothing else.
+2. **One clear accent.** `accent` means *on, new, or the one thing to do*: the primary button, unread and due counts, messages you sent, keyboard focus. Never use it for decoration, and never show more than one filled `accent` element per tile. Blink's amber, `brand`, lights the mark and nothing else.
 3. **Arrive fast, leave faster.** Blink must feel like a glance. Things arrive in `duration-fade` with `ease-arrive` and leave in `duration-leave` with `ease-leave`; nothing makes you wait to get back to work. See **Motion**.
 4. **Frosted glass, not cards.** Every surface is the same smoked glass: the desktop behind it blurred by `glass-blur` and lifted a little by `glass-saturate`, a faint white from `glass-fill-top` to `glass-fill-bottom`, a dark `glass-shade` so text always reads, a soft `specular` sheen across the top and a quiet rim that runs from `rim-light` at the top-left and bottom-right corners to `rim-dark` between them. Floating glass (the command bar, the launcher, menus) uses the deeper `glass-shade-raised`, because it often sits over a white page. Never put a solid fill, a colour or a thick border on glass.
 5. **Start somewhere.** A new board offers `Templates`, never an empty state.
@@ -25,7 +25,7 @@ The drafts of the redesigned overlay are the **Overlay**, **First run** and **Ho
 - Dimming: `scrim` is part of legibility. At its value, every text colour passes 4.5:1 on glass even with a white or black window behind Blink; the Appearance setting may make it darker, never lighter.
 - Surfaces: every surface is glass (see Principles). `tile` and `tile-raised` are flat stand-ins for places glass cannot be drawn. Web pages sit `web-inset` inside their glass, so the glass frames the page; before it paints, `web-ground`.
 - Text: `ink` for titles and values, `ink-2` for details and hints, `section` for `caption` labels, `ink-3` only for placeholders and disabled labels.
-- Controls: rest on `control`, `control-hover` under the pointer, `control-selected` when chosen. The selected layout segment is the one control that may use `accent` text.
+- Controls: rest on `control`, `control-hover` under the pointer, `control-selected` when chosen.
 - Signals: `late` for overdue and the calendar's now line, `up`/`down` for trends — always with a word or ▲▼, never colour alone. `cool` marks night in the clock and websites in the launcher.
 - Messages: received bubbles in `bubble-in`, sent ones in `accent` with `on-accent` text. Avatars are tinted glass, each person a different one of `cool`, `warm`, `up` and `accent`.
 - Calendar events are tinted glass in their calendar's colour (`cool`, `warm`), with a 2px edge in the full colour.
@@ -61,7 +61,7 @@ Blink sets everything in **Geist**, with **Geist Mono** for keys. Both are under
 - Pressed: fills step to `control-selected`; an `accent` fill dims to `accent-pressed`.
 - Focus: a 2px `focus` ring, 2px outside, on every control reached by keyboard.
 - Disabled: `ink-3` text, no fill change, no pointer.
-- Selected: `control-selected` fill; the layout mode's selected segment also takes `accent` text.
+- Selected: `control-selected` fill.
 
 ## Iconography
 
