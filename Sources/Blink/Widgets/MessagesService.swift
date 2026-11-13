@@ -13,6 +13,8 @@ struct Conversation: Identifiable, Hashable, Sendable {
     /// Phone numbers and addresses of the people in it.
     let handles: [String]
     let isGroup: Bool
+    /// SMS or RCS rather than iMessage: Messages draws these green.
+    let isTextMessage: Bool
     let lastText: String
     let lastDate: Date
     let lastFromMe: Bool
@@ -27,12 +29,18 @@ struct ChatMessage: Identifiable, Hashable, Sendable {
     let fromMe: Bool
     /// Who sent it, in a group.
     let sender: String?
+    /// For messages sent from here: whether it arrived, and when it was read.
+    var isDelivered = false
+    var readDate: Date?
 }
 
 /// The Messages widget's one link to Messages. Conversations are read from
 /// the database Messages keeps on this Mac, which macOS opens only to apps
 /// with Full Disk Access; nothing is changed in it. Replies go through
 /// Messages itself, which macOS asks about the first time.
+///
+/// Nothing is read until the person has said yes in the widget. Saying yes
+/// also asks for Contacts, so names show from the start.
 @MainActor
 final class MessagesService: ObservableObject {
     static let shared = MessagesService()
@@ -49,15 +57,18 @@ final class MessagesService: ObservableObject {
     /// Bumped whenever the conversations were read again, so an open thread
     /// can read its messages again too.
     @Published private(set) var revision = 0
-    @Published private(set) var canShowNames = false
+    /// Whether the person has let the widget read Messages.
+    @Published private(set) var isAllowed: Bool
+    @Published private(set) var contacts: CNAuthorizationStatus
 
     private let queue = DispatchQueue(label: "Blink.messages", qos: .userInitiated)
     private var names: [String: String] = [:]
     private var watcher: DispatchSourceFileSystemObject?
     private var isOverlayVisible = false
     private var isStale = true
-    private var isLoading = false
+    private var readGeneration = 0
     private var sample: SampleData?
+    private static let allowedKey = "MessagesAllowed"
 
     struct SampleData {
         var conversations: [Conversation]
@@ -65,8 +76,11 @@ final class MessagesService: ObservableObject {
     }
 
     private init() {
-        canShowNames = CNContactStore.authorizationStatus(for: .contacts) == .authorized
+        isAllowed = UserDefaults.standard.bool(forKey: MessagesService.allowedKey)
+        contacts = CNContactStore.authorizationStatus(for: .contacts)
     }
+
+    var canShowNames: Bool { contacts == .authorized }
 
     nonisolated static var databaseURL: URL {
         FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Messages/chat.db")
@@ -77,8 +91,51 @@ final class MessagesService: ObservableObject {
     func useSampleData(_ data: SampleData) {
         sample = data
         access = .granted
-        canShowNames = true
+        isAllowed = true
+        contacts = .authorized
         conversations = data.conversations
+        revision += 1
+    }
+
+    // MARK: - Reading
+
+    // MARK: - Asking
+
+    /// The widget's one question, answered yes: from now on Blink may read
+    /// Messages. macOS is then asked for Contacts, so conversations show
+    /// names, and if Full Disk Access is still off, System Settings opens
+    /// where it is turned on. The overlay steps aside for both.
+    func allowAccess() {
+        isAllowed = true
+        UserDefaults.standard.set(true, forKey: MessagesService.allowedKey)
+        NotificationCenter.default.post(name: .blinkDismissOverlay, object: nil)
+        if contacts == .notDetermined {
+            CNContactStore().requestAccess(for: .contacts) { _, _ in
+                DispatchQueue.main.async {
+                    onMainActor { self.contactsAnswered() }
+                }
+            }
+        } else {
+            contactsAnswered()
+        }
+    }
+
+    private func contactsAnswered() {
+        contacts = CNContactStore.authorizationStatus(for: .contacts)
+        if canShowNames { loadNames() }
+        refresh { canRead in
+            if !canRead { SystemSettings.openFullDiskAccess() }
+        }
+    }
+
+    /// Back to asking: nothing more is read until the person says yes again.
+    func stopReading() {
+        isAllowed = false
+        UserDefaults.standard.set(false, forKey: MessagesService.allowedKey)
+        watcher?.cancel()
+        watcher = nil
+        conversations = []
+        access = .unknown
         revision += 1
     }
 
@@ -89,25 +146,37 @@ final class MessagesService: ObservableObject {
         if isStale || access != .granted { refresh() }
     }
 
-    func refresh() {
-        guard sample == nil, !isLoading else { return }
-        isLoading = true
+    /// - Parameter completion: told whether Messages could be read.
+    func refresh(then completion: (@MainActor @Sendable (Bool) -> Void)? = nil) {
+        guard isAllowed else {
+            completion?(false)
+            return
+        }
+        guard sample == nil else {
+            completion?(true)
+            return
+        }
+        readGeneration += 1
+        let generation = readGeneration
         isStale = false
         let names = names
         queue.async {
             let result = MessagesService.readConversations(names: names)
             DispatchQueue.main.async {
                 onMainActor {
-                    self.isLoading = false
-                    switch result {
-                    case .success(let conversations):
-                        self.access = .granted
-                        self.conversations = conversations
-                        self.revision += 1
-                        self.watch()
-                    case .failure:
-                        self.access = .needsFullDiskAccess
+                    // Reads finish in the order they started; only the newest counts.
+                    if generation == self.readGeneration, self.isAllowed {
+                        switch result {
+                        case .success(let conversations):
+                            self.access = .granted
+                            self.conversations = conversations
+                            self.revision += 1
+                            self.watch()
+                        case .failure:
+                            self.access = .needsFullDiskAccess
+                        }
                     }
+                    if case .success = result { completion?(true) } else { completion?(false) }
                 }
             }
         }
@@ -121,6 +190,7 @@ final class MessagesService: ObservableObject {
     }
 
     func messages(in conversation: Conversation, completion: @escaping @MainActor @Sendable ([ChatMessage]) -> Void) {
+        guard isAllowed else { return }
         if let sample {
             completion(sample.threads[conversation.id] ?? [])
             return
@@ -171,22 +241,9 @@ final class MessagesService: ObservableObject {
 
     // MARK: - Names
 
-    /// Shows the system prompt for Contacts. The overlay steps aside first,
-    /// or the prompt would open underneath it.
-    func requestNames() {
-        NotificationCenter.default.post(name: .blinkDismissOverlay, object: nil)
-        CNContactStore().requestAccess(for: .contacts) { granted, _ in
-            DispatchQueue.main.async {
-                onMainActor {
-                    self.canShowNames = granted
-                    if granted { self.loadNames() }
-                }
-            }
-        }
-    }
-
     func loadNamesIfAllowed() {
-        if canShowNames, names.isEmpty { loadNames() }
+        contacts = CNContactStore.authorizationStatus(for: .contacts)
+        if isAllowed, sample == nil, canShowNames, names.isEmpty { loadNames() }
     }
 
     private func loadNames() {
@@ -304,14 +361,14 @@ final class MessagesService: ObservableObject {
         guard let database = MessagesDatabase(url: databaseURL) else { return .failure(ReadFailure()) }
 
         struct Row {
-            var id: Int64, guid: String, identifier: String, displayName: String
+            var id: Int64, guid: String, identifier: String, displayName: String, service: String
             var text: String?, body: [UInt8], date: Int64, fromMe: Bool
         }
         var rows: [Row] = []
         // The newest twenty chats, each with its newest real message (not a
         // tapback or a change to the group).
         let ok = database.query("""
-            SELECT c.ROWID, c.guid, c.chat_identifier, IFNULL(c.display_name, ''),
+            SELECT c.ROWID, c.guid, c.chat_identifier, IFNULL(c.display_name, ''), IFNULL(c.service_name, ''),
                    m.text, m.attributedBody, m.date, m.is_from_me
             FROM chat c
             JOIN message m ON m.ROWID = (
@@ -323,8 +380,8 @@ final class MessagesService: ObservableObject {
             LIMIT 20
             """) { row in
             rows.append(Row(
-                id: row.int(0), guid: row.text(1), identifier: row.text(2), displayName: row.text(3),
-                text: row.optionalText(4), body: row.blob(5), date: row.int(6), fromMe: row.int(7) != 0
+                id: row.int(0), guid: row.text(1), identifier: row.text(2), displayName: row.text(3), service: row.text(4),
+                text: row.optionalText(5), body: row.blob(6), date: row.int(7), fromMe: row.int(8) != 0
             ))
         }
         guard ok else { return .failure(ReadFailure()) }
@@ -356,8 +413,11 @@ final class MessagesService: ObservableObject {
             } else {
                 title = people.first ?? row.identifier
             }
+            let isTextMessage = ["SMS", "RCS"].contains(row.service)
+                || row.guid.hasPrefix("SMS;") || row.guid.hasPrefix("RCS;")
             return Conversation(
                 id: row.id, guid: row.guid, title: title, handles: handles, isGroup: isGroup,
+                isTextMessage: isTextMessage,
                 lastText: MessageText.display(text: row.text, attributedBody: row.body),
                 lastDate: MessageText.date(fromMessagesTime: row.date),
                 lastFromMe: row.fromMe, unread: unread[row.id] ?? 0
@@ -370,7 +430,8 @@ final class MessagesService: ObservableObject {
         guard let database = MessagesDatabase(url: databaseURL) else { return [] }
         var messages: [ChatMessage] = []
         _ = database.query("""
-            SELECT m.ROWID, m.text, m.attributedBody, m.date, m.is_from_me, IFNULL(h.id, '')
+            SELECT m.ROWID, m.text, m.attributedBody, m.date, m.is_from_me, IFNULL(h.id, ''),
+                   m.is_delivered, m.date_read
             FROM chat_message_join j JOIN message m ON m.ROWID = j.message_id
             LEFT JOIN handle h ON h.ROWID = m.handle_id
             WHERE j.chat_id = ? AND m.item_type = 0 AND m.associated_message_type = 0
@@ -382,7 +443,9 @@ final class MessagesService: ObservableObject {
                 text: MessageText.display(text: row.optionalText(1), attributedBody: row.blob(2)),
                 date: MessageText.date(fromMessagesTime: row.int(3)),
                 fromMe: row.int(4) != 0,
-                sender: handle.isEmpty ? nil : (name(for: handle, in: names) ?? handle)
+                sender: handle.isEmpty ? nil : (name(for: handle, in: names) ?? handle),
+                isDelivered: row.int(6) != 0,
+                readDate: row.int(7) > 0 ? MessageText.date(fromMessagesTime: row.int(7)) : nil
             ))
         }
         return messages.reversed()

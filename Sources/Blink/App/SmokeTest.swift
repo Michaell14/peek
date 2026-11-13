@@ -62,18 +62,21 @@ enum SmokeTest {
         func ago(_ minutes: Double) -> Date { now.addingTimeInterval(-minutes * 60) }
         let conversations = [
             Conversation(id: 1, guid: "iMessage;-;maya@example.com", title: "Maya Chen", handles: ["maya@example.com"],
-                         isGroup: false, lastText: "Can we move the review to 3?", lastDate: ago(2), lastFromMe: false, unread: 1),
+                         isGroup: false, isTextMessage: false, lastText: "Can we move the review to 3?", lastDate: ago(2), lastFromMe: false, unread: 1),
             Conversation(id: 2, guid: "iMessage;+;chat1", title: "Design team", handles: ["leo@example.com", "ana@example.com"],
-                         isGroup: true, lastText: "Leo: The new build is up", lastDate: ago(18), lastFromMe: false, unread: 2),
+                         isGroup: true, isTextMessage: false, lastText: "Leo: The new build is up", lastDate: ago(18), lastFromMe: false, unread: 2),
             Conversation(id: 3, guid: "iMessage;-;+15550102233", title: "Sam Okafor", handles: ["+15550102233"],
-                         isGroup: false, lastText: "Sounds good, see you then", lastDate: ago(70), lastFromMe: true, unread: 0),
+                         isGroup: false, isTextMessage: false, lastText: "Sounds good, see you then", lastDate: ago(70), lastFromMe: true, unread: 0),
             Conversation(id: 4, guid: "SMS;-;+15550109999", title: "+1 555 010 9999", handles: ["+15550109999"],
-                         isGroup: false, lastText: "Your table is ready", lastDate: ago(60 * 30), lastFromMe: false, unread: 0),
+                         isGroup: false, isTextMessage: true, lastText: "Your table is ready", lastDate: ago(60 * 30), lastFromMe: false, unread: 0),
         ]
         let thread = [
             ChatMessage(id: 11, text: "Morning! Did you see the numbers?", date: ago(40), fromMe: false, sender: "Maya Chen"),
             ChatMessage(id: 12, text: "Yes, sign-ups are up again", date: ago(35), fromMe: true, sender: nil),
-            ChatMessage(id: 13, text: "Can we move the review to 3?", date: ago(2), fromMe: false, sender: "Maya Chen"),
+            ChatMessage(id: 13, text: "368 a day, from 342 last week", date: ago(34), fromMe: true, sender: nil),
+            ChatMessage(id: 14, text: "Can we move the review to 3?", date: ago(3), fromMe: false, sender: "Maya Chen"),
+            ChatMessage(id: 15, text: "Works for me", date: ago(2), fromMe: true, sender: nil,
+                        isDelivered: true, readDate: ago(1)),
         ]
         return MessagesService.SampleData(conversations: conversations, threads: [1: thread])
     }

@@ -17,7 +17,7 @@ full-screen ones — and disappears when you release it.
 |---|---|
 | **Websites** | Any site, in WebKit. Logins persist, and sign-in pop-ups ("Sign in with Google") open in a window of their own that reports back to the page. Back/forward/reload, zoom, mobile-site mode, auto-refresh. |
 | **Local files** | PDF and HTML. Add from the launcher or Finder's *Open With → Blink*. Reloads when the file changes. |
-| **Widgets** | Clock (multiple time zones), Calendar (day timeline or next 7 days), Reminders (today / scheduled / overdue / all, tick off, add), Notes, Messages (recent conversations; read a thread and reply). |
+| **Widgets** | Clock (multiple time zones), Calendar (day timeline or next 7 days), Reminders (today / scheduled / overdue / all, tick off, add), Notes, Messages (recent conversations, styled as in Messages; read a thread and reply). |
 | **Less noise** | Blocks third-party ads and trackers, hides cookie banners, and lets you click page elements to hide them for good. Accepts your own Adblock Plus-style filters. |
 | **Layout** | Tiles stand in columns. Drop one under another to stack them; pull any edge to resize a tile. The top edge moves the top and keeps the bottom where it is. |
 | **Displays** | Opens on the display with the pointer, the active window, or one you pick. One layout everywhere, or one per display. |
@@ -89,7 +89,7 @@ Blink asks only for what a feature needs, and only when you use it.
 |---|---|
 | Calendars / Reminders | Those two widgets |
 | Full Disk Access | The Messages widget. macOS has no way for apps to read Messages other than opening the database Messages keeps on your Mac, which only apps with Full Disk Access may do. Blink only reads it, and only to show it. |
-| Contacts | Names instead of numbers in the Messages widget, if you choose *Show Names*. |
+| Contacts | Names instead of numbers in the Messages widget. The widget asks for it, together with Full Disk Access, before it reads anything. |
 | Automation → Messages | Sending the replies you write in the Messages widget, which go through Messages. macOS asks the first time you send one. |
 | Input Monitoring | Only a shortcut made of modifier keys alone (such as `fn`) or a specific left/right key. Blink looks for the shortcut and does not record what you type. |
 

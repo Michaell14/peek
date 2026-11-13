@@ -79,6 +79,7 @@ final class WidgetTileContentView: TileContentView {
         case .messages:
             menu.addItem("Open Messages") { [weak self] in self?.openExternally() }
             menu.addItem("Read Again") { MessagesService.shared.refresh() }
+            menu.addItem("Stop Reading Messages") { MessagesService.shared.stopReading() }
         }
     }
 
