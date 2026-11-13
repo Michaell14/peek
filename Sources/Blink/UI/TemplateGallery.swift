@@ -34,7 +34,11 @@ struct TemplateMap: View {
             let canvas = LayoutSize(width: 1400, height: 820)
             let items = template.flowItems
             let frames = FlowLayout.layout(items, in: canvas, options: FlowLayout.Options(gap: 14, minWidth: 180, minHeight: 90))
-            let scale = min(geometry.size.width / canvas.width, geometry.size.height / canvas.height)
+            // Drawn from the left edge of the first column to the right edge
+            // of the last, so the map fills its card.
+            let left = frames.values.map(\.minX).min() ?? 0
+            let width = max((frames.values.map(\.maxX).max() ?? canvas.width) - left, 1)
+            let scale = min(geometry.size.width / width, geometry.size.height / canvas.height)
             let contents = Dictionary(uniqueKeysWithValues: zip(items.map(\.id), template.makeTiles().map(\.content)))
             ZStack(alignment: .topLeading) {
                 ForEach(items, id: \.id) { item in
@@ -50,7 +54,7 @@ struct TemplateMap: View {
                                 VStack(spacing: 3) {
                                     Image(systemName: content.symbolName)
                                         .font(.system(size: 11, weight: .medium))
-                                    if frame.height * scale > 34 {
+                                    if frame.height * scale > 34, frame.width * scale > 46 {
                                         Text(content.mapLabel)
                                             .font(.system(size: 8.5, weight: .medium))
                                             .lineLimit(1)
@@ -61,11 +65,12 @@ struct TemplateMap: View {
                                 .foregroundStyle(Color.white.opacity(0.8))
                             }
                             .frame(width: frame.width * scale, height: frame.height * scale)
-                            .offset(x: frame.x * scale, y: frame.y * scale)
+                            .offset(x: (frame.x - left) * scale, y: frame.y * scale)
                     }
                 }
             }
-            .frame(width: canvas.width * scale, height: canvas.height * scale)
+            // Top-leading, or the tiles would be centred on the largest of them.
+            .frame(width: width * scale, height: canvas.height * scale, alignment: .topLeading)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
     }
