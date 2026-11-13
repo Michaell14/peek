@@ -183,7 +183,7 @@ private struct GeneralSettingsView: View {
 }
 
 /// What macOS does when fn (the globe key) is pressed by itself.
-private enum GlobeKey {
+enum GlobeKey {
     /// False only when the user has chosen "Do Nothing".
     static var hasSystemAction: Bool {
         let setting = UserDefaults(suiteName: "com.apple.HIToolbox")?.object(forKey: "AppleFnUsageType") as? Int

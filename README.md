@@ -64,8 +64,11 @@ developer, so that last check does not apply yet.
 
 ## Using it
 
-Blink lives in the menu bar (the three-tile icon) and has no Dock icon. On first launch it opens
-with a starter layout.
+Blink lives in the menu bar (the three-tile icon) and has no Dock icon. On first launch a short
+tour shows you around with the real keys: hold the shortcut to peek, tap it to keep Blink open,
+pick your shortcut, try a template on your own board, and choose what Blink may show (Calendar,
+Reminders, Messages, opening at login). Every step can be skipped, and **Blink Tour…** in the menu
+bar menu brings it back.
 
 With the overlay open (tap the shortcut), the controls are in the top-right corner:
 

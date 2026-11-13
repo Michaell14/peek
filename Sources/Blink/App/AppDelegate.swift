@@ -16,6 +16,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var updateItem: NSMenuItem?
     private var updateTimer: Timer?
     private var settingsWindow: NSWindow?
+    private var onboarding: OnboardingController?
     private var cancellables: Set<AnyCancellable> = []
     /// Files handed over by Finder before launch had finished.
     private var pendingFiles: [URL] = []
@@ -38,6 +39,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         self.overlay = overlay
         self.hotkeys = hotkeys
         self.updater = updater
+        let onboarding = OnboardingController(model: model, overlay: overlay, hotkeys: hotkeys)
+        self.onboarding = onboarding
 
         overlay.onOpenSettings = { [weak self] in self?.openSettings() }
         hotkeys.onDown = { [weak overlay] heldFor in overlay?.shortcutDown(heldFor: heldFor) }
@@ -82,7 +85,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             .store(in: &cancellables)
 
         if let output = options.smokeTestOutput {
-            SmokeTest.run(model: model, overlay: overlay, hotkeys: hotkeys, updater: updater, output: output)
+            SmokeTest.run(model: model, overlay: overlay, hotkeys: hotkeys, updater: updater, onboarding: onboarding, output: output)
             return
         }
 
@@ -97,9 +100,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         } else if askedForAccess {
             // The system's own prompt is on its way; stay out from under it.
             overlay.warmUp()
-        } else if options.showOnLaunch || model.isFirstLaunch {
+        } else if model.isFirstLaunch, !OnboardingModel.isDone {
             // On first run there would otherwise be nothing to see but a
-            // menu bar icon.
+            // menu bar icon: the tour, which ends on the board.
+            onboarding.show()
+        } else if options.showOnLaunch || model.isFirstLaunch {
             overlay.showPinned()
         } else {
             overlay.warmUp()
@@ -162,6 +167,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self?.overlay?.setEditing(true)
         }
         menu.addItem(.separator())
+        menu.addItem("Blink Tour…") { [weak self] in self?.onboarding?.show() }
         menu.addItem("Settings…") { [weak self] in self?.openSettings() }
         menu.addItem("Check for Updates…") { [weak self] in self?.checkForUpdates() }
         menu.addItem(.separator())

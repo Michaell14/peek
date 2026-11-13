@@ -12,6 +12,10 @@ final class OverlayController: NSObject {
 
     private(set) var isVisible = false
     private(set) var isInteractive = false
+    /// The template most recently kept, and how many have been, so the tour
+    /// can tell a template being kept from one being put back.
+    private(set) var lastKeptTemplate: BoardTemplate?
+    private(set) var templatesKept = 0
 
     private let model: AppModel
     private let web = WebEnvironment()
@@ -138,6 +142,12 @@ final class OverlayController: NSObject {
             context.duration = duration
             panel.animator().alphaValue = 1
         }
+        announceChange()
+    }
+
+    /// Lets the tour follow along as the overlay comes and goes.
+    private func announceChange() {
+        NotificationCenter.default.post(name: .blinkOverlayDidChange, object: self)
     }
 
     /// Tiles settle into place as the overlay appears and ease back as it
@@ -184,6 +194,7 @@ final class OverlayController: NSObject {
                 self.boardViews.values.forEach { $0.overlayDidHide() }
             }
         })
+        announceChange()
     }
 
     private func setInteractive(_ interactive: Bool) {
@@ -198,6 +209,7 @@ final class OverlayController: NSObject {
             panel.makeKeyAndOrderFront(nil)
             trackPointer()
         }
+        announceChange()
     }
 
     /// Keeps the tile under the pointer showing its controls. The position is
@@ -383,7 +395,11 @@ final class OverlayController: NSObject {
         let index = all.firstIndex { $0.id == template.id } ?? 0
         state.previewName = template.name
         state.previewPosition = "\(index + 1) of \(all.count)"
+        announceChange()
     }
+
+    /// The template on the board being tried, if one is.
+    var previewingTemplate: BoardTemplate? { preview?.template }
 
     /// The template before or after the one being tried.
     func stepPreview(by offset: Int) {
@@ -395,9 +411,12 @@ final class OverlayController: NSObject {
 
     /// Keeps the template being tried.
     func keepPreview() {
-        guard preview != nil else { return }
-        preview = nil
+        guard let preview else { return }
+        self.preview = nil
         state.previewName = nil
+        lastKeptTemplate = preview.template
+        templatesKept += 1
+        announceChange()
     }
 
     /// Puts the board back as it was before trying templates.
@@ -408,6 +427,7 @@ final class OverlayController: NSObject {
         model.update { workspace in
             workspace.updateBoard(preview.boardID) { $0.tiles = preview.previousTiles }
         }
+        announceChange()
     }
 
     /// Fills the board on screen with a template, without trying it first.

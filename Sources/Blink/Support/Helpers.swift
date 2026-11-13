@@ -138,4 +138,7 @@ extension Notification.Name {
     /// Posted by anything that needs the overlay out of the way, such as a
     /// system permission prompt that would otherwise open behind it.
     static let blinkDismissOverlay = Notification.Name("BlinkDismissOverlay")
+    /// Posted by the overlay whenever it appears, goes, becomes interactive,
+    /// or starts or stops trying a template.
+    static let blinkOverlayDidChange = Notification.Name("BlinkOverlayDidChange")
 }

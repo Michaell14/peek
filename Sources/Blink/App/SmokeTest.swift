@@ -122,7 +122,10 @@ enum SmokeTest {
         )
     }
 
-    static func run(model: AppModel, overlay: OverlayController, hotkeys: HotkeyMonitor, updater: Updater, output: URL) {
+    static func run(
+        model: AppModel, overlay: OverlayController, hotkeys: HotkeyMonitor, updater: Updater,
+        onboarding: OnboardingController, output: URL
+    ) {
         let pageURL = ProcessInfo.processInfo.environment["BLINK_SMOKE_URL"].flatMap(URL.init(string:))
 
         model.update { workspace in
@@ -905,6 +908,132 @@ enum SmokeTest {
                 "keystrokeMaxMs": rounded(keystrokes.max() ?? 0),
                 "ruleRebuildNoLongerPerKeystrokeMs": rounded(rebuild),
             ]
+
+            // 10b. The tour, done the way a person would: the real keys bring
+            // the real overlay up under the coach.
+            var tourFrames: [String: [Double]] = [:]
+            let tour = onboarding.tour
+            @MainActor func noteTourFrame() {
+                guard let frame = onboarding.windowFrame else { return }
+                tourFrames["\(tour.step)"] = [frame.minX, frame.minY, frame.width, frame.height].map { Double($0) }
+            }
+            @MainActor func tourOnScreen() -> Bool {
+                guard let frame = onboarding.windowFrame else { return false }
+                return NSScreen.screens.contains { $0.frame.insetBy(dx: -1, dy: -1).contains(frame) }
+            }
+            let panelLevel = overlay.snapshot()["panelLevel"] as? Int ?? 0
+
+            onboarding.show()
+            await pause(1.8)
+            noteTourFrame()
+            expect("tour-hello", [
+                ("the tour opens", onboarding.isShowing),
+                ("it starts by saying hello", tour.step == .hello),
+                ("it is on screen", tourOnScreen()),
+                ("the overlay is out of its way", !flag("visible")),
+            ])
+            await capture("tour-hello")
+
+            tour.advance()
+            await pause(1.0)
+            noteTourFrame()
+            overlay.shortcutDown()
+            await pause(0.9)
+            let peeking = tour.isPeeking && flag("visible") && !flag("interactive")
+            let coachAbove = onboarding.windowLevel > panelLevel
+            await capture("tour-hold-peek")
+            overlay.shortcutUp()
+            await pause(0.9)
+            expect("tour-hold", [
+                ("holding the keys peeks", peeking),
+                ("the coach stays above the overlay", coachAbove),
+                ("letting go counts the peek", tour.peeks == 1),
+                ("the overlay went away", !flag("visible")),
+                ("the coach is on screen", tourOnScreen()),
+            ])
+            await capture("tour-hold-done")
+
+            tour.advance()
+            await pause(1.0)
+            noteTourFrame()
+            overlay.shortcutDown()
+            await pause(0.1)
+            overlay.shortcutUp()
+            await pause(0.9)
+            let tappedOpen = tour.isPinned && tour.openedPinned && flag("interactive")
+            await capture("tour-tap-open")
+            await press("\u{1b}", keyCode: 53)
+            await pause(0.6)
+            expect("tour-tap", [
+                ("a tap keeps it open", tappedOpen),
+                ("esc closes it", tour.closedAfterPin && !flag("visible")),
+            ])
+            await capture("tour-tap-done")
+
+            tour.advance()
+            await pause(1.2)
+            noteTourFrame()
+            let startedOnDefault = tour.shortcutChoice == .standard
+            await capture("tour-shortcut")
+            tour.choose(.function)
+            await pause(0.8)
+            let choseFunction = model.settings.shortcut == .functionKey && hotkeys.shortcut == .functionKey
+            await capture("tour-shortcut-fn")
+            tour.choose(.standard)
+            await pause(0.6)
+            expect("tour-shortcut", [
+                ("the recommended key is chosen", startedOnDefault),
+                ("choosing fn changes the shortcut", choseFunction),
+                ("choosing ⌥` puts it back", model.settings.shortcut == .default && hotkeys.shortcut == .default),
+            ])
+
+            let all = BoardTemplate.all
+            tour.advance()
+            await pause(1.6)
+            noteTourFrame()
+            let triesFirst = tour.trying?.id == all[0].id && overlay.previewingTemplate?.id == all[0].id
+            let boardCoachAbove = onboarding.windowLevel > panelLevel
+            await capture("tour-board")
+            tour.startTrying(all[1])
+            await pause(1.0)
+            let flipped = tour.trying?.id == all[1].id && overlay.previewingTemplate?.id == all[1].id
+            tour.keepTrying()
+            await pause(0.8)
+            expect("tour-board", [
+                ("the step tries the first template", triesFirst),
+                ("its coach is above the overlay", boardCoachAbove),
+                ("the dots flip between templates", flipped),
+                ("keeping one is noticed", tour.kept?.id == all[1].id),
+                ("the board holds the template's tiles", tileIDs().count == all[1].makeTiles().count),
+            ])
+            await capture("tour-board-kept")
+
+            tour.advance()
+            await pause(1.4)
+            noteTourFrame()
+            expect("tour-access", [
+                ("the overlay steps aside", !flag("visible")),
+                ("the tour moves on", tour.step == .access),
+                ("it is on screen", tourOnScreen()),
+            ])
+            await capture("tour-access")
+
+            tour.advance()
+            await pause(1.8)
+            noteTourFrame()
+            await capture("tour-ready")
+            tour.advance()
+            await pause(1.4)
+            expect("tour-done", [
+                ("the tour closes", !onboarding.isShowing),
+                ("it ends on the board, open", flag("visible") && flag("interactive")),
+                ("it is not shown again on its own", OnboardingModel.isDone),
+                ("the shortcut is not left paused", hotkeys.status != .inactive),
+            ])
+            await capture("tour-done")
+            snapshots["tourFrames"] = tourFrames
+            overlay.dismiss()
+            await pause(0.5)
 
             // 11. The settings window.
             overlay.onOpenSettings?()
