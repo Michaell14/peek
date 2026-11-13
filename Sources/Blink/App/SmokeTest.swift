@@ -981,8 +981,13 @@ enum SmokeTest {
             await capture("tour-hello")
 
             tour.advance()
-            await pause(1.0)
+            await pause(0.5)
+            // Waiting to be pressed, the keys dip now and then: calmly.
+            let nudgesBefore = OnboardingKeyNudges.count
+            await pause(3.0)
+            let nudges = OnboardingKeyNudges.count - nudgesBefore
             noteTourFrame()
+            await capture("tour-hold")
             overlay.shortcutDown()
             await pause(0.9)
             let peeking = tour.isPeeking && flag("visible") && !flag("interactive")
@@ -991,6 +996,7 @@ enum SmokeTest {
             overlay.shortcutUp()
             await pause(0.9)
             expect("tour-hold", [
+                ("the keys invite a press calmly, not in a flicker (\(nudges) in 3 s)", (1...2).contains(nudges)),
                 ("holding the keys peeks", peeking),
                 ("the coach stays above the overlay", coachAbove),
                 ("letting go counts the peek", tour.peeks == 1),

@@ -256,6 +256,8 @@ private struct BigCap: View {
     let key: OnboardingKey
     var size: CGFloat = 74
     var pressed = false
+    /// A light dip, without the glow of a real press.
+    var nudged = false
     var lit = false
 
     /// What a key prints above its own character, for the keys people
@@ -320,44 +322,51 @@ private struct BigCap: View {
         .background(
             RoundedRectangle(cornerRadius: size * 0.18, style: .continuous)
                 .fill(Color(red: 0.047, green: 0.055, blue: 0.07))
-                .offset(y: pressed ? 1 : 4)
+                .offset(y: pressed ? 1 : (nudged ? 2.5 : 4))
         )
-        .shadow(color: pressed ? Tour.cool.opacity(0.32) : Color.black.opacity(0.45), radius: pressed ? 14 : 12, y: pressed ? 0 : 10)
-        .offset(y: pressed ? 2 : 0)
+        .shadow(color: pressed ? Tour.cool.opacity(0.32) : Color.black.opacity(0.45), radius: pressed ? 14 : 12, y: pressed ? 0 : (nudged ? 7 : 10))
+        .offset(y: pressed ? 2 : (nudged ? 1.5 : 0))
         .animation(.easeOut(duration: 0.08), value: pressed)
+        .animation(.easeInOut(duration: 0.14), value: nudged)
         .animation(.easeOut(duration: 0.12), value: lit)
     }
 }
 
-/// The shortcut's keys, large. While waiting to be pressed they press
-/// themselves now and then, as an invitation.
+/// How many times the keys have dipped, for the self-check.
+@MainActor
+enum OnboardingKeyNudges {
+    static var count = 0
+}
+
+/// The shortcut's keys, large. While waiting to be pressed they dip once
+/// every couple of seconds, as an invitation, and light up only when the
+/// real keys are down.
 private struct CapsRow: View {
     let caps: [OnboardingKey]
     var pressed = false
     var inviting = false
     var size: CGFloat = 74
 
-    var body: some View {
-        if inviting, !pressed {
-            PhaseAnimator([0, 1, 2, 3]) { phase in
-                row(down: phase == 1, lit: false)
-            } animation: { phase in
-                switch phase {
-                case 1: return .easeOut(duration: 0.12)
-                case 2: return .easeOut(duration: 0.28)
-                case 3: return .linear(duration: 1.4)
-                default: return .linear(duration: 0.4)
-                }
-            }
-        } else {
-            row(down: pressed, lit: pressed)
-        }
-    }
+    @State private var nudged = false
 
-    private func row(down: Bool, lit: Bool) -> some View {
+    var body: some View {
         HStack(spacing: 8) {
             ForEach(Array(caps.enumerated()), id: \.offset) { _, key in
-                BigCap(key: key, size: size, pressed: down, lit: lit && key.name != nil)
+                BigCap(key: key, size: size, pressed: pressed, nudged: nudged && !pressed, lit: pressed && key.name != nil)
+            }
+        }
+        // A plain timer rather than a phase animation: its pauses change
+        // nothing on screen, and a phase animation skips straight past them.
+        .task(id: inviting && !pressed) {
+            nudged = false
+            guard inviting, !pressed else { return }
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(2400))
+                guard !Task.isCancelled else { break }
+                nudged = true
+                OnboardingKeyNudges.count += 1
+                try? await Task.sleep(for: .milliseconds(180))
+                nudged = false
             }
         }
     }
