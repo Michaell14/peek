@@ -67,16 +67,18 @@ struct TemplateShelf: View {
         }
         .background(
             ZStack {
-                Color(white: 0.06).opacity(0.9)
-                LinearGradient(colors: [Color.white.opacity(0.09), Color.white.opacity(0.04)], startPoint: .top, endPoint: .bottom)
+                // A lighter, raised layer, so it reads as sitting on top of
+                // the board rather than sunk into it.
+                Color(white: 0.16).opacity(0.96)
+                LinearGradient(colors: [Color.white.opacity(0.10), Color.white.opacity(0.02)], startPoint: .top, endPoint: .bottom)
             }
             .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
         )
         .overlay(
             RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .strokeBorder(Color.white.opacity(0.11), lineWidth: 1)
+                .strokeBorder(Color.white.opacity(0.17), lineWidth: 1)
         )
-        .shadow(color: .black.opacity(0.5), radius: 30, y: 16)
+        .shadow(color: .black.opacity(0.6), radius: 34, y: 14)
         .environment(\.colorScheme, .dark)
     }
 
@@ -88,7 +90,7 @@ struct TemplateShelf: View {
                 .foregroundStyle(.secondary)
             Text(hint)
                 .font(.system(size: 12))
-                .foregroundStyle(state.shelfShowing == nil ? Color.secondary : Color.primary.opacity(0.85))
+                .foregroundStyle(Color.primary.opacity(state.shelfShowing == nil ? 0.7 : 0.9))
                 .lineLimit(1)
                 .contentTransition(.opacity)
                 .animation(.easeOut(duration: 0.15), value: hint)
@@ -123,7 +125,8 @@ struct TemplateShelf: View {
                 TemplateMap(template: template)
                     .padding(6)
                     .frame(height: Self.mapHeight(width))
-                    .background(Color.black.opacity(0.3), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                    .background(Color.black.opacity(0.22), in: RoundedRectangle(cornerRadius: 9, style: .continuous))
+                    .overlay(RoundedRectangle(cornerRadius: 9, style: .continuous).strokeBorder(Color.white.opacity(0.06)))
                 HStack(spacing: 6) {
                     Image(systemName: template.symbol)
                         .font(.system(size: 11, weight: .semibold))
@@ -138,7 +141,7 @@ struct TemplateShelf: View {
             .padding([.top, .horizontal], Self.cardInset)
             .frame(width: Self.cardWidth(width), alignment: .leading)
             .background(
-                showing ? Color.blinkAccent.opacity(0.12) : Color.white.opacity(pointed ? 0.07 : 0.03),
+                showing ? Color.blinkAccent.opacity(0.14) : Color.white.opacity(pointed ? 0.11 : 0.06),
                 in: RoundedRectangle(cornerRadius: 14, style: .continuous)
             )
             .overlay(

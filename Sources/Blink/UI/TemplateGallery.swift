@@ -15,6 +15,20 @@ extension TileContent {
         }
     }
 
+    /// Each kind of tile has its own colour on a template's map, so a map
+    /// reads at a glance: calendar, conversations, what is due, and so on.
+    var mapTint: Color {
+        switch self {
+        case .web: return Color.blinkCool
+        case .file: return Color(white: 0.75)
+        case .widget(.clock): return Color(red: 0.72, green: 0.62, blue: 1.0)
+        case .widget(.calendar): return Color(red: 1.0, green: 0.45, blue: 0.42)
+        case .widget(.reminders): return Color(red: 1.0, green: 0.63, blue: 0.27)
+        case .widget(.notes): return Color(red: 1.0, green: 0.82, blue: 0.36)
+        case .widget(.messages): return Color(red: 0.27, green: 0.86, blue: 0.53)
+        }
+    }
+
     /// A word or two for the tile on a template's map.
     var mapLabel: String {
         switch self {
@@ -43,12 +57,12 @@ struct TemplateMap: View {
             ZStack(alignment: .topLeading) {
                 ForEach(items, id: \.id) { item in
                     if let frame = frames[item.id], let content = contents[item.id] {
-                        let isWidget: Bool = { if case .widget = content { return true } else { return false } }()
+                        let tint = content.mapTint
                         RoundedRectangle(cornerRadius: 5, style: .continuous)
-                            .fill(isWidget ? Color.white.opacity(0.13) : Color.blinkCool.opacity(0.22))
+                            .fill(tint.opacity(0.26))
                             .overlay(
                                 RoundedRectangle(cornerRadius: 5, style: .continuous)
-                                    .strokeBorder(Color.white.opacity(0.14), lineWidth: 0.5)
+                                    .strokeBorder(tint.opacity(0.55), lineWidth: 1)
                             )
                             .overlay {
                                 VStack(spacing: 3) {
@@ -62,7 +76,7 @@ struct TemplateMap: View {
                                             .padding(.horizontal, 3)
                                     }
                                 }
-                                .foregroundStyle(Color.white.opacity(0.8))
+                                .foregroundStyle(Color.white.opacity(0.95))
                             }
                             .frame(width: frame.width * scale, height: frame.height * scale)
                             .offset(x: (frame.x - left) * scale, y: frame.y * scale)
