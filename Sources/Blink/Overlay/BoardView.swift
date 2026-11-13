@@ -1,5 +1,6 @@
 import AppKit
 import BlinkCore
+import SwiftUI
 
 /// One board's canvas: creates a view per tile, lays them out in columns of
 /// stacked tiles, and handles moving, stacking and resizing while arranging.
