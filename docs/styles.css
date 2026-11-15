@@ -8,6 +8,12 @@
   font-display: swap;
 }
 @font-face {
+  font-family: "DM Serif Display";
+  src: url("fonts/dm-serif-display.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
   font-family: "Fraunces";
   src: url("fonts/fraunces.woff2") format("woff2");
   font-weight: 100 900;
@@ -26,6 +32,7 @@
 
   --sans: "Schibsted Grotesk", "Helvetica Neue", Helvetica, Arial, sans-serif;
   --serif: "Fraunces", Georgia, serif;
+  --display: "DM Serif Display", Georgia, serif;
   --ease: cubic-bezier(0.22, 0.8, 0.24, 1);
 
   --bar: 60px;
@@ -98,13 +105,13 @@ kbd {
 .skip:focus { top: 12px; }
 
 /* ---- Wordmark ----------------------------------------------------------
-   Set in Fraunces, except the dot on the i, which is drawn so it can blink. */
+   Set in DM Serif Display, except the dot on the i, which is drawn so it can
+   blink: an eyelid comes down from the top, twice, then stays open a while. */
 
 .wordmark {
-  --track: -0.03em;
+  --track: -0.01em;
   display: inline-block;
-  font: 400 1em/0.8 var(--serif);
-  font-variation-settings: "opsz" 144;
+  font: 400 1em/0.8 var(--display);
   letter-spacing: var(--track);
   white-space: nowrap;
 }
@@ -112,18 +119,19 @@ kbd {
 .wordmark__i i::before {
   content: "";
   position: absolute;
-  left: calc(-0.163em - var(--track));
-  bottom: 0.522em;
-  width: 0.112em;
-  height: 0.116em;
+  left: -0.21em;
+  bottom: 0.565em;
+  width: 0.16em;
+  height: 0.16em;
   border-radius: 50%;
   background: var(--amber);
+  clip-path: inset(0 round 50%);
   animation: blink 6.4s infinite;
 }
 @keyframes blink {
-  0%, 46%, 50%, 92%, 96%, 100% { transform: scaleY(1); }
-  48%, 94% { transform: scaleY(0.08); }
-  93% { transform: scaleY(1); }
+  0%, 46%, 50%, 92%, 96%, 100% { clip-path: inset(0 round 50%); }
+  48%, 94% { clip-path: inset(88% 0 0 0 round 50%); }
+  93% { clip-path: inset(0 round 50%); }
 }
 
 /* ---- Buttons ------------------------------------------------------------ */
