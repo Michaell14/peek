@@ -56,8 +56,8 @@
 
   // Clicking around to check things: which window comes forward, and when.
   const FRONT = [[1.18, 'cal'], [1.43, 'mail'], [1.67, 'web'], [1.92, 'writer']];
-  const APP_NAME = { writer: 'Writer', cal: 'Calendar', mail: 'Mail', web: 'Browser' };
-  const DOCK_X = { files: 495, writer: 553, cal: 611, mail: 669, web: 727, settings: 785 };
+  const APP_NAME = { writer: 'Pages', cal: 'Calendar', mail: 'Mail', web: 'Chrome' };
+  const DOCK_X = { files: 327, web: 384, mail: 440, cal: 551, writer: 719, settings: 888 };
   const DOCK_Y = 761;
 
   // Camera: [zoom, x, y] where (x, y) is the point of the screen to centre on.
@@ -395,6 +395,7 @@
     for (const [app, element] of Object.entries(scene.dockIcons)) {
       const t = { cal: 1.18, mail: 1.43, web: 1.67, writer: 1.92 }[app];
       flag(element, 'is-click', t != null && Math.abs(T - t) < 0.012);
+      flag(element, 'is-hover', t != null && Math.abs(T - t) < 0.03);
     }
 
     // The sentence being written.

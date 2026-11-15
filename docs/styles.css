@@ -541,7 +541,7 @@ html:not(.js) .foot, .is-stack .foot { position: static; }
   bottom: 8px;
   z-index: 7;
   display: flex;
-  gap: 10px;
+  gap: 8px;
   padding: 7px 9px;
   border-radius: 20px;
   background: rgba(244, 246, 250, 0.7);
@@ -549,18 +549,38 @@ html:not(.js) .foot, .is-stack .foot { position: static; }
   transform: translateX(-50%);
   will-change: transform;
 }
-.dock i { position: relative; display: grid; place-items: center; width: 48px; height: 48px; border-radius: 12px; transition: filter 0.08s; }
+.dock i { position: relative; display: grid; font-style: normal; place-items: center; width: 48px; height: 48px; border-radius: 11px; box-shadow: 0 1px 1.5px rgba(20, 28, 44, 0.16); transition: filter 0.08s; }
 .dock i.is-click { filter: brightness(0.7); }
-.dock svg { width: 26px; height: 26px; fill: none; stroke: #fff; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.dock svg { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: inherit; }
 .dock b { position: absolute; left: 50%; bottom: -5px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: rgba(22, 24, 29, 0.6); }
-.dock [data-app="files"] { background: linear-gradient(#6fb6ff, #2f80ed); }
-.dock [data-app="writer"] { background: linear-gradient(#f9f9fa, #dfe1e5); }
-.dock [data-app="writer"] svg { stroke: #3a3e46; }
-.dock [data-app="cal"] { background: #fff; box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.12); }
-.dock [data-app="mail"] { background: linear-gradient(#5aa9ff, #1a6fe8); }
-.dock [data-app="web"] { background: linear-gradient(#fff, #e9edf2); box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.12); }
-.dock [data-app="web"] svg { stroke: #1f6feb; }
-.dock [data-app="settings"] { background: linear-gradient(#a3a7ae, #6d7179); }
+.dock__sep { width: 1px; margin: 4px 0; background: rgba(30, 40, 60, 0.2); }
+/* The app's name, as the Dock shows it while the pointer rests on an icon. */
+.dock i::after {
+  content: attr(data-name);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 12px);
+  padding: 3px 10px;
+  border-radius: 7px;
+  background: rgba(246, 248, 251, 0.94);
+  box-shadow: 0 0 0 0.5px rgba(30, 40, 60, 0.22), 0 4px 12px -4px rgba(30, 40, 60, 0.35);
+  color: #1d1d1f;
+  font-size: 13px;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.dock i.is-hover::after { opacity: 1; }
+.dock [data-app="files"] { background: linear-gradient(#eaf5ff, #b9dcff); }
+.dock [data-app="web"], .dock [data-app="slack"] { background: linear-gradient(#fff, #eceef1); }
+.dock [data-app="mail"] { background: linear-gradient(#5ab2ff, #1667e6); }
+.dock [data-app="messages"] { background: linear-gradient(#6ae46e, #1cbf3f); }
+.dock [data-app="cal"], .dock [data-app="reminders"], .dock [data-app="notes"] { background: #fff; }
+.dock [data-app="writer"] { background: linear-gradient(#ffb547, #f27512); }
+.dock [data-app="music"] { background: linear-gradient(#fd6077, #f92b45); }
+.dock [data-app="settings"] { background: linear-gradient(#a4a8ae, #6b6f76); }
+.dock [data-app="trash"] { background: none; box-shadow: none; }
 .dock__cal { display: grid; justify-items: center; line-height: 1; }
 .dock__cal em { color: #ff3b30; font-size: 8.5px; font-style: normal; font-weight: 700; text-transform: uppercase; }
 .dock__cal strong { margin-top: 2px; color: #1d1d1f; font-size: 22px; font-weight: 400; }
